@@ -1,0 +1,134 @@
+/* src/styles1/MyTasks.css */
+
+.mytasks-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+.sidebar-open .content {
+    margin-left: 250px; /* ขยายพื้นที่เนื้อหาหากแถบข้างเปิดอยู่ */
+}
+
+.sidebar-closed .content {
+    margin-left: 0; /* ขยายพื้นที่เนื้อหาหากแถบข้างปิดอยู่ */
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background-color: #f0f2f5;
+    padding: 16px;
+    border-bottom: 1px solid #d9d9d9;
+    border-radius: 15px; /* กรอบมน */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* เงา */
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-info {
+    text-align: right;
+    color: #333;
+}
+
+.mytasks-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+}
+
+/* เพิ่มการจัดรูปแบบของกรอบมน */
+.box-rounded {
+    padding: 16px;
+    border: 1px solid #d9d9d9;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* เพิ่มเงา */
+    background-color: #fff;
+}
+
+
+.table-section {
+    display: flex;
+    flex-direction: row; /* ให้แสดงเป็นแนวตั้ง */
+    gap: 20px; /* เพิ่มช่องว่างระหว่างสองคอลัมน์ */
+}
+
+.table-responsive {
+    flex: 1; /* ให้ตารางเต็มพื้นที่ที่กำหนด */
+    overflow-x: auto;
+    max-height: 600px; /* ปรับความสูงตามที่ต้องการ */
+    overflow-y: auto;
+}
+
+.ant-table {
+    height: 100%;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+}
+
+.ant-table-thead > tr > th {
+    background: #fafafa;
+    color: #333;
+    font-weight: bold;
+}
+
+.ant-table-tbody > tr > td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.ant-btn {
+    background-color: #1890ff;
+    border-color: #1890ff;
+    color: white;
+}
+
+.ant-btn:hover {
+    background-color: #40a9ff;
+    border-color: #40a9ff;
+}
+
+.ant-tag {
+    font-weight: bold;
+}
+
+.ant-tag.green {
+    background-color: #52c41a;
+    color: white;
+}
+
+.ant-tag.orange {
+    background-color: #faad14;
+    color: white;
+}
+
+.ant-tag.red {
+    background-color: #f5222d;
+    color: white;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .sidebar-open .content {
+        margin-left: 0; /* ปิดแถบข้างเมื่อหน้าจอเล็ก */
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .mytasks-title {
+        font-size: 20px;
+    }
+}

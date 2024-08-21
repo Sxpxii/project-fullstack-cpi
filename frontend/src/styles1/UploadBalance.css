@@ -1,0 +1,74 @@
+.upload-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    justify-content: center; /* จัดให้อยู่ด้านบน */
+    height: 100vh; /* ความสูงเต็มหน้าจอ */
+    width: 100vw; 
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.upload-title {
+    margin-bottom: 20px;
+    text-align: center; /* จัดข้อความไปด้านซ้าย */
+}
+
+.upload-box {
+    background-color: white;
+    padding: 20px;
+    border: 2px dashed #333;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 20px;
+    display: flex; /* เพิ่ม */
+    align-items: center; /* จัดกึ่งกลางในแนวตั้ง */
+    justify-content: center; /* จัดกึ่งกลางในแนวนอน */
+    height: 200px;
+}
+
+.upload-box input[type="file"] {
+    margin-bottom: 10px;
+    
+}
+
+.upload-buttons {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 500px;
+}
+
+.upload-buttons button,
+.upload-buttons .next-link {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+    width: 48px;
+    align-self: flex-end;
+    flex: 1; /* ให้ปุ่มมีขนาดเท่ากัน */
+    margin: 0 5px; /* เพิ่มระยะห่างระหว่างปุ่ม */
+}
+
+.upload-buttons button:hover,
+.upload-buttons .next-link:hover {
+    background-color: #555; /* สีเมื่อ hover */
+}
+
+.upload-buttons .next-link {
+    background-color: #007bff; /* เปลี่ยนสีพื้นหลังของลิงค์ถัดไป */
+    margin-left: 20px; /* เพิ่มระยะห่างระหว่างปุ่มบันทึกกับปุ่มถัดไป */
+}
+
+.upload-buttons .next-link:hover {
+    background-color: #0056b3; /* สีเมื่อ hover สำหรับลิงค์ถัดไป */
+}

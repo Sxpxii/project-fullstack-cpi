@@ -1,0 +1,214 @@
+/* src/styles1/TaskDetails.css */
+
+/* Container ของหน้า */
+.details-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Style สำหรับ Sidebar */
+.sidebar-open {
+    margin-left: 250px; /* ปรับขนาดตามความกว้างของ Sidebar */
+    width: calc(100% - 250px); /* รองรับ Sidebar ที่เปิด */
+}
+
+.sidebar-closed {
+    width: 100%; /* รองรับ Sidebar ที่ปิด */
+}
+
+/* Header */
+.header {
+    padding: 20px;
+    background-color: #f0f2f5;
+    border-bottom: 1px solid #d9d9d9;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Table container */
+.table-container {
+    padding: 20px;
+    position: relative;
+    overflow: auto;
+}
+
+/* Table buttons */
+.table-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+/* Button styles */
+.back-button,
+.status-check-button {
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.back-button {
+    background-color: #1890ff;
+    color: #fff;
+}
+
+.back-button:hover {
+    background-color: #40a9ff;
+}
+
+.status-check-button {
+    background-color: #52c41a;
+    color: #fff;
+}
+
+.status-check-button:hover {
+    background-color: #73d13d;
+}
+
+/* Complete button container */
+.complete-button-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.complete-button-container .ant-btn {
+    font-size: 16px; /* ขนาดตัวอักษรเพิ่มขึ้น */
+    padding: 15px 30px; /* เพิ่ม padding สำหรับขนาดปุ่มที่ใหญ่ขึ้น */
+    height: auto;
+}
+
+/* Modal */
+.ant-modal-content {
+    width: 80vw; /* Set modal width to fit table */
+    
+}
+
+.ant-modal-header {
+    background-color: #f0f2f5;
+    border-bottom: 1px solid #d9d9d9;
+    text-align: center;
+}
+
+.ant-modal-title {
+    font-size: 18px;
+    color: #333;
+}
+
+.ant-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Table ของ Ant Design */
+.ant-table {
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.ant-table-thead th {
+    text-align: center; /* Center align column headers */
+    padding: 10px; /* Adjust padding for header */
+    background-color: #f5f5f5;
+    font-weight: bold;
+    color: #333;
+}
+
+.ant-table-tbody td {
+    text-align: center; /* Center align table cells */
+    padding: 10px; /* Adjust padding for cells */
+    background-color: #fff;
+    white-space: nowrap;
+}
+
+.ant-table-thead > tr > th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.ant-table-tbody > tr > td {
+    background-color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    flex: 1 1 auto;
+}
+
+.ant-table-tbody > tr.ant-table-row-hover > td {
+    background-color: #e6f7ff;
+}
+
+.ant-table-tbody .ant-checkbox-wrapper {
+    margin: 0;
+}
+
+.ant-input-number {
+    color: #757373; /* Change text color to a lighter shade */
+    font-size: 14px; /* Adjust font size if needed */
+}
+
+/* เพิ่มสไตล์สำหรับแถวที่ถูกไฮไลต์ */
+.highlight-row {
+    background-color: #ffd8d8 !important; /* สีพื้นหลังของแถวที่ไฮไลต์ */
+}
+
+
+/* Style สำหรับ Modal Table */
+.custom-modal-table .ant-table {
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.custom-modal-table .ant-table-thead th {
+    text-align: center; /* จัดกลางหัวคอลัมน์ */
+    padding: 10px; /* ปรับ padding สำหรับหัวคอลัมน์ */
+    background-color: #f5f5f5;
+    font-weight: bold;
+    color: #333;
+}
+
+.custom-modal-table .ant-table-tbody td {
+    text-align: center; /* จัดกลางตัวอักษรในเซลล์ */
+    padding: 10px; /* ปรับ padding สำหรับเซลล์ */
+    background-color: #fff;
+    white-space: nowrap;
+}
+
+.custom-modal-table .ant-table-thead > tr > th {
+    text-align: center;
+}
+
+.custom-modal-table .ant-table-tbody > tr > td {
+    text-align: center;
+}
+
+.custom-modal-table .highlight-green {
+    background-color: #d4edda; /* สีพื้นหลังที่โดดเด่นสำหรับสถานะ 'cut' */
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .ant-modal-content {
+        width: 100%; /* ปรับให้ขนาดของป็อบอัพเต็มหน้าจอมือถือ */
+    }
+
+    .sidebar-open {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .button-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

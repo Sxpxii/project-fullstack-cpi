@@ -1,0 +1,89 @@
+/* src/styles1/UploadRequest.css */
+
+.upload-request-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    height: 100vh;
+    width: 100vw;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.upload-request-page-wrapper h1 {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.content-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: calc(100% - 60px); /* ปรับพื้นที่ให้มีความสูงตามที่ต้องการ */
+}
+
+.material-selector {
+    margin-bottom: 20px;
+}
+
+.material-selector select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.upload-box {
+    background-color: white;
+    padding: 20px;
+    border: 2px dashed #333;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 20px;
+    display: flex; /* เพิ่ม */
+    align-items: center; /* จัดกึ่งกลางในแนวตั้ง */
+    justify-content: center; /* จัดกึ่งกลางในแนวนอน */
+    height: 200px;
+}
+
+.upload-box input[type="file"] {
+    margin-bottom: 10px;
+    
+}
+
+.save-button {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.save-button:hover {
+    background-color: #555;
+}
+
+.back-link {
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: inline-block;
+}
+
+.back-link:hover {
+    background-color: #555;
+}

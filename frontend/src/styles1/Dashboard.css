@@ -1,0 +1,223 @@
+/* src/styles/Dashboard.css */
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #f0f2f5;
+  font-family: "Sarabun", sans-serif;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #001529;
+  color: #fff;
+  transition: width 0.3s;
+  overflow: hidden;
+}
+
+.sidebar-closed .sidebar {
+  width: 80px;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  transition: margin-left 0.3s;
+}
+
+.content.sidebar-open {
+  margin-left: 250px; /* ขนาดของ Sidebar ตอนเปิด */
+}
+
+.content.sidebar-closed {
+  margin-left: 80px;
+}
+
+.header {
+  background-color: #fff;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-title {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.button-container {
+  display: flex;
+  align-items: center;
+}
+
+.upload-button {
+  padding: 10px 20px; /* เพิ่มขนาดปุ่ม */
+  background-color: #ffffff; /* สีพื้นหลังของปุ่ม */
+  color: #1890ff; /* สีข้อความของปุ่ม */
+  border: 2px solid #1890ff; /* ขอบของปุ่ม */
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: background-color 0.3s, color 0.3s; /* เพิ่มการเปลี่ยนสี */
+}
+
+.upload-button:hover {
+  background-color: #1890ff;
+  color: #ffffff;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background-color: #ffffff; /* สีพื้นหลังของแถบค้นหา */
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* เพิ่มเงา */
+}
+
+.table-section {
+  margin-bottom: 20px;
+}
+
+.table-section h2 {
+  background-color: #ffffff; /* สีพื้นหลังของหัวข้อ section */
+  padding: 15px;
+  /* border-radius: 4px; ขอบโค้งมน  */
+  /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); เพิ่มเงา  */
+  font-size: 20px; /* ขนาดตัวอักษร */
+  font-weight: bold;
+  margin: 0;
+}
+
+.table-responsive {
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.table-responsive table {
+  width: 100% !important;
+  /* border-collapse: collapse; */
+}
+
+.table-responsive thead th {
+  position: sticky;
+  top: 0;
+  background-color: #ffffff; /* สีพื้นหลังของหัวตาราง */
+  text-align: center; /* จัดกลางข้อความในหัวตาราง */
+  padding: 10px;
+  /* border-bottom: 2px solid #f0f0f0; ขอบด้านล่าง */
+}
+
+.table-responsive thead th {
+  text-align: center; /* จัดกลางข้อความในหัวตาราง */
+}
+
+/* กำหนดฟอนต์ TH Sarabun ให้กับตาราง Ant Design */
+.ant-table {
+  border: 0px !important;
+  font-family: "Sarabun", sans-serif !important;
+}
+
+/* ถ้าต้องการกำหนดฟอนต์ให้กับส่วนอื่นๆ */
+.sarabun-light {
+  font-family: "Sarabun", sans-serif;
+  font-weight: 300;
+}
+
+.sarabun-bold {
+  font-family: "Sarabun", sans-serif;
+  font-weight: 700;
+}
+
+/* สำหรับส่วนต่างๆ ในตาราง */
+.ant-table-thead > tr > th,
+.ant-table-tbody > tr > td {
+  font-family: "Sarabun", sans-serif !important;
+}
+
+.ant-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible; /* แก้ปัญหาการเลื่อน */
+}
+
+.ant-modal-content {
+  width: 90vw; /* ปรับขนาดของเนื้อหาของโมเดล */
+  max-width: 1000px; /* กำหนดความกว้างสูงสุดให้เหมาะสม */
+  border-radius: 8px; /* ขอบโค้งมน */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); /* เพิ่มเงา */
+}
+
+/* สไตล์สำหรับปุ่มในโมเดล */
+.ant-modal-footer .ant-btn {
+  border-radius: 4px; /* ขอบโค้งมน */
+}
+
+@media (max-width: 768px) {
+  .header,
+  .search-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .button-container,
+  .search-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .upload-button {
+    width: 100%;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-title {
+    font-size: 24px;
+  }
+
+  .content.sidebar-open {
+    margin-left: 200px;
+  }
+
+  .content.sidebar-closed {
+    margin-left: 60px;
+  }
+
+  .ant-modal-content {
+    width: 80vw; /* ปรับให้เหมาะสมในขนาดหน้าจอใหญ่ */
+    max-width: 1200px; /* ปรับความกว้างสูงสุด */
+  }
+}
+
+.custom-table {
+  font-family: "TH Sarabun", sans-serif;
+}
+
+.custom-table .ant-table {
+  font-family: inherit;
+}
+
+.custom-table .ant-table-thead > tr > th {
+  font-family: inherit;
+}
+
+.custom-table .ant-table-tbody > tr > td {
+  font-family: inherit;
+}

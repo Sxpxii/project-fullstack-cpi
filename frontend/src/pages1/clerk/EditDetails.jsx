@@ -1,0 +1,326 @@
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import axios from "axios";
+import { Button, Table, Radio, Card, Modal, Input, Breadcrumb } from "antd";
+import MainLayout from "../../components/LayoutClerk";
+import "../../styles1/EditDetails.css";
+import { HiMiniPencilSquare } from "react-icons/hi2";
+
+const EditDetails = () => {
+  const [username, setUsername] = useState("");
+  const [data, setData] = useState([]);
+  const [editingRow, setEditingRow] = useState(null);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [currentRecord, setCurrentRecord] = useState({});
+  const [additionalReason, setAdditionalReason] = useState("");
+  const { upload_id } = useParams();
+
+  const fetchData = async () => {
+    if (!upload_id) {
+      console.error("upload_id is undefined");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `http://localhost:3001/dashboard/edit-details/${upload_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data && Array.isArray(response.data)) {
+        console.log("Fetched data:", response.data);
+        // ตรวจสอบและเพิ่มปัญหา
+        const updatedData = response.data.map((item) => ({
+          ...item,
+          hasIssue: item.remaining_quantity !== item.counted_quantity,
+        }));
+        setData(updatedData);
+      } else {
+        console.error("Unexpected data format:", response.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+    }
+  };
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+    if (upload_id) {
+      fetchData();
+    } else {
+      console.error("upload_id is undefined");
+    }
+  }, [upload_id]);
+
+  const handleEditRow = (record) => {
+    setEditingRow(record.key);
+    setCurrentRecord(record);
+    setIsEditModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      const reasonToSave =
+        currentRecord.reason === "อื่นๆ"
+          ? additionalReason
+          : currentRecord.reason;
+      await axios.post(
+        `http://localhost:3001/dashboard/update-details/${upload_id}`,
+        { ...currentRecord, reason: reasonToSave }
+      );
+      setData((prevData) =>
+        prevData.map((item) =>
+          item.key === editingRow ? { ...item, reason: reasonToSave } : item
+        )
+      );
+      setIsEditModalVisible(false);
+      setEditingRow(null);
+      setCurrentRecord({});
+      setAdditionalReason("");
+    } catch (err) {
+      console.error("Failed to save data:", err);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditModalVisible(false);
+    setCurrentRecord({});
+  };
+
+  const handleReasonChange = (e) => {
+    setCurrentRecord({
+      ...currentRecord,
+      reason: e.target.value,
+    });
+  };
+
+  const handleAdditionalReasonChange = (e) => {
+    setAdditionalReason(e.target.value);
+    if (currentRecord.reason === "3") {
+      setCurrentRecord({
+        ...currentRecord,
+        reason: e.target.value,
+      });
+    }
+  };
+
+  const columns = [
+    {
+      title: "ลำดับ",
+      key: "index",
+      render: (text, record, index) => index + 1,
+      align: "left",
+    },
+    {
+      title: "รหัส",
+      dataIndex: "matunit",
+      key: "matunit",
+      align: "left",
+    },
+    {
+      title: "รายการ",
+      dataIndex: "mat_name",
+      key: "mat_name",
+      align: "left",
+    },
+    {
+      title: "จำนวน",
+      dataIndex: "quantity",
+      key: "quantity",
+      align: "center",
+    },
+    {
+      title: "จำนวนคงเหลือ",
+      dataIndex: "remaining_quantity",
+      key: "remaining_quantity",
+      align: "center",
+    },
+    {
+      title: "นับจริง",
+      dataIndex: "counted_quantity",
+      key: "counted_quantity",
+      align: "center",
+    },
+    {
+      title: "ตรวจสอบ",
+      dataIndex: "reason",
+      key: "reason",
+      align: "center",
+      render: (_, record) =>
+        record.hasIssue ? (
+          <Button
+            style={{
+              color: "#5755FE",
+              backgroundColor: "#f0f0f0",
+              borderColor: "#f0f0f0",
+            }}
+            icon={<HiMiniPencilSquare />}
+            onClick={() => handleEditRow(record)}
+          />
+        ) : null,
+    },
+    {
+      title: "เหตุผล",
+      dataIndex: "reason",
+      key: "reason",
+      align: "left",
+    },
+  ];
+
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    return now.toLocaleString();
+  };
+
+  const rowClassName = (record) => {
+    return record.hasIssue ? "highlight-row" : "";
+  };
+
+  return (
+    <MainLayout>
+      <div
+        style={{
+          backgroundColor: " #ffffff",
+          padding: "15px 30px",
+          marginBottom: "20px",
+          borderRadius: "15px",
+          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+        }}
+      >
+        <div style={{ margin: "10px" }}>
+          <div
+            className="dashboard-title sarabun-bold"
+            style={{
+              fontSize: "28px",
+              marginLeft: "20px",
+              padding: "10px",
+            }}
+          >
+            รายละเอียดการเบิก-จ่ายวัตถุดิบ
+          </div>
+          <div
+            className="sarabun-light"
+            style={{
+              fontSize: "14px",
+              marginLeft: "20px",
+              padding: "10px",
+            }}
+          >
+            <span className="ms-2"> {getCurrentDateTime()}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <Breadcrumb style={{ margin: "16px 0" }}>
+          <Breadcrumb.Item>Overview</Breadcrumb.Item>
+        </Breadcrumb>
+      </div>
+      <div>
+        <Card
+          style={{
+            borderRadius: "15px",
+          }}
+        >
+          <div className="table-container ">
+            <Table
+              columns={columns}
+              dataSource={data}
+              pagination={false}
+              rowKey={(record) => record.key}
+              rowClassName={rowClassName}
+            />
+          </div>
+          <div
+            className="button-container sarabun-light"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "10px",
+            }}
+          >
+            <Link to="/Dashboard">
+              <Button
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "#5755FE",
+                  borderColor: "#5755FE",
+                }}
+              >
+                ย้อนกลับ
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+
+      {/* Modal for Editing */}
+      <Modal
+        title="เลือกเหตุผล"
+        open={isEditModalVisible}
+        onCancel={handleCancel}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => setModalVisible(false)}
+            style={{
+              color: "#f0f0f0",
+              backgroundColor: "#5755FE",
+              borderColor: "#5755FE",
+            }}
+          >
+            ยกเลิก
+          </Button>,
+          <Button
+            key="confirm"
+            onClick={handleSave}
+            style={{
+              color: "#f0f0f0",
+              backgroundColor: "#5755FE",
+              borderColor: "#5755FE",
+            }}
+          >
+            บันทึก
+          </Button>,
+        ]}
+      >
+        <Radio.Group
+          onChange={handleReasonChange}
+          value={currentRecord.reason}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Radio className="sarabun-light" value="ส่งมาไม่ครบจาก Supplier">
+            ส่งมาไม่ครบจาก Supplier
+          </Radio>
+          <Radio className="sarabun-light" value="สูญหาย/หาไม่เจอ">
+            สูญหาย/หาไม่เจอ
+          </Radio>
+          <Radio className="sarabun-light" value="อื่นๆ">
+            อื่นๆ
+          </Radio>
+        </Radio.Group>
+        {currentRecord.reason === "อื่นๆ" && (
+          <Input
+            className="sarabun-light"
+            value={additionalReason}
+            onChange={handleAdditionalReasonChange}
+            placeholder="ระบุเหตุผล"
+            style={{ marginTop: 10 }}
+          />
+        )}
+      </Modal>
+    </MainLayout>
+  );
+};
+
+export default EditDetails;

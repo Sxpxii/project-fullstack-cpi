@@ -1,0 +1,77 @@
+.upload-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* จัดชิดซ้าย */
+    justify-content: flex-start; /* จัดให้อยู่ด้านบน */
+    height: 100vh; /* ความสูงเต็มหน้าจอ */
+    width: 100vw; 
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.upload-title {
+    padding-left: 30px;
+    margin-bottom: 80px;
+    align-self: flex-start; /* จัดข้อความไปด้านซ้าย */
+}
+
+.upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100vw; 
+}
+
+.upload-box {
+    background-color: white;
+    padding: 20px;
+    border: 2px dashed #333; /* ขอบเป็นเส้นปะสี #333 */
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* เพิ่มเงาเพื่อให้ดูเด่นขึ้น */
+    width: 90%; /* ปรับความกว้าง */
+    height: 300px; /* ปรับความสูง */
+    max-width: 500px;
+    margin-bottom: 80px; /* ระยะห่างจากปุ่มด้านล่าง */
+    cursor: pointer; /* เพิ่ม cursor เมื่อเอาหน้ามาวางไฟล์ */
+    position: relative; /* ตั้งค่า position เพื่อให้สามารถจัดตำแหน่งของ upload-text */
+}
+
+.upload-box:hover {
+    background-color: #f0f0f0; /* เปลี่ยนสีพื้นหลังเมื่อ hover */
+}
+
+.upload-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.upload-buttons {
+    display: flex;
+    justify-content: space-between;
+    width: 80%;
+    max-width: 500px;
+}
+
+.upload-buttons button,
+.upload-buttons .next-link {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+    width: 48%;
+    box-sizing: border-box;
+}
+
+.upload-buttons button:hover,
+.upload-buttons .next-link:hover {
+    background-color: #555; /* สีเมื่อ hover */
+}

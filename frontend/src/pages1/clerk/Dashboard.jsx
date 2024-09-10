@@ -27,8 +27,8 @@ const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const materialTypeMap = {
-  PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
-  PK_shoe: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์",
+  //PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
+  //PK_shoe: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์",
   WD: "กิ๊ฟล๊อค/แผ่นชิม",
   PIN: "สลัก/ตะขอ",
   BP: "แผ่นเหล็ก",
@@ -45,6 +45,9 @@ const Dashboard = () => {
   const [confirmUploadId, setConfirmUploadId] = useState(null);
   const [idStatus, setIdStatus] = useState(1);
   const [approveModalVisible, setApproveModalVisible] = useState(false);
+  const [inputValues, setInputValues] = useState({});
+  const [isInputHidden, setIsInputHidden] = useState({});
+  const [isButtonHidden, setIsButtonHidden] = useState({});
 
   const navigate = useNavigate();
 
@@ -57,7 +60,10 @@ const Dashboard = () => {
         },
       });
       if (Array.isArray(response.data)) {
-        setData(response.data);
+        const sortedData = response.data.sort(
+          (a, b) => new Date(a.date) - new Date(b.date)
+        );
+        setData(sortedData);
       } else {
         console.error("Invalid data format");
       }
@@ -169,12 +175,118 @@ const Dashboard = () => {
     }
   };
 
+  // Utility function to check if the item date matches the current date
+  const isCurrentDate = (dateString) => {
+    const itemDate = new Date(dateString);
+    const today = new Date();
+    return (
+      itemDate.getFullYear() === today.getFullYear() &&
+      itemDate.getMonth() === today.getMonth() &&
+      itemDate.getDate() === today.getDate()
+    );
+  };
+
+  const filteredData = () => {
+    switch (idStatus) {
+      case 1:
+        // สถานะ "รอยืนยัน" แสดงทั้งหมด
+        return data.filter((item) => item.status === "รอยันยัน");
+      case 2:
+        // สถานะ "กำลังดำเนินการ" แสดงเฉพาะวันที่ปัจจุบัน
+        return data.filter(
+          (item) => item.status === "กำลังดำเนินการ" && isCurrentDate(item.date)
+        );
+      case 3:
+        // สถานะ "รอตรวจสอบ" แสดงเฉพาะวันที่ปัจจุบัน
+        return data.filter(
+          (item) => item.status === "รอตรวจสอบ" && isCurrentDate(item.date)
+        );
+      case 4:
+        // สถานะ "ดำเนินการเรียบร้อย" แสดงเฉพาะวันที่ปัจจุบัน
+        return data.filter(
+          (item) =>
+            item.status === "ดำเนินการเรียบร้อย" && isCurrentDate(item.date)
+        );
+      default:
+        return [];
+    }
+  };
+
+  const handleInventoryIdChange = (uploadId, value) => {
+    setInputValues((prevValues) => ({
+      ...prevValues,
+      [uploadId]: value,
+    }));
+  };
+
+  // Function to save inventory ID to database (to be triggered on form submission or similar)
+  const saveInventoryId = async (uploadId) => {
+    try {
+      const inventoryId = inputValues[uploadId];
+
+      console.log("Data to save:", { uploadId, inventoryId });
+
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:3001/dashboard/save-inventory-id`,
+        { upload_id: uploadId, inventory_id: inventoryId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      message.success("บันทึก Inventory ID สำเร็จ");
+
+      // ซ่อนช่องกรอกและปุ่มบันทึกหลังจากบันทึกสำเร็จ
+      setIsInputHidden((prev) => ({ ...prev, [uploadId]: true }));
+      setIsButtonHidden((prev) => ({ ...prev, [uploadId]: true }));
+
+      fetchData();
+    } catch (err) {
+      console.error("Failed to save inventory ID:", err);
+      message.error("บันทึก Inventory ID ล้มเหลว");
+    }
+  };
+
   const columns = [
     {
-      title: "ลำดับ",
-      dataIndex: "upload_id",
-      key: "upload_id",
+      title: "Inventory ID",
+      dataIndex: "inventory_id",
+      key: "inventory_id",
       align: "left",
+      render: (text, record) => {
+        // ถ้า inventory_id เป็น null แสดงช่องกรอกและปุ่มบันทึก
+        if (text === null) {
+          return (
+            <Space>
+              {!isInputHidden[record.upload_id] && (
+                <Input
+                  value={inputValues[record.upload_id] || ""}
+                  onChange={(e) =>
+                    handleInventoryIdChange(record.upload_id, e.target.value)
+                  }
+                />
+              )}
+              {!isButtonHidden[record.upload_id] && (
+                <Button
+                  style={{
+                    color: "#5755FE",
+                    backgroundColor: "#f0f0f0",
+                    borderColor: "#f0f0f0",
+                  }}
+                  icon={<FaCheck />}
+                  onClick={() => saveInventoryId(record.upload_id)}
+                  disabled={!inputValues[record.upload_id]} 
+                />
+              )}
+            </Space>
+          );
+        } else {
+          // ถ้า inventory_id ไม่เป็น null แสดงค่า inventory_id ที่ถูกดึงมาจากหลังบ้าน
+          return text;
+        }
+      },
     },
     {
       title: "วัตถุดิบ",
@@ -188,6 +300,7 @@ const Dashboard = () => {
       dataIndex: "date",
       key: "date",
       align: "left",
+      sorter: (a, b) => new Date(a.date) - new Date(b.date), // เพิ่มการจัดเรียง
       render: (date) => (date ? new Date(date).toLocaleDateString() : "N/A"),
     },
     {
@@ -225,6 +338,8 @@ const Dashboard = () => {
       key: "action",
       align: "center",
       render: (_, record) => {
+        const isToday = isCurrentDate(record.date);
+
         if (record.status === "รอยืนยัน") {
           return (
             <Space size="middle">
@@ -237,19 +352,22 @@ const Dashboard = () => {
                 icon={<FaTrashCan />}
                 onClick={() => handleDeleteClick(record.upload_id)}
               />
-              <Button
-                style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#f0f0f0",
-                }}
-                type="primary"
-                icon={<FaCheck />}
-                onClick={() => {
-                  setConfirmUploadId(record.upload_id);
-                  setConfirmModalVisible(true);
-                }}
-              />
+
+              {isToday && (
+                <Button
+                  style={{
+                    color: "#5755FE",
+                    backgroundColor: "#f0f0f0",
+                    borderColor: "#f0f0f0",
+                  }}
+                  type="primary"
+                  icon={<FaCheck />}
+                  onClick={() => {
+                    setConfirmUploadId(record.upload_id);
+                    setConfirmModalVisible(true);
+                  }}
+                />
+              )}
             </Space>
           );
         } else if (
@@ -276,6 +394,8 @@ const Dashboard = () => {
                   color: "#5755FE",
                   backgroundColor: "#f0f0f0",
                   borderColor: "#f0f0f0",
+                  display:"flex",
+                  justifyContent:"space-between",
                 }}
                 icon={<HiMiniPencilSquare />}
                 onClick={() => handleEditClick(record)}
@@ -311,7 +431,10 @@ const Dashboard = () => {
       id: 2,
       statusName: "กำลังดำเนินการ",
       total: data
-        ? data.filter((item) => item.status === "กำลังดำเนินการ").length
+        ? data.filter(
+            (item) =>
+              item.status === "กำลังดำเนินการ" && isCurrentDate(item.date)
+          ).length
         : 0,
       color: "#ffd591",
     },
@@ -319,7 +442,9 @@ const Dashboard = () => {
       id: 3,
       statusName: "รอตรวจสอบ",
       total: data
-        ? data.filter((item) => item.status === "รอตรวจสอบ").length
+        ? data.filter(
+            (item) => item.status === "รอตรวจสอบ" && isCurrentDate(item.date)
+          ).length
         : 0,
       color: "#ffa5a1",
     },
@@ -327,7 +452,10 @@ const Dashboard = () => {
       id: 4,
       statusName: "ดำเนินการเรียบร้อย",
       total: data
-        ? data.filter((item) => item.status === "ดำเนินการเรียบร้อย").length
+        ? data.filter(
+            (item) =>
+              item.status === "ดำเนินการเรียบร้อย" && isCurrentDate(item.date)
+          ).length
         : 0,
       color: "#b7eb8f",
     },
@@ -362,20 +490,9 @@ const Dashboard = () => {
               บันทึกข้อมูลการเบิก-จ่าย
             </button>
           </Link>
-          {/*<Link to="/UploadMaterials">
-              <button
-                style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
-                }}
-              >
-                บันทึกวัตถุดิบใหม่
-              </button>
-            </Link>*/}
         </div>
       </div>
-      
+
       <Row gutter={16}>
         {dataStatus && dataStatus.length > 0 ? (
           dataStatus.map((d, i) => (
@@ -469,20 +586,26 @@ const Dashboard = () => {
         ) : idStatus === 2 ? (
           <Table
             columns={columns}
-            dataSource={data.filter((item) => item.status === "กำลังดำเนินการ")}
+            dataSource={data.filter(
+              (item) =>
+                item.status === "กำลังดำเนินการ" && isCurrentDate(item.date)
+            )}
             pagination={false}
           />
         ) : idStatus === 3 ? (
           <Table
             columns={columns}
-            dataSource={data.filter((item) => item.status === "รอตรวจสอบ")}
+            dataSource={data.filter(
+              (item) => item.status === "รอตรวจสอบ" && isCurrentDate(item.date)
+            )}
             pagination={false}
           />
         ) : (
           <Table
             columns={columns}
             dataSource={data.filter(
-              (item) => item.status === "ดำเนินการเรียบร้อย"
+              (item) =>
+                item.status === "ดำเนินการเรียบร้อย" && isCurrentDate(item.date)
             )}
             pagination={false}
           />

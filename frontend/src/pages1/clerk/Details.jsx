@@ -7,14 +7,10 @@ import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/Details.css"; // นำเข้าไฟล์ CSS
 
 const Details = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [] });
-  const { id } = useParams();
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const { id, upload_id } = useParams();
+  const [totalRequested, setTotalRequested] = useState(0);
 
   const fetchData = async () => {
     try {
@@ -27,10 +23,27 @@ const Details = () => {
           },
         }
       );
-      console.log("Fetched data:", response.data);
-      setData(response.data);
+      //console.log("Fetched data:", response.data);
+      setData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Failed to fetch data:", err);
+    }
+  };
+
+  const fetchTotalRequested = async () => {
+    try {
+      console.log(`Fetching total requested quantity for upload_id: ${id}`);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `http://localhost:3001/dashboard/details/${id}/total-requested-quantity`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log("Fetched Total Requested Quantity:", response.data);
+      setTotalRequested(response.data.totalRequested || 0);
+    } catch (err) {
+      console.error("Failed to fetch total requested quantity:", err);
     }
   };
 
@@ -39,8 +52,39 @@ const Details = () => {
     if (storedUsername) {
       setUsername(storedUsername);
     }
+    console.log(`Upload ID in useEffect: ${id}`);
     fetchData();
-  }, [id]);
+    if (id) {
+      fetchTotalRequested(id);
+    }
+  }, [id, upload_id]);
+  
+
+  // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number);
+  };
+
+  // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
+  const formattedData = Array.isArray(data)
+    ? data.flatMap((m) =>
+        m.details
+          .sort((a, b) => a.matin.localeCompare(b.matin))
+          .map((d, index) => ({
+            ...d,
+            matunit: m.matunit,
+            mat_name: m.mat_name,
+            quantity: m.quantity,
+            material_index: index + 1,
+            rowSpanMatunit: index === 0 ? m.details.length : 0,
+            rowSpanMatName: index === 0 ? m.details.length : 0,
+            rowSpanQuantity: index === 0 ? m.details.length : 0,
+            rowSpanMaterialId: index === 0 ? m.details.length : 0,
+          }))
+      )
+    : [];
+
+  //console.log("Formatted Data:", formattedData);
 
   const columns = [
     {
@@ -53,13 +97,31 @@ const Details = () => {
       title: "รหัส",
       dataIndex: "matunit",
       key: "matunit",
+      render: (text, record, index) => ({
+        children: text,
+        props: { rowSpan: record.rowSpanMatunit },
+      }),
       align: "left",
     },
     {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
+      render: (text, record, index) => ({
+        children: text,
+        props: { rowSpan: record.rowSpanMatName },
+      }),
       align: "left",
+    },
+    {
+      title: "จำนวนที่สั่งเบิก",
+      dataIndex: "quantity",
+      key: "quantity",
+      render: (text, record, index) => ({
+        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
+        props: { rowSpan: record.rowSpanQuantity },
+      }),
+      align: "center",
     },
     {
       title: "ล็อต",
@@ -74,21 +136,10 @@ const Details = () => {
       align: "left",
     },
     {
-      title: "จำนวน",
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "center",
-    },
-    {
       title: "จำนวนคงเหลือ",
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
-      align: "center",
-    },
-    {
-      title: "นับจริง",
-      dataIndex: "counted_quantity",
-      key: "counted_quantity",
+      render: (text) => formatNumber(text),
       align: "center",
     },
   ];
@@ -141,10 +192,15 @@ const Details = () => {
         <div className="table-container">
           <Table
             columns={columns}
-            dataSource={data.balances}
+            dataSource={formattedData}
             pagination={false}
             rowKey={(record) => record.id}
           />
+        </div>
+        <div className="total-quantity sarabun-bold">
+          <p style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}>
+            <strong>รวมจำนวนที่สั่งเบิก:</strong> {formatNumber(totalRequested)}
+          </p>
         </div>
         <div className="button-container">
           <Link to="/Dashboard">

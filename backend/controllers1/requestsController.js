@@ -3,12 +3,23 @@ const fs = require('fs');
 const pool = require('../config/db');
 const calculationService = require('../services/calculationService');
 
-// บันทึกการกระทำของผู้ใช้
 const logUserAction = async (userId, action) => {
+    const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
-        await pool.query('INSERT INTO useractions (user_id, action_type) VALUES ($1, $2)', [userId, action]);
+        await client.query('BEGIN'); // เริ่ม transaction
+
+        // บันทึกการกระทำในตาราง useractions
+        await client.query('INSERT INTO useractions (user_id, action_type) VALUES ($1, $2)', [userId, action]);
+
+        // อัปเดต lastActivity ในตาราง users1
+        await client.query('UPDATE users1 SET lastActivity = NOW() WHERE user_id = $1', [userId]);
+
+        await client.query('COMMIT'); // ยืนยันการเปลี่ยนแปลงทั้งหมด
     } catch (err) {
-        console.error('Error logging user action:', err);
+        await client.query('ROLLBACK'); // ยกเลิกการเปลี่ยนแปลงหากเกิดข้อผิดพลาด
+        console.error('Error logging user action and updating lastActivity:', err);
+    } finally {
+        client.release(); // ปล่อย client กลับคืน pool
     }
 };
 
@@ -21,6 +32,7 @@ const handleFileUpload = async (req, res, materialType, sheetName) => {
         }
 
         const file = req.files.file;
+        const approvedDate = req.body.approvedDate; 
 
         const fileExtension = file.name.split('.').pop();
         if (fileExtension !== 'xlsx') {
@@ -30,16 +42,15 @@ const handleFileUpload = async (req, res, materialType, sheetName) => {
 
         await fs.promises.access(file.tempFilePath, fs.constants.R_OK);
 
-        // Process file and get data
-        const filteredDataWithoutZeroMATUnit = await readFileAndProcess(file.tempFilePath, materialType, sheetName, null);
-
         // Create dashboard status and get the ID
-        const uploadId = await recordFileUpload(req.user.userId, file.name, materialType);
+        const uploadId = await recordFileUpload(req.user.userId, file.name, materialType, approvedDate);
 
         await recordOperationStatus(uploadId, 'รอยืนยัน');
         
-        // Pass the uploadId to readFileAndProcess for staging_requests
-        await readFileAndProcess(file.tempFilePath, materialType, sheetName, uploadId);
+        // Process file and get data
+        const filteredDataWithoutZeroMATUnit = await readFileAndProcess(file.tempFilePath, materialType, sheetName, null);
+        
+        await updateMaterialRequestsWithUploadId(uploadId);
         
         // Determine end column for formatting
         const endCol = materialType === 'CHEMICAL' ? 'K' : null;
@@ -166,6 +177,21 @@ const readFileAndProcess = async (filePath, materialType, sheetName, uploadId) =
     }
 };
 
+// ฟังก์ชันนี้จะอัปเดต uploadId หลังจากที่มันถูกบันทึกลง uploads แล้ว
+const updateMaterialRequestsWithUploadId = async (uploadId) => {
+    try {
+        await pool.query(
+            'UPDATE materialrequests SET upload_id = $1 WHERE upload_id IS NULL',
+            [uploadId]
+        );
+    } catch (error) {
+        console.error('Error updating material requests with uploadId:', error);
+        throw error;
+    }
+};
+
+
+
 // ดึงข้อมูลวัตถุดิบจากฐานข้อมูล
 const getMaterial = async (matunit) => {
     const modifiedMatunit = matunit.replace(/\s*\(.*?\)\s*/g, '');
@@ -190,11 +216,11 @@ const insertmaterialrequests = async (materialId, uploadId, date, quantity) => {
 
 
 // บันทึกการอัปโหลดไฟล์
-const recordFileUpload = async (userId, fileName, materialType) => {
+const recordFileUpload = async (userId, fileName, materialType, approvedDate) => {
     try {
         const result = await pool.query(
-            'INSERT INTO uploads (user_id, filename, upload_date, material_type, current_status) VALUES ($1, $2, NOW(), $3, $4) RETURNING upload_id',
-            [userId, fileName, materialType, 'รอยืนยัน']
+            'INSERT INTO uploads (user_id, filename, upload_date, material_type, approved_date, current_status) VALUES ($1, $2, NOW(), $3, $4, $5) RETURNING upload_id',
+            [userId, fileName, materialType, approvedDate, 'รอยืนยัน']
         );
         return result.rows[0].upload_id;
     } catch (error) {

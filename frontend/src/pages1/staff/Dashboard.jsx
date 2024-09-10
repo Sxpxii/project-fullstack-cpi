@@ -85,9 +85,9 @@ const OperationsDashboard = () => {
 
   const columns = [
     {
-      title: "ลำดับ",
-      dataIndex: "upload_id",
-      key: "upload_id",
+      title: "Inventory ID",
+      dataIndex: "inventory_id",
+      key: "inventory_id",
       align: "left",
     },
     {

@@ -20,9 +20,13 @@ const TaskDetails = () => {
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [], status: "" });
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [checkDetails, setCheckDetails] = useState([]); // กำหนดให้เป็นข้อมูลที่ดึงมาจาก API
+  const [checkDetails, setCheckDetails] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [isTaskCompleted, setIsTaskCompleted] = useState(false);
+  const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
+  const [countedQuantities, setCountedQuantities] = useState({});
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [temporaryData, setTemporaryData] = useState({});
 
   const fetchTaskDetails = async () => {
     try {
@@ -33,27 +37,26 @@ const TaskDetails = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log(response.data);
 
-      // จัดรูปแบบข้อมูลที่ได้รับ
-      const groupedData = response.data.reduce((acc, item) => {
-        if (!acc[item.material_id]) {
-          acc[item.material_id] = { ...item, details: [] };
-        }
-        acc[item.material_id].details.push({
-          lot: item.lot,
-          location: item.location,
-          used_quantity: item.used_quantity,
-          remaining_quantity: item.remaining_quantity,
-        });
-        return acc;
-      }, {});
-
-      setData({
-        balances: Object.values(groupedData),
-        status: response.data.status,
-      });
+      setData(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Failed to fetch task details:", err);
+    }
+  };
+
+  const fetchTotalRequestedQuantity = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `http://localhost:3001/tasks/detail/${upload_id}/total-requested-quantity`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setTotalRequestedQuantity(response.data.totalRequestedQuantity || 0);
+    } catch (err) {
+      console.error("Failed to fetch total requested quantity:", err);
     }
   };
 
@@ -66,38 +69,11 @@ const TaskDetails = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log(response.data);
+
       setCheckDetails(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Failed to fetch check details:", err);
-    }
-  };
-
-  const handleSaveCountedQuantities = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const countedQuantities = data.balances.reduce((acc, item) => {
-        acc[item.id] =
-          item.counted_quantity !== undefined
-            ? item.counted_quantity
-            : item.remaining_quantity;
-        return acc;
-      }, {});
-
-      console.log(countedQuantities);
-
-      await axios.post(
-        `http://localhost:3001/tasks/save-counted-quantities/${upload_id}`,
-        countedQuantities,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      message.success("บันทึกการเบิกจ่ายเรียบร้อย");
-      await completeTask();
-    } catch (err) {
-      console.error("Failed to save counted quantities:", err);
-      message.error("Failed to save counted quantities");
     }
   };
 
@@ -112,10 +88,27 @@ const TaskDetails = () => {
         }
       );
       message.success("Task marked as completed");
-      fetchTaskDetails();
+      fetchUploadStatus();
     } catch (err) {
       console.error("Failed to complete task:", err);
       message.error("Failed to update task status");
+    }
+  };
+
+  const fetchUploadStatus = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `http://localhost:3001/tasks/status/${upload_id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const completedStatuses = ["ดำเนินการเรียบร้อย", "รอตรวจสอบ"];
+      setIsTaskCompleted(completedStatuses.includes(response.data.status));
+    } catch (err) {
+      console.error("Failed to fetch upload status:", err);
     }
   };
 
@@ -125,117 +118,236 @@ const TaskDetails = () => {
       setUsername(storedUsername);
     }
     fetchTaskDetails();
-    fetchCheckDetails(); // เพิ่มการเรียกใช้งานฟังก์ชันนี้ที่นี่
+    fetchCheckDetails();
+    fetchTotalRequestedQuantity();
+    fetchUploadStatus();
   }, [upload_id]);
 
-  useEffect(() => {
-    const completedStatuses = ["ดำเนินการเรียบร้อย", "รอตรวจสอบ"];
-    setIsTaskCompleted(completedStatuses.includes(data.status));
-  }, [data]);
+  const handleSaveCountedQuantities = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Temporary Data:", temporaryData);
+
+      const payload = Object.entries(temporaryData).map(([id, details]) => ({
+        id: parseInt(id, 10),
+        counted_quantity: details.counted_quantity,
+        selected_time: details.timestamp,
+      }));
+
+      console.log("Payload to send:", payload);
+
+      const response = await axios.post(
+        `http://localhost:3001/tasks/save-counted-quantities/${upload_id}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      console.log("Successfully updated:", response.data);
+      message.success("บันทึกการเบิกจ่ายเรียบร้อย");
+      await completeTask();
+    } catch (err) {
+      console.error("Failed to save counted quantities:", err);
+      message.error("Failed to save counted quantities");
+    }
+  };
 
   const handleQuantityChange = (value, id) => {
     if (!isTaskCompleted) {
-      setData((prevData) => ({
-        ...prevData,
-        balances: prevData.balances.map((item) =>
-          item.id === id ? { ...item, counted_quantity: value } : item
-        ),
+      setCountedQuantities((prevQuantities) => ({
+        ...prevQuantities,
+        [id]: value,
       }));
+      console.log('Updated Counted Quantities:', countedQuantities);
     }
   };
 
   const handleRowClick = (record) => {
-    // กรองข้อมูลตาม mat_name ที่เลือก
+    console.log("Clicked record:", record);
     const filtered = checkDetails.filter(
       (item) => item.mat_name === record.mat_name
     );
 
-    // ตั้งค่า filteredData ให้เป็นข้อมูลที่กรองมา
-    setFilteredData(filtered);
+    if (filtered.length > 0 && filtered[0].details) {
+      console.log("Filtered details:", filtered[0].details);
+      setFilteredData(
+        filtered[0].details
+          .map((detail) => ({
+            ...detail,
+            matunit: record.matunit,
+            mat_name: record.mat_name,
+          }))
+          .sort((a, b) => a.matin.localeCompare(b.matin))
+      );
+    } else {
+      setFilteredData([]);
+    }
 
-    // แสดง Modal
     setIsModalVisible(true);
+  };
+
+  const handleCheckboxChange = (id, checked) => {
+    if (!isTaskCompleted) {
+      const currentTime = new Date().toISOString(); // เก็บเวลาปัจจุบัน
+      const item = formattedData.find((item) => item.id === id);
+      const countedQuantity = countedQuantities[item.id] !== undefined
+            ? countedQuantities[item.id]
+            : item.remaining_quantity;
+
+      setTemporaryData((prevData) => {
+        const newData = { ...prevData };
+        if (checked) {
+          // เก็บข้อมูล id, counted_quantity, และ timestamp
+          newData[id] = {
+            counted_quantity: countedQuantity,
+            timestamp: currentTime,
+          };
+        } else {
+          // ลบข้อมูลถ้า unchecked
+          delete newData[id];
+        }
+
+        // Log ข้อมูลที่ถูกเก็บชั่วคราว
+        console.log('Temporary Data:', newData);
+
+        return newData;
+      });
+
+      setSelectedRows((prevSelectedRows) =>
+        checked
+          ? [...prevSelectedRows, id]
+          : prevSelectedRows.filter((rowId) => rowId !== id)
+      );
+
+      console.log('Selected Rows:', checked ? [...selectedRows, id] : selectedRows.filter((rowId) => rowId !== id));
+    }
+  };
+
+  const handleModalOk = () => {
+    setIsModalVisible(false);
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+  };
+
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    return now.toLocaleString(); // ใช้วิธีการแสดงผลวันที่และเวลาที่คุณต้องการ
   };
 
   // เพิ่มฟังก์ชันสำหรับการไฮไลท์แถว
   const rowClassName = (record) => {
-    return record.remaining_quantity !== record.counted_quantity
-      ? "highlight-row"
-      : "";
+    return selectedRows.includes(record.id);
+  };
+
+  // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
+  const formattedData = Array.isArray(data)
+    ? data.flatMap((m) =>
+        m.details
+          .sort((a, b) => a.matin.localeCompare(b.matin))
+          .map((d, index) => {
+            const countedQuantity = countedQuantities[d.id];
+            return {
+              ...d,
+              matunit: m.matunit,
+              mat_name: m.mat_name,
+              quantity: m.quantity,
+              material_index: index + 1,
+              rowSpanMatunit: index === 0 ? m.details.length : 0,
+              rowSpanMatName: index === 0 ? m.details.length : 0,
+              rowSpanQuantity: index === 0 ? m.details.length : 0,
+              rowSpanMaterialId: index === 0 ? m.details.length : 0,
+              counted_quantity:
+                countedQuantity !== undefined
+                  ? countedQuantity
+                  : d.remaining_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
+            };
+          })
+      )
+    : [];
+
+  console.log("Formatted Data:", formattedData);
+
+  // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number);
   };
 
   const columns = [
     {
       title: "ลำดับ",
       key: "index",
-      render: (text, record, index) => index + 1,
+      render: (text, record, index) =>
+        record.rowSpanMaterialId > 0 ? index + 1 : null,
       align: "left",
     },
     {
       title: "รหัส",
       dataIndex: "matunit",
       key: "matunit",
+      render: (text, record, index) => ({
+        children: text,
+        props: { rowSpan: record.rowSpanMatunit },
+      }),
       align: "left",
     },
     {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
-      render: (text, record) => (
-        <a onClick={() => handleRowClick(record)}>{text}</a>
-      ),
+      render: (text, record, index) => ({
+        children: (
+          <span
+            onClick={() => handleRowClick(record)}
+            style={{
+              cursor: "pointer",
+              color: "blue",
+              textDecoration: "underline",
+            }}
+          >
+            {text}
+          </span>
+        ),
+        props: { rowSpan: record.rowSpanMatName },
+      }),
       align: "left",
     },
     {
       title: "จำนวนที่สั่งเบิก",
       dataIndex: "quantity",
       key: "quantity",
+      render: (text, record, index) => ({
+        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
+        props: { rowSpan: record.rowSpanQuantity },
+      }),
       align: "center",
     },
     {
       title: "ล็อต",
       dataIndex: "lot",
       key: "lot",
-      render: (details) =>
-        Array.isArray(details) && details.length > 0
-          ? details.map((detail, index) => <div key={index}>{detail.lot}</div>)
-          : null,
       align: "left",
     },
     {
       title: "ตำแหน่ง",
       dataIndex: "location",
       key: "location",
-      render: (details) =>
-        Array.isArray(details) && details.length > 0
-          ? details.map((detail, index) => (
-              <div key={index}>{detail.location}</div>
-            ))
-          : null,
       align: "left",
     },
     {
       title: "จำนวนที่ต้องหยิบ",
       dataIndex: "used_quantity",
       key: "used_quantity",
-      render: (details) =>
-        Array.isArray(details) && details.length > 0
-          ? details.map((detail, index) => (
-              <div key={index}>{detail.used_quantity}</div>
-            ))
-          : null,
+      render: (text) => formatNumber(text),
       align: "center",
     },
     {
       title: "จำนวนคงเหลือ",
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
-      render: (details) =>
-        Array.isArray(details) && details.length > 0
-          ? details.map((detail, index) => (
-              <div key={index}>{detail.remaining_quantity}</div>
-            ))
-          : null,
+      render: (text) => formatNumber(text),
       align: "center",
     },
     {
@@ -243,7 +355,7 @@ const TaskDetails = () => {
       dataIndex: "counted_quantity",
       render: (_, record) =>
         isTaskCompleted ? (
-          <span>{record.counted_quantity}</span>
+          <span>{formatNumber(record.counted_quantity)}</span>
         ) : (
           <InputNumber
             defaultValue={record.remaining_quantity}
@@ -255,12 +367,15 @@ const TaskDetails = () => {
     {
       title: "เรียบร้อย",
       key: "selection",
-      render: (_, record) => (
-        <Checkbox
-          onChange={(e) => handleCheckboxChange(record.key, e.target.checked)}
-          disabled={isTaskCompleted}
-        />
-      ),
+      render: (_, record) => {
+        return (
+          <Checkbox
+            checked={selectedRows.includes(record.id)}
+            onChange={(e) => handleCheckboxChange(record.id, e.target.checked)}
+            disabled={isTaskCompleted}
+          />
+        );
+      },
     },
   ];
 
@@ -294,30 +409,9 @@ const TaskDetails = () => {
       title: "จำนวนคงเหลือ",
       dataIndex: "display_quantity",
       key: "display_quantity",
+      render: (text) => formatNumber(text),
     },
   ];
-
-  const handleCheckboxChange = (key, checked) => {
-    setData((prevData) => ({
-      ...prevData,
-      balances: prevData.balances.map((item) =>
-        item.key === key ? { ...item, selected: checked } : item
-      ),
-    }));
-  };
-
-  const handleModalOk = () => {
-    setIsModalVisible(false);
-  };
-
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
-  };
-
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString(); // ใช้วิธีการแสดงผลวันที่และเวลาที่คุณต้องการ
-  };
 
   return (
     <MainLayout>
@@ -389,11 +483,19 @@ const TaskDetails = () => {
           </div>
           <Table
             columns={columns}
-            dataSource={data.balances}
+            dataSource={formattedData}
             pagination={false}
-            rowKey={(record) => `${record.id}`|| `${record.matunit}-${record.lot}`}
+            rowKey={(record) => record.material_id}
             scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
           />
+          <div className="total-quantity sarabun-bold">
+            <p
+              style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
+            >
+              <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
+              {formatNumber(totalRequestedQuantity)}
+            </p>
+          </div>
           {!isTaskCompleted && (
             <div
               style={{
@@ -422,7 +524,7 @@ const TaskDetails = () => {
       <Modal
         className="sarabun-light"
         title="ตรวจสอบสถานะการตัด"
-        visible={isModalVisible}
+        open={isModalVisible}
         onOk={handleModalOk}
         onCancel={handleModalCancel}
         footer={null} // ซ่อนปุ่ม Footer ของ Modal
@@ -432,7 +534,7 @@ const TaskDetails = () => {
           columns={modalColumns}
           dataSource={filteredData}
           pagination={false}
-          rowKey={(record) => `${record.material_id}-${record.lot}`}
+          rowKey={(record) => record.id}
           scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
           rowClassName={rowClassName}
         />

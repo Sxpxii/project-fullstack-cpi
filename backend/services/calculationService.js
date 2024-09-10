@@ -28,6 +28,35 @@ const getMaterialBalanceData = async (materialIds) => {
     }
 };
 
+// ฟังก์ชันสำหรับเปรียบเทียบ matin
+const compareMatin = (a, b) => {
+    const aParts = a.split('');
+    const bParts = b.split('');
+
+    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+        const aPart = aParts[i];
+        const bPart = bParts[i];
+
+        if (aPart !== bPart) {
+            if (/\d/.test(aPart) && /\d/.test(bPart)) {
+                return aPart.localeCompare(bPart, undefined, { numeric: true });
+            }
+
+            if (/\d/.test(aPart)) {
+                return -1;
+            }
+            if (/\d/.test(bPart)) {
+                return 1;
+            }
+
+            return aPart.localeCompare(bPart);
+        }
+    }
+
+    return aParts.length - bParts.length;
+};
+
+
 const checkTask = async (uploadId) => {
     try {
         // ดึงข้อมูล material_id จากตาราง materialrequests ตาม upload_id
@@ -73,36 +102,7 @@ const checkTask = async (uploadId) => {
 
         const sortedMaterialBalances = materialBalances.sort((a, b) => {
             if (a.material_id === b.material_id) {
-                // ถ้า material_id เท่ากัน ให้เรียงตาม matin โดยใช้ natural sort order
-                const regex = /(\d+|[a-zA-Z]+)/g;
-                const aParts = a.matin.match(regex);
-                const bParts = b.matin.match(regex);
-
-                for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                    const aPart = aParts[i] || '';
-                    const bPart = bParts[i] || '';
-
-                    if (aPart !== bPart) {
-                        if (/\d/.test(aPart) && /\d/.test(bPart)) {
-                            // เปรียบเทียบตัวเลข
-                            const aNum = parseInt(aPart, 10);
-                            const bNum = parseInt(bPart, 10);
-
-                            if (aNum !== bNum) {
-                                return aNum - bNum;
-                            }
-                        } else if (/\d/.test(aPart)) {
-                            return -1;
-                        } else if (/\d/.test(bPart)) {
-                            return 1;
-                        } else {
-                            // เปรียบเทียบตัวอักษร
-                            return aPart.localeCompare(bPart);
-                        }
-                    }
-                }
-
-                return 0;
+                return compareMatin(a.matin, b.matin);
             }
             return a.material_id - b.material_id;
         });
@@ -181,37 +181,7 @@ const calculateFIFO = async (uploadId) => {
             acc[balance.material_id].push(balance);
             return acc;
         }, {});
-
-        // เรียง `matin` สำหรับ FIFO
-        const compareMatin = (a, b) => {
-            // การเปรียบเทียบ `matin` สำหรับ FIFO
-            const regex = /(\d+|[a-zA-Z]+)/g;
-            const aParts = a.match(regex);
-            const bParts = b.match(regex);
-
-            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                if (aParts[i] !== bParts[i]) {
-                    const aPart = aParts[i];
-                    const bPart = bParts[i];
-
-                    if (/\d/.test(aPart) && /\d/.test(bPart)) {
-                        return parseInt(aPart, 10) - parseInt(bPart, 10);
-                    }
-
-                    if (/\d/.test(aPart)) {
-                        return -1;
-                    }
-                    if (/\d/.test(bPart)) {
-                        return 1;
-                    }
-
-                    return aPart.localeCompare(bPart);
-                }
-            }
-
-            return 0;
-        };
-
+        
         const results = [];
 
         for (let request of requestData) {

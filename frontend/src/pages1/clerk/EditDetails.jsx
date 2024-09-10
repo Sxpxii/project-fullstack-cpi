@@ -14,6 +14,7 @@ const EditDetails = () => {
   const [currentRecord, setCurrentRecord] = useState({});
   const [additionalReason, setAdditionalReason] = useState("");
   const { upload_id } = useParams();
+  const [totalRequested, setTotalRequested] = useState(0);
 
   const fetchData = async () => {
     if (!upload_id) {
@@ -48,6 +49,25 @@ const EditDetails = () => {
     }
   };
 
+  const fetchTotalRequested = async () => {
+    try {
+      console.log(
+        `Fetching total requested quantity for upload_id: ${upload_id}`
+      );
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `http://localhost:3001/dashboard/details/${upload_id}/total-requested-quantity`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log("Fetched Total Requested Quantity:", response.data);
+      setTotalRequested(response.data.totalRequested || 0);
+    } catch (err) {
+      console.error("Failed to fetch total requested quantity:", err);
+    }
+  };
+
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
     if (storedUsername) {
@@ -55,30 +75,33 @@ const EditDetails = () => {
     }
     if (upload_id) {
       fetchData();
+      fetchTotalRequested();
     } else {
       console.error("upload_id is undefined");
     }
   }, [upload_id]);
 
   const handleEditRow = (record) => {
-    setEditingRow(record.key);
-    setCurrentRecord(record);
+    setEditingRow(record.id);
+    setCurrentRecord({ ...record });
+    setAdditionalReason(record.reason === "อื่นๆ" ? record.additionalReason : "");
     setIsEditModalVisible(true);
   };
 
   const handleSave = async () => {
     try {
-      const reasonToSave =
-        currentRecord.reason === "อื่นๆ"
+      const reasonToSave = currentRecord.reason === "อื่นๆ"
           ? additionalReason
           : currentRecord.reason;
+
       await axios.post(
         `http://localhost:3001/dashboard/update-details/${upload_id}`,
         { ...currentRecord, reason: reasonToSave }
       );
+
       setData((prevData) =>
         prevData.map((item) =>
-          item.key === editingRow ? { ...item, reason: reasonToSave } : item
+          item.id === currentRecord.id ? { ...item, reason: reasonToSave } : item
         )
       );
       setIsEditModalVisible(false);
@@ -93,6 +116,7 @@ const EditDetails = () => {
   const handleCancel = () => {
     setIsEditModalVisible(false);
     setCurrentRecord({});
+    setAdditionalReason("");
   };
 
   const handleReasonChange = (e) => {
@@ -100,16 +124,18 @@ const EditDetails = () => {
       ...currentRecord,
       reason: e.target.value,
     });
+    if (e.target.value !== "อื่นๆ") {
+      setAdditionalReason(""); // Clear additional reason if selected reason is not "อื่นๆ"
+    }
   };
 
   const handleAdditionalReasonChange = (e) => {
     setAdditionalReason(e.target.value);
-    if (currentRecord.reason === "3") {
-      setCurrentRecord({
-        ...currentRecord,
-        reason: e.target.value,
-      });
-    }
+  };
+
+  // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number);
   };
 
   const columns = [
@@ -135,24 +161,27 @@ const EditDetails = () => {
       title: "จำนวน",
       dataIndex: "quantity",
       key: "quantity",
+      render: (text) => formatNumber(text),
       align: "center",
     },
     {
       title: "จำนวนคงเหลือ",
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
+      render: (text) => formatNumber(text),
       align: "center",
     },
     {
       title: "นับจริง",
       dataIndex: "counted_quantity",
       key: "counted_quantity",
+      render: (text) => formatNumber(text),
       align: "center",
     },
     {
       title: "ตรวจสอบ",
-      dataIndex: "reason",
-      key: "reason",
+      dataIndex: "",
+      key: "",
       align: "center",
       render: (_, record) =>
         record.hasIssue ? (
@@ -172,6 +201,13 @@ const EditDetails = () => {
       dataIndex: "reason",
       key: "reason",
       align: "left",
+      render: (text, record) => {
+        return record.id === editingRow ? (
+          <span>{currentRecord.reason === "อื่นๆ" ? additionalReason : currentRecord.reason}</span>
+        ) : (
+          <span>{record.reason}</span>
+        );
+      },
     },
   ];
 
@@ -219,11 +255,6 @@ const EditDetails = () => {
         </div>
       </div>
       <div>
-        <Breadcrumb style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>Overview</Breadcrumb.Item>
-        </Breadcrumb>
-      </div>
-      <div>
         <Card
           style={{
             borderRadius: "15px",
@@ -234,9 +265,17 @@ const EditDetails = () => {
               columns={columns}
               dataSource={data}
               pagination={false}
-              rowKey={(record) => record.key}
+              rowKey={(record) => record.id}
               rowClassName={rowClassName}
             />
+          </div>
+          <div className="summary-container sarabun-bold">
+            <p
+              style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
+            >
+              <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
+              {formatNumber(totalRequested)}
+            </p>
           </div>
           <div
             className="button-container sarabun-light"

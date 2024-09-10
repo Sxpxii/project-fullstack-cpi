@@ -2,13 +2,15 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { Spin, message, Card, Breadcrumb } from "antd";
+import { Spin, message, Card, Breadcrumb, DatePicker } from "antd";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/UploadRequest.css";
+import moment from "moment";
 
 const UploadRequest = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [materialType, setMaterialType] = useState("");
+  const [approvedDate, setApprovedDate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const navigate = useNavigate(); // สร้างฟังก์ชัน navigate โดยใช้ useNavigate
@@ -21,9 +23,13 @@ const UploadRequest = () => {
     setMaterialType(event.target.value);
   };
 
+  const handleDateChange = (date) => {
+    setApprovedDate(date ? date.format("YYYY-MM-DD") : null); // เก็บวันที่ในรูปแบบที่ต้องการ
+  };
+
   const handleSave = () => {
-    if (!selectedFile || !materialType) {
-      console.error("File or material type is missing");
+    if (!selectedFile || !materialType || !approvedDate) {
+      console.error("File, material type, or approved date is missing");
       return;
     }
 
@@ -32,7 +38,13 @@ const UploadRequest = () => {
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("materialType", materialType);
-    console.log("Sending data to server:", materialType, selectedFile);
+    formData.append("approvedDate", approvedDate);
+    console.log(
+      "Sending data to server:",
+      materialType,
+      selectedFile,
+      approvedDate
+    );
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -109,21 +121,37 @@ const UploadRequest = () => {
         }}
       >
         <div className="content-container">
-          <div className="material-selector">
-            <select
-              value={materialType}
-              onChange={handleMaterialTypeChange}
-              className="sarabun-light"
-            >
-              <option value="">เลือกวัตถุดิบ</option>
-              {/*<option value="PK_DIS">กล่องดิส/ใบแนบ/สติ๊กเกอร์</option>
+          <div
+            className="material-selector"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <select
+                value={materialType}
+                onChange={handleMaterialTypeChange}
+                className="sarabun-light"
+              >
+                <option value="">เลือกวัตถุดิบ</option>
+                {/*<option value="PK_DIS">กล่องดิส/ใบแนบ/สติ๊กเกอร์</option>
               <option value="PK_shoe">กล่องก้าม/ใบแนบ/สติ๊กเกอร์</option>*/}
-              <option value="WD">กิ๊ฟล๊อค/แผ่นชิม</option>
-              <option value="PIN">สลัก/ตะขอ</option>
-              <option value="BP">แผ่นเหล็ก</option>
-              <option value="CHEMICAL">เคมี</option>
-            </select>
+                <option value="WD">กิ๊ฟล๊อค/แผ่นชิม</option>
+                <option value="PIN">สลัก/ตะขอ</option>
+                <option value="BP">แผ่นเหล็ก</option>
+                <option value="CHEMICAL">เคมี</option>
+              </select>
+            </div>
+            <div>
+            <DatePicker
+              onChange={handleDateChange}
+              format="YYYY-MM-DD"
+              style={{ padding: "12px 12px 8px"}}
+            />
+            </div>
           </div>
+
           <div className="upload-box">
             <input
               type="file"

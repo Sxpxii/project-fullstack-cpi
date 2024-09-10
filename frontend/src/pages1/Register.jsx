@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { register } from '../services/authService';
 import { Link } from 'react-router-dom';
-import '../styles/Register.css';
+import '../styles1/Register.css';
 
 function Register() {
     const [username, setUsername] = useState('');
@@ -25,7 +25,7 @@ function Register() {
     };
 
     return (
-        <div className="register-page-wrapper">
+        <div className="register-page-wrapper sarabun-light">
             <div className="register-form-container">
                 <h1 className="register-title">Register</h1>
                 <form onSubmit={handleSubmit} className="register-form">
@@ -56,7 +56,7 @@ function Register() {
                     </select>
                     <button type="submit" className="register-button">Register</button>
                 </form>
-                <Link to="/" className="login-link">Login</Link>
+                <Link to="/" className="login-link">ย้อนกลับ</Link>
             </div>
         </div>
     );

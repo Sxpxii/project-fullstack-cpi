@@ -4,11 +4,11 @@ const fileUpload = require('express-fileupload');
 const loginRouter = require('./routes1/login');
 const requestsRouter = require('./routes1/requests');
 const balanceRouter = require('./routes1/balance');
-const adminRouter = require('./routes/admin');
 const dashboardRouter = require('./routes1/dashboard');
 const taskRouter = require('./routes1/task')
 const uploadMaterialRouter = require('./routes1/uploadMaterial');
 const supervisorDashboardRouter = require('./routes1/supervisorDashboard');
+const UserManagementRoutes = require('./routes1/UserManagement')
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,11 +36,11 @@ app.use((err, req, res, next) => {
 app.use('/api', loginRouter);
 app.use('/requests', requestsRouter);
 app.use('/balance', balanceRouter);
-app.use('/admin', adminRouter);
 app.use('/dashboard', dashboardRouter);
 app.use('/tasks', taskRouter);
 app.use('/materials', uploadMaterialRouter);
 app.use('/supervisorDashboard', supervisorDashboardRouter);
+app.use('/UserManagement', UserManagementRoutes);
 
 // Additional GET routes if needed
 app.get('/', (req, res) => {

@@ -15,14 +15,12 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
-//import Sidebar from "../../components/Sidebar";
 import "../../styles1/MyTasks.css";
 
 const MyTasks = () => {
   const [username, setUsername] = useState("");
   const [myTasks, setMyTasks] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState("");
-  const [filteredDate, setFilteredDate] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false); // สำหรับการเปิด/ปิด Modal
   const [taskToReturn, setTaskToReturn] = useState(null);
   const navigate = useNavigate();
@@ -84,9 +82,9 @@ const MyTasks = () => {
 
   const columns = [
     {
-      title: "ลำดับ",
-      dataIndex: "upload_id",
-      key: "upload_id",
+      title: "Inventory ID",
+      dataIndex: "inventory_id",
+      key: "inventory_id",
       align: "left",
     },
     {
@@ -188,16 +186,8 @@ const MyTasks = () => {
 
   // การกรองงานที่ดำเนินการเสร็จแล้วตามวันที่
   const handleDateFilter = (date) => {
-    setFilteredDate(date);
+    setFilteredDate(date ? date.toDate() : null);
   };
-
-  const filteredCompletedTasks = filteredDate
-    ? completedTasks.filter(
-        (task) =>
-          new Date(task.approved_date).toDateString() ===
-          filteredDate.toDate().toDateString()
-      )
-    : completedTasks;
 
   const getCurrentDateTime = () => {
     const now = new Date();
@@ -289,7 +279,7 @@ const MyTasks = () => {
 
             <Table
               columns={columns}
-              dataSource={filteredCompletedTasks}
+              dataSource={completedTasks}
               pagination={false}
             />
           </Card>

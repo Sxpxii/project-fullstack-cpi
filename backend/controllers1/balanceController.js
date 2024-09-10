@@ -4,10 +4,22 @@ const XLSX = require('xlsx');
 const pool = require('../config/db');
 
 const logUserAction = async (userId, action) => {
+    const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
-        await pool.query('INSERT INTO useractions (user_id, action_type) VALUES ($1, $2)', [userId, action]);
+        await client.query('BEGIN'); // เริ่ม transaction
+
+        // บันทึกการกระทำในตาราง useractions
+        await client.query('INSERT INTO useractions (user_id, action_type) VALUES ($1, $2)', [userId, action]);
+
+        // อัปเดต lastActivity ในตาราง users1
+        await client.query('UPDATE users1 SET lastActivity = NOW() WHERE user_id = $1', [userId]);
+
+        await client.query('COMMIT'); // ยืนยันการเปลี่ยนแปลงทั้งหมด
     } catch (err) {
-        console.error('Error logging user action:', err);
+        await client.query('ROLLBACK'); // ยกเลิกการเปลี่ยนแปลงหากเกิดข้อผิดพลาด
+        console.error('Error logging user action and updating lastActivity:', err);
+    } finally {
+        client.release(); // ปล่อย client กลับคืน pool
     }
 };
 
@@ -25,8 +37,8 @@ const insertMaterialBalance = async (materialId, row) => {
     const client = await pool.connect();
     try {
         const queryText = `
-            INSERT INTO materialbalances (material_id, date, lot, matin, location, quantity)
-            VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)
+            INSERT INTO materialbalances (material_id, date, lot, matin, location, quantity, remaining_quantity)
+            VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $5)
         `;
         const values = [
             materialId,
@@ -55,8 +67,8 @@ const moveToHistoryAndClearBalances = async () => {
     try {
         await client.query('BEGIN');
         await client.query(`
-            INSERT INTO materialbalances_history (material_id, date, lot, matin, location, quantity)
-            SELECT material_id, date, lot, matin, location, quantity
+            INSERT INTO materialbalances_history (material_id, date, lot, matin, location, quantity, remaining_quantity )
+            SELECT material_id, date, lot, matin, location, quantity, remaining_quantity
             FROM materialbalances
         `);
         await client.query('DELETE FROM materialbalances');

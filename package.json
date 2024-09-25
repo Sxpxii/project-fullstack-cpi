@@ -21,6 +21,7 @@
     "react-apexcharts": "^1.4.1",
     "react-icon": "^1.0.0",
     "sequelize": "^6.37.3",
+    "socket.io": "^4.7.5",
     "xlsx": "^0.18.5"
   }
 }

@@ -1,48 +1,52 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Menu, Avatar, Dropdown, message } from "antd";
 import {
   UserOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation  } from "react-router-dom";
 import axios from "axios";
+import { TbBuildingWarehouse } from "react-icons/tb";
+import config from '../configAPI';
 
 const { Header, Content, Footer } = Layout;
 
 const items = [
-  { key: "1", label: "User Management" },
-  { key: "2", label: "Material Management" },
+  { key: "/UserManagement", label: "User Management" },
+  { key: "/UploadMaterials", label: "Material Management" },
 ];
 
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
-  const username = localStorage.getItem("username");
+  const location = useLocation(); // ใช้ useLocation เพื่อดึง URL ปัจจุบัน
+  const [selectedKey, setSelectedKey] = useState(location.pathname); // ตั้งค่า selectedKey จาก URL
+  const username = sessionStorage.getItem("username");
+
+  useEffect(() => {
+    setSelectedKey(location.pathname); // อัปเดต selectedKey เมื่อ URL เปลี่ยน
+  }, [location.pathname]);
 
   const handleMenuClick = (e) => {
-    if (e.key === "1") {
-      navigate("/UserManagement");
-    } else if (e.key === "2") {
-      navigate("/UploadMaterials");
-    } 
+    navigate(e.key);
   };
 
   const handleLogout = async () => {
     try {
       await axios.post(
-        "http://localhost:3001/api/logout",
+        `${config.API_URL}/api/logout`,
         {},
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
           },
         }
       );
       // ลบข้อมูลจาก localStorage
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("username");
-      localStorage.removeItem("role");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("refreshToken");
+      sessionStorage.removeItem("username");
+      sessionStorage.removeItem("role");
 
       message.success("Logout successful");
       navigate("/"); // เปลี่ยนเส้นทางไปที่หน้า login
@@ -73,11 +77,14 @@ const MainLayout = ({ children }) => {
           marginBottom: "15px",
         }}
       >
-        <div className="demo-logo" />
+        <TbBuildingWarehouse
+          size={40}
+          style={{ color: "white", marginRight: "10px" }}
+        />
         <Menu
           theme="dark"
           mode="horizontal"
-          /*defaultSelectedKeys={["1"]}*/
+          selectedKeys={[selectedKey]}
           items={items}
           onClick={handleMenuClick}
           style={{ flex: 1, minWidth: 0 }}
@@ -90,7 +97,7 @@ const MainLayout = ({ children }) => {
         {children} {/* This will render the content passed from other pages */}
       </Content>
       <Footer style={{ textAlign: "center" }}>
-        Ant Design ©{new Date().getFullYear()} Created by Ant UED
+        Raw Material Warehouse ©{new Date().getFullYear()}
       </Footer>
     </Layout>
   );

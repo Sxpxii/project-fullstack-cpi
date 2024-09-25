@@ -18,6 +18,23 @@ import UserManagement from "./pages1/admin/UserManagement";
 
 const App1 = () => {
 
+  // src/App.js
+React.useEffect(() => {
+  const handleStorageChange = (event) => {
+      if (event.key === 'accessToken') {
+          // Perform any required actions when accessToken changes, like redirecting or updating state
+          console.log('Token updated:', event.newValue);
+      }
+  };
+
+  window.addEventListener('storage', handleStorageChange);
+
+  return () => {
+      window.removeEventListener('storage', handleStorageChange);
+  };
+}, []);
+
+
   return (
     <Router>
       <Routes>

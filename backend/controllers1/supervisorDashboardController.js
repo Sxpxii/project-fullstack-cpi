@@ -132,11 +132,13 @@ const getInventoryStock = async (req, res) => {
         const query = `
             SELECT 
                 u.upload_id,
+                u.material_type,
                 u.inventory_id,
                 u.user_id,
                 u.assigned_to,
                 us_assigned.username AS assigned_username,
                 us_user.username AS user_username,
+                SUM(mr.quantity) AS total_requested,
                 MIN(CASE WHEN os.status = 'กำลังดำเนินการ' THEN os.timestamp END) AS start_time,
                 MAX(CASE WHEN os.status = 'ดำเนินการเรียบร้อย' THEN os.timestamp END) AS end_time
             FROM 
@@ -147,10 +149,13 @@ const getInventoryStock = async (req, res) => {
                 users1 us_assigned ON u.assigned_to = us_assigned.user_id
             LEFT JOIN 
                 users1 us_user ON u.user_id = us_user.user_id
+            LEFT JOIN 
+                materialrequests mr ON u.upload_id = mr.upload_id 
             WHERE 
                 DATE(u.approved_date) = $1
             GROUP BY 
                 u.upload_id, 
+                u.material_type,
                 u.inventory_id,
                 u.user_id, 
                 u.assigned_to, 

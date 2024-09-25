@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Spin, message, Card, Breadcrumb, DatePicker } from "antd";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/UploadRequest.css";
-import moment from "moment";
+import config from '../../configAPI';
 
 const UploadRequest = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -46,14 +46,14 @@ const UploadRequest = () => {
       approvedDate
     );
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) {
       console.error("Token is missing");
       return;
     }
 
     axios
-      .post("http://localhost:3001/requests", formData, {
+      .post(`${config.API_URL}/requests`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

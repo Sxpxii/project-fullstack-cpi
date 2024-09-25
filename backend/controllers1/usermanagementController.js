@@ -28,6 +28,8 @@ const getAllUsers = async (req, res) => {
       FROM users1 u1
       LEFT JOIN users1 u2 ON u1.invited_by = u2.user_id
     `);
+
+    console.log('all users:', result.rows);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching all users:', error);
@@ -36,12 +38,12 @@ const getAllUsers = async (req, res) => {
 };
 
 // ฟังก์ชันดึงข้อมูลผู้ใช้งานที่ออนไลน์
-const getOnlineUsers = async (req, res) => {
+/*const getOnlineUsers = async (req, res) => {
     try {
       const result = await pool.query(
         `SELECT user_id, username 
          FROM users1 
-         WHERE lastActivity >= NOW() - INTERVAL '60 minutes'` // สมมติว่าผู้ใช้งานที่ออนไลน์ได้กระทำล่าสุดภายใน 5 นาทีที่ผ่านมา
+         WHERE lastActivity >= NOW() - INTERVAL '5 minutes'` // สมมติว่าผู้ใช้งานที่ออนไลน์ได้กระทำล่าสุดภายใน 5 นาทีที่ผ่านมา
       );
       res.status(200).json(result.rows);
     } catch (error) {
@@ -56,14 +58,14 @@ const getOnlineUsers = async (req, res) => {
       const result = await pool.query(
         `SELECT user_id, username 
          FROM users1 
-         WHERE lastActivity < NOW() - INTERVAL '60 minutes' OR lastActivity IS NULL`
+         WHERE lastActivity < NOW() - INTERVAL '5 minutes' OR lastActivity IS NULL`
       );
       res.status(200).json(result.rows);
     } catch (error) {
       console.error('Error fetching offline users:', error);
       res.status(500).json({ error: 'Error fetching offline users' });
     }
-  };
+  };*/
 
   // ฟังก์ชันแก้ไขข้อมูลผู้ใช้
 const updateUser = async (req, res) => {
@@ -120,8 +122,6 @@ const deleteUser = async (req, res) => {
 
 module.exports = {
   getAllUsers,
-  getOnlineUsers,
-  getOfflineUsers,
   updateUser,
   deleteUser
   

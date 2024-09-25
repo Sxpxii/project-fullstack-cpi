@@ -1,7 +1,8 @@
 const pool = require('../config/db');
 const { revertCalculations, recalculateFIFO } = require('../services/recalculation');
+const {logUserAction} = require('../controllers1/loginController1');
 
-const logUserAction = async (userId, action) => {
+/*const logUserAction = async (userId, action) => {
     const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
         await client.query('BEGIN'); // เริ่ม transaction
@@ -19,7 +20,7 @@ const logUserAction = async (userId, action) => {
     } finally {
         client.release(); // ปล่อย client กลับคืน pool
     }
-};
+};*/
 
 
 const getDashboardData = async (req, res) => {
@@ -52,7 +53,8 @@ const getDetails = async (req, res) => {
                 'matin', b.matin,
                 'location', b.location,
                 'used_quantity', b.used_quantity,
-                'remaining_quantity', b.remaining_quantity
+                'remaining_quantity', b.remaining_quantity,
+                'reason', b.reason
               )
               ORDER BY b.matin
             ) AS details

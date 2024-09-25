@@ -3,7 +3,8 @@ const pool = require('../config/db');
 // ฟังก์ชันดึงข้อมูลจากตารางวัตถุดิบ
 const getMaterialRequestData = async (uploadId) => {
     try {
-        const queryText = `SELECT * FROM materialrequests WHERE upload_id = $1`;
+        const queryText = `
+            SELECT * FROM materialrequests WHERE upload_id = $1`;
         const res = await pool.query(queryText, [uploadId]);
         return res.rows;
     } catch (err) {
@@ -18,7 +19,8 @@ const getMaterialBalanceData = async (materialIds) => {
         const queryText = `
             SELECT * FROM materialbalances
             WHERE material_id = ANY($1)
-            AND (quantity != 0 OR remaining_quantity != 0)
+            AND quantity != 0
+            AND remaining_quantity != 0
         `;
         const res = await pool.query(queryText, [materialIds]);
         return res.rows;
@@ -191,9 +193,11 @@ const calculateFIFO = async (uploadId) => {
             let requestedQuantity = request.quantity;
 
             for (let balance of balances) {
-                if (requestedQuantity <= 0 || (balance.remaining_quantity !== null && balance.remaining_quantity === 0)) break;
+                if (requestedQuantity <= 0 || (balance.remaining_quantity !== null && balance.remaining_quantity <= 0)) break;
 
                 const currentRemainingQuantity = balance.remaining_quantity !== null ? balance.remaining_quantity : balance.quantity;
+                if (currentRemainingQuantity <= 0) continue;
+                
                 const usedQuantity = Math.min(requestedQuantity, currentRemainingQuantity);
                 const remainingQuantity = currentRemainingQuantity - usedQuantity;
 

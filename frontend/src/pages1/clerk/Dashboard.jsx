@@ -22,13 +22,14 @@ import { BsCheckCircleFill, BsSearch } from "react-icons/bs";
 import { FaCheck, FaTrashCan } from "react-icons/fa6";
 import { FaEye } from "react-icons/fa";
 import { HiMiniPencilSquare } from "react-icons/hi2";
+import config from "../../configAPI";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const materialTypeMap = {
-  //PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
-  //PK_shoe: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์",
+  PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
+  PK_shoe: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์",
   WD: "กิ๊ฟล๊อค/แผ่นชิม",
   PIN: "สลัก/ตะขอ",
   BP: "แผ่นเหล็ก",
@@ -53,12 +54,16 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3001/dashboard", {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.get(`${config.API_URL}/dashboard`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      // ลองพิมพ์ response.data เพื่อดูว่ามีข้อมูลสถานะหรือไม่
+      console.log("Response Data: ", response.data);
+
       if (Array.isArray(response.data)) {
         const sortedData = response.data.sort(
           (a, b) => new Date(a.date) - new Date(b.date)
@@ -73,7 +78,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
       setUsername(storedUsername);
     }
@@ -96,9 +101,9 @@ const Dashboard = () => {
 
   const handleConfirm = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
-        `http://localhost:3001/dashboard/confirm/${confirmUploadId}`,
+        `${config.API_URL}/dashboard/confirm/${confirmUploadId}`,
         {},
         {
           headers: {
@@ -124,7 +129,7 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.delete(
-        `http://localhost:3001/dashboard/delete-uploads/${confirmUploadId}`,
+        `${config.API_URL}/dashboard/delete-uploads/${confirmUploadId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -156,9 +161,9 @@ const Dashboard = () => {
 
   const handleApproveConfirm = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
-        `http://localhost:3001/dashboard/approve/${confirmUploadId}`,
+        `${config.API_URL}/dashboard/approve/${confirmUploadId}`,
         {},
         {
           headers: {
@@ -186,31 +191,22 @@ const Dashboard = () => {
     );
   };
 
-  const filteredData = () => {
+  /*const filteredData = () => {
+    console.log("Current idStatus: ", idStatus);
+
     switch (idStatus) {
       case 1:
-        // สถานะ "รอยืนยัน" แสดงทั้งหมด
-        return data.filter((item) => item.status === "รอยันยัน");
+        return data.filter((item) => item.status === "รอยืนยัน");
       case 2:
-        // สถานะ "กำลังดำเนินการ" แสดงเฉพาะวันที่ปัจจุบัน
-        return data.filter(
-          (item) => item.status === "กำลังดำเนินการ" && isCurrentDate(item.date)
-        );
+        return data.filter((item) => item.status === "กำลังดำเนินการ");
       case 3:
-        // สถานะ "รอตรวจสอบ" แสดงเฉพาะวันที่ปัจจุบัน
-        return data.filter(
-          (item) => item.status === "รอตรวจสอบ" && isCurrentDate(item.date)
-        );
+        return data.filter((item) => item.status === "รอตรวจสอบ");
       case 4:
-        // สถานะ "ดำเนินการเรียบร้อย" แสดงเฉพาะวันที่ปัจจุบัน
-        return data.filter(
-          (item) =>
-            item.status === "ดำเนินการเรียบร้อย" && isCurrentDate(item.date)
-        );
+        return data.filter((item) => item.status === "ดำเนินการเรียบร้อย");
       default:
         return [];
     }
-  };
+  };*/
 
   const handleInventoryIdChange = (uploadId, value) => {
     setInputValues((prevValues) => ({
@@ -226,9 +222,9 @@ const Dashboard = () => {
 
       console.log("Data to save:", { uploadId, inventoryId });
 
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
-        `http://localhost:3001/dashboard/save-inventory-id`,
+        `${config.API_URL}/dashboard/save-inventory-id`,
         { upload_id: uploadId, inventory_id: inventoryId },
         {
           headers: {
@@ -277,7 +273,7 @@ const Dashboard = () => {
                   }}
                   icon={<FaCheck />}
                   onClick={() => saveInventoryId(record.upload_id)}
-                  disabled={!inputValues[record.upload_id]} 
+                  disabled={!inputValues[record.upload_id]}
                 />
               )}
             </Space>
@@ -338,8 +334,6 @@ const Dashboard = () => {
       key: "action",
       align: "center",
       render: (_, record) => {
-        const isToday = isCurrentDate(record.date);
-
         if (record.status === "รอยืนยัน") {
           return (
             <Space size="middle">
@@ -353,28 +347,34 @@ const Dashboard = () => {
                 onClick={() => handleDeleteClick(record.upload_id)}
               />
 
-              {isToday && (
-                <Button
-                  style={{
-                    color: "#5755FE",
-                    backgroundColor: "#f0f0f0",
-                    borderColor: "#f0f0f0",
-                  }}
-                  type="primary"
-                  icon={<FaCheck />}
-                  onClick={() => {
-                    setConfirmUploadId(record.upload_id);
-                    setConfirmModalVisible(true);
-                  }}
-                />
-              )}
+              <Button
+                style={{
+                  color: "#5755FE",
+                  backgroundColor: "#f0f0f0",
+                  borderColor: "#f0f0f0",
+                }}
+                type="primary"
+                icon={<FaCheck />}
+                onClick={() => {
+                  setConfirmUploadId(record.upload_id);
+                  setConfirmModalVisible(true);
+                }}
+              />
             </Space>
           );
         } else if (
           ["ดำเนินการเรียบร้อย", "กำลังดำเนินการ"].includes(record.status)
         ) {
           return (
-            <Space size="middle">
+            <Space
+              size="middle"
+              style={{
+                display: "flex",
+                justifyContent: "center", // จัดให้อยู่ตรงกลางในคอนเทนเนอร์
+                alignItems: "center",
+                width: "100%", // ทำให้คอนเทนเนอร์กว้างเต็มที่
+              }}
+            >
               <Button
                 style={{
                   color: "#5755FE",
@@ -394,8 +394,9 @@ const Dashboard = () => {
                   color: "#5755FE",
                   backgroundColor: "#f0f0f0",
                   borderColor: "#f0f0f0",
-                  display:"flex",
-                  justifyContent:"space-between",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
                 icon={<HiMiniPencilSquare />}
                 onClick={() => handleEditClick(record)}
@@ -431,10 +432,7 @@ const Dashboard = () => {
       id: 2,
       statusName: "กำลังดำเนินการ",
       total: data
-        ? data.filter(
-            (item) =>
-              item.status === "กำลังดำเนินการ" && isCurrentDate(item.date)
-          ).length
+        ? data.filter((item) => item.status === "กำลังดำเนินการ").length
         : 0,
       color: "#ffd591",
     },
@@ -442,9 +440,7 @@ const Dashboard = () => {
       id: 3,
       statusName: "รอตรวจสอบ",
       total: data
-        ? data.filter(
-            (item) => item.status === "รอตรวจสอบ" && isCurrentDate(item.date)
-          ).length
+        ? data.filter((item) => item.status === "รอตรวจสอบ").length
         : 0,
       color: "#ffa5a1",
     },
@@ -476,20 +472,6 @@ const Dashboard = () => {
           >
             การจัดการข้อมูลการเบิก-จ่ายวัตถุดิบ
           </div>
-        </div>
-        <div className=" sarabun-light ">
-          <Link to="/UploadBalance">
-            <button
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "#5755FE",
-                borderColor: "#5755FE",
-                marginRight: "5px",
-              }}
-            >
-              บันทึกข้อมูลการเบิก-จ่าย
-            </button>
-          </Link>
         </div>
       </div>
 
@@ -588,7 +570,7 @@ const Dashboard = () => {
             columns={columns}
             dataSource={data.filter(
               (item) =>
-                item.status === "กำลังดำเนินการ" && isCurrentDate(item.date)
+                item.status === "กำลังดำเนินการ" 
             )}
             pagination={false}
           />
@@ -596,7 +578,7 @@ const Dashboard = () => {
           <Table
             columns={columns}
             dataSource={data.filter(
-              (item) => item.status === "รอตรวจสอบ" && isCurrentDate(item.date)
+              (item) => item.status === "รอตรวจสอบ" 
             )}
             pagination={false}
           />

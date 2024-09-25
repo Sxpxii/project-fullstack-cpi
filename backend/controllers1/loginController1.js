@@ -61,7 +61,7 @@ const login = async (req, res) => {
         const refreshToken = jwt.sign({ userId: user.user_id, username: user.username, role: user.role }, process.env.JWT_REFRESH_SECRET, { expiresIn: '8h' });
 
         await logUserAction(user.user_id, 'Login');
-        //console.log('Login response:', { accessToken, refreshToken, username: user.username, userId: user.user_id });
+        console.log('Login response:', { accessToken, refreshToken, username: user.username, userId: user.user_id });
         res.json({ accessToken, refreshToken, username: user.username, userId: user.user_id  }); // ส่งทั้ง accessToken และ refreshToken กลับไปที่ client
     } catch (err) {
         console.error(err);
@@ -134,33 +134,6 @@ const authorizeAdmin = (req, res, next) => {
     }
   };
 
-// ฟังก์ชันสำหรับตรวจสอบเซสชัน
-const checkSession = async (req, res) => {
-    const userId = req.user.userId; // ได้จากการ authenticateToken
-
-    try {
-        const result = await pool.query(
-            'SELECT lastActivity FROM users1 WHERE user_id = $1',
-            [userId]
-        );
-
-        if (result.rows.length === 0) {
-            return res.sendStatus(404); // ไม่พบผู้ใช้
-        }
-
-        const lastActivity = result.rows[0].lastactivity;
-        if (new Date() - new Date(lastActivity) > 60 * 60 * 1000) { // 60 นาที
-            return res.sendStatus(401); // เซสชันหมดอายุ
-        }
-
-        res.sendStatus(200); // เซสชันยังคงใช้งานอยู่
-    } catch (err) {
-        console.error('Error checking session:', err);
-        res.status(500).json({ error: 'Error checking session' });
-    }
-};
-
-
 module.exports = {
     register,
     login,
@@ -168,7 +141,6 @@ module.exports = {
     refreshToken,
     authenticateToken,
     authorizeRoles,
-    checkSession,
     authorizeAdmin,
     logUserAction
 };

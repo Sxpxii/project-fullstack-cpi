@@ -2,8 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const pool = require('../config/db');
+const {logUserAction} = require('../controllers1/loginController1');
 
-const logUserAction = async (userId, action) => {
+/*const logUserAction = async (userId, action) => {
     const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
         await client.query('BEGIN'); // เริ่ม transaction
@@ -21,7 +22,7 @@ const logUserAction = async (userId, action) => {
     } finally {
         client.release(); // ปล่อย client กลับคืน pool
     }
-};
+};*/
 
 const findMaterialId = async (matunit, matname) => {
     try {
@@ -113,13 +114,13 @@ const handleUpload = async (req, res) => {
                 const rowData = {};
                 let validRow = true;
 
-                for (const columnIndex of [0, 1, 2, 5, 13]) {
+                for (const columnIndex of [0, 1, 2, 5, 14]) {
                     const cellAddress = XLSX.utils.encode_cell({ r: R, c: columnIndex });
                     const cell = worksheet[cellAddress];
                     const cellValue = cell ? cell.v : null;
 
                     // Debugging each cell
-                    console.log(`Row ${R + 1}, Column ${columnIndex + 1}:`, cellValue);
+                    //console.log(`Row ${R + 1}, Column ${columnIndex + 1}:`, cellValue);
 
                     if (cellValue === null || cellValue === undefined || cellValue === '') {
                         validRow = false;
@@ -160,7 +161,7 @@ const handleUpload = async (req, res) => {
                         case 5:
                             rowData['location'] = cellValue.toString();
                             break;
-                        case 13:
+                        case 14:
                             if (!isNaN(cellValue)) {
                                 rowData['quantity'] = parseFloat(cellValue);
                             } else {
@@ -179,16 +180,28 @@ const handleUpload = async (req, res) => {
                 const materialId = await findMaterialId(rowData.matunit, rowData.matname);
                 if (materialId) {
                     try {
-                        await insertMaterialBalance(materialId, rowData);
+                        //await insertMaterialBalance(materialId, rowData);
+                        rowData['materialId'] = materialId;
                         data.push(rowData);
                     } catch (error) {
                         console.error('Error inserting row:', rowData, error);
-                        errors.push(rowData);
+                        errors.push({ matunit: rowData.matunit, matname: rowData.matname });
                     }
                 } else {
                     console.error('Material not found for:', rowData);
                     errors.push({ ...rowData, error: 'Material not found' });
                 }
+            }
+
+            // ตรวจสอบว่ามีรายการที่ไม่มี material_id หรือไม่
+            if (errors.length > 0) {
+                // แจ้งเตือนผู้ใช้งาน
+                return res.status(200).json({ errors });
+            }
+
+            // บันทึกรายการถ้าไม่มี error
+            for (const row of data) {
+                await insertMaterialBalance(row.materialId, row);
             }
 
             // Log user action

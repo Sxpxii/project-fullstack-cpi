@@ -14,69 +14,31 @@ import {
   Popconfirm,
   Tag,
   message,
+  Space,
 } from "antd";
 import MainLayout from "../../components/LayoutAdmin";
 import { HiMiniPencilSquare } from "react-icons/hi2";
 import { FaTrashCan } from "react-icons/fa6";
+import config from '../../configAPI';
 
 const { Option } = Select;
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [offlineUsers, setOfflineUsers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
   const [form] = Form.useForm();
 
   useEffect(() => {
-    // Function to fetch all data periodically (polling)
-    const fetchData = async () => {
-      fetchUsers();
-      fetchOnlineUsers();
-      fetchOfflineUsers();
-    };
-
-    // Call fetchData once immediately when component is mounted
-    fetchData();
-
-    // Set polling interval to call fetchData every 5 seconds (5000 milliseconds)
-    const intervalId = setInterval(fetchData, 5000);
-
-    // Clear interval when the component is unmounted
-    return () => clearInterval(intervalId);
+    fetchUsers();
   }, []);
-
-  // Function to check session validity
-  const checkSession = async () => {
-    try {
-      const response = await fetch("/api/checkSession", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/login"; // Redirect to login page if session expired
-      }
-    } catch (err) {
-      console.error("Error checking session:", err);
-    }
-  };
-
-  useEffect(() => {
-    // Check session validity every 60 seconds
-    const sessionCheckInterval = setInterval(checkSession, 60000);
-
-    // Clear the interval when the component unmounts
-    return () => clearInterval(sessionCheckInterval);
-  }, []);
+  
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("http://localhost:3001/UserManagement/users");
+      const res = await axios.get(`${config.API_URL}/UserManagement/users`);
+      console.log("Fetched users:", res.data);
       if (Array.isArray(res.data)) {
         setUsers(res.data);
       } else {
@@ -86,40 +48,6 @@ const UserManagement = () => {
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsers([]); // หรือการจัดการข้อผิดพลาดที่เหมาะสม
-    }
-  };
-
-  const fetchOnlineUsers = async () => {
-    try {
-      const res = await axios.get(
-        "http://localhost:3001/UserManagement/online"
-      );
-      if (Array.isArray(res.data)) {
-        setOnlineUsers(res.data);
-      } else {
-        console.error("Invalid data format for online users:", res.data);
-        setOnlineUsers([]); // หรือการจัดการข้อผิดพลาดที่เหมาะสม
-      }
-    } catch (error) {
-      console.error("Error fetching online users:", error);
-      setOnlineUsers([]); // หรือการจัดการข้อผิดพลาดที่เหมาะสม
-    }
-  };
-
-  const fetchOfflineUsers = async () => {
-    try {
-      const res = await axios.get(
-        "http://localhost:3001/UserManagement/offline"
-      );
-      if (Array.isArray(res.data)) {
-        setOfflineUsers(res.data);
-      } else {
-        console.error("Invalid data format for offline users:", res.data);
-        setOfflineUsers([]); // หรือการจัดการข้อผิดพลาดที่เหมาะสม
-      }
-    } catch (error) {
-      console.error("Error fetching offline users:", error);
-      setOfflineUsers([]); // หรือการจัดการข้อผิดพลาดที่เหมาะสม
     }
   };
 
@@ -136,10 +64,10 @@ const UserManagement = () => {
 
   const handleDelete = async (user_id) => {
     try {
-      const currentUserId = localStorage.getItem("userId");
-      const token = localStorage.getItem("token");
+      const currentUserId = sessionStorage.getItem("userId");
+      const token = sessionStorage.getItem("token");
       await axios.delete(
-        `http://localhost:3001/UserManagement/users/${user_id}`,
+        `${config.API_URL}/UserManagement/users/${user_id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           data: { performed_by: currentUserId },
@@ -153,11 +81,11 @@ const UserManagement = () => {
 
   const handleModalOk = async (values) => {
     try {
-      const currentUserId = localStorage.getItem("userId");
+      const currentUserId = sessionStorage.getItem("userId");
 
       if (editUserId) {
         await axios.put(
-          `http://localhost:3001/UserManagement/users/${editUserId}`,
+          `${config.API_URL}/UserManagement/users/${editUserId}`,
           { ...values, updated_by: currentUserId }
         );
       }
@@ -175,22 +103,7 @@ const UserManagement = () => {
       "0" + date.getDate()
     ).slice(-2)}`;
   };
-
-  const getStatusTag = (lastActivity) => {
-    const now = new Date();
-    const lastLogin = new Date(lastActivity);
-    const isOnline = now - lastLogin < 60000; // Consider online if last activity was within the last 60 seconds
-    return isOnline ? (
-      <Tag className="sarabun-light" color="green">
-        Online
-      </Tag>
-    ) : (
-      <Tag className="sarabun-light" color="red">
-        Offline
-      </Tag>
-    );
-  };
-
+  
   const columns = [
     {
       title: "ลำดับ",
@@ -210,7 +123,6 @@ const UserManagement = () => {
       key: "role",
       align: "center",
     },
-    ,
     {
       title: "Invited By",
       dataIndex: "invited_by",
@@ -225,22 +137,17 @@ const UserManagement = () => {
       render: (text) => formatDate(text),
     },
     {
-      title: "Last Login",
-      dataIndex: "lastactivity",
-      key: "lastactivity",
-      align: "center",
-      render: (text) => getStatusTag(text),
-    },
-    {
-      title: "Actions",
+      title: "",
       key: "actions",
       render: (text, record) => (
-        <div>
+        <Space>
           <Button
             style={{
               color: "#5755FE",
               backgroundColor: "#f0f0f0",
               borderColor: " #f0f0f0",
+              display: "flex",
+              justifycontent: "space-between",
             }}
             icon={<HiMiniPencilSquare />}
             onClick={() => handleEdit(record)}
@@ -250,6 +157,20 @@ const UserManagement = () => {
             onConfirm={() => handleDelete(record.user_id)}
             okText="Yes"
             cancelText="No"
+            okButtonProps={{
+              style: {
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE",
+              },
+            }}
+            cancelButtonProps={{
+              style: {
+                color: "#5755FE",
+                backgroundColor: "#f0f0f0",
+                borderColor: "#f0f0f0",
+              },
+            }}
           >
             <Button
               style={{
@@ -260,11 +181,12 @@ const UserManagement = () => {
               icon={<FaTrashCan />}
             />
           </Popconfirm>
-        </div>
+        </Space>
       ),
       align: "center",
     },
   ];
+  
 
   // Function to show modal
   const showModal = () => {
@@ -276,7 +198,7 @@ const UserManagement = () => {
   // Function to handle form submission
   const handleAddUser = async (values) => {
     try {
-      const currentUserId = localStorage.getItem("userId");
+      const currentUserId = sessionStorage.getItem("userId");
       const payload = {
         ...values,
         invited_by: currentUserId, // ส่ง user_id ของผู้กด Add User ไปกับข้อมูลอื่น
@@ -284,7 +206,7 @@ const UserManagement = () => {
       console.log("payload:", payload);
 
       await axios.post(
-        "http://localhost:3001/UserManagement/register",
+        `${config.API_URL}/UserManagement/register`,
         payload
       );
       setIsModalVisible(false);
@@ -300,23 +222,24 @@ const UserManagement = () => {
       <div className="App">
         <Row gutter={16}>
           <Col span={8}>
-            <Card>
+            <Card style={{ backgroundColor: '#91caff'}}>
               <Statistic title="Total Users" value={users.length} />
             </Card>
           </Col>
           <Col span={8}>
-            <Card>
-              <Statistic title="Users Online" value={onlineUsers.length} />
+            <Card style={{ backgroundColor: '#ffd591'}}>
+            <Statistic title="Users With Recent Activity" value={users.filter(user => new Date() - new Date(user.lastactivity) < 24 * 60 * 60 * 1000).length} />
             </Card>
           </Col>
           <Col span={8}>
-            <Card>
-              <Statistic title="Users Offline" value={offlineUsers.length} />
+            <Card style={{ backgroundColor: '#b7eb8f'}}>
+            <Statistic title="New Users This Month" value={users.filter(user => new Date(user.created_at).getMonth() === new Date().getMonth()).length} />
             </Card>
           </Col>
         </Row>
 
-        <Row>
+        <Row >
+        <Col span={24}>
           <Card
             className="dashboard-title sarabun-bold"
             title="Users"
@@ -340,9 +263,10 @@ const UserManagement = () => {
               dataSource={users}
               columns={columns}
               rowKey="user_id"
-              style={{ marginTop: 20 }}
+              style={{ marginTop: 20, width: '100%' }}
             />
           </Card>
+          </Col>
         </Row>
 
         {/* Modal for adding new user */}
@@ -391,7 +315,14 @@ const UserManagement = () => {
               </Select>
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit">
+              <Button 
+              type="primary" 
+              htmlType="submit"
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE ",
+              }}>
                 {isEditMode ? "Save Changes" : "Add User"}
               </Button>
             </Form.Item>

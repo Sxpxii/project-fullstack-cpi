@@ -10,7 +10,8 @@ const { getTasks,
     completeTask, 
     getcheckTask, 
     saveCountedQuantities,
-    getStatus, } = require('../controllers1/taskController');
+    getStatus,
+    } = require('../controllers1/taskController');
 const { authenticateToken } = require('../controllers1/loginController1');
 
 router.get('/', authenticateToken, getTasks);
@@ -23,6 +24,8 @@ router.get('/detail/:upload_id/check', authenticateToken, getcheckTask);
 router.post('/complete/:upload_id', authenticateToken, completeTask);
 router.post('/save-counted-quantities/:upload_id', authenticateToken, saveCountedQuantities);
 router.get('/status/:upload_id', authenticateToken, getStatus);
+
+
 
 module.exports = router;
 ;

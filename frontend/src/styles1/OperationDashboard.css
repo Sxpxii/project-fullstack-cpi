@@ -155,6 +155,7 @@
   max-width: 1000px; /* กำหนดความกว้างสูงสุดให้เหมาะสม */
 }
 
+
   
   @media (max-width: 768px) {
     .header, .search-bar {

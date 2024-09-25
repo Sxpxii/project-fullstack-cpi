@@ -5,6 +5,7 @@ import { Table, Button, Card } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/Details.css"; // นำเข้าไฟล์ CSS
+import config from '../../configAPI';
 
 const Details = () => {
   const [username, setUsername] = useState("");
@@ -14,9 +15,9 @@ const Details = () => {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/dashboard/details/${id}`,
+        `${config.API_URL}/dashboard/details/${id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -33,9 +34,9 @@ const Details = () => {
   const fetchTotalRequested = async () => {
     try {
       console.log(`Fetching total requested quantity for upload_id: ${id}`);
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/dashboard/details/${id}/total-requested-quantity`,
+        `${config.API_URL}/dashboard/details/${id}/total-requested-quantity`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -48,7 +49,7 @@ const Details = () => {
   };
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
       setUsername(storedUsername);
     }
@@ -87,12 +88,12 @@ const Details = () => {
   //console.log("Formatted Data:", formattedData);
 
   const columns = [
-    {
+    /*{
       title: "ลำดับ",
       key: "index",
       render: (text, record, index) => index + 1,
       align: "left",
-    },
+    },*/
     {
       title: "รหัส",
       dataIndex: "matunit",
@@ -141,6 +142,12 @@ const Details = () => {
       key: "remaining_quantity",
       render: (text) => formatNumber(text),
       align: "center",
+    },
+    {
+      title: "เหตุผล",
+      dataIndex: "reason",
+      key: "reason",
+      align: "left",
     },
   ];
 

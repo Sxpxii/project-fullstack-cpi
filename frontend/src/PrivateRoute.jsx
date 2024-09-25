@@ -4,7 +4,7 @@ import PermissionAlert from './components/Alert';
 
 const PrivateRoute = ({ allowedRoles }) => {
     const [showAlert, setShowAlert] = useState(false);
-    const role = localStorage.getItem('role');
+    const role = sessionStorage.getItem('role');
 
     if (allowedRoles.includes(role)) {
         return <Outlet />;

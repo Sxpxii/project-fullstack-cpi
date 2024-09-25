@@ -4,6 +4,7 @@ import { login } from "../services/authService";
 import { Link, useNavigate } from "react-router-dom";
 import { message } from "antd";
 import "../styles1/Login.css";
+import logo from "../assets/logo.png";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -28,11 +29,11 @@ function Login() {
       const { role } = JSON.parse(atob(response.accessToken.split(".")[1]));
       const userId = response.userId;
 
-      localStorage.setItem("token", response.accessToken);
-      localStorage.setItem("refreshToken", response.refreshToken);
-      localStorage.setItem("username", username);
-      localStorage.setItem("role", role);
-      localStorage.setItem("userId", userId);
+      sessionStorage.setItem("token", response.accessToken);
+      sessionStorage.setItem("refreshToken", response.refreshToken);
+      sessionStorage.setItem("username", username);
+      sessionStorage.setItem("role", role);
+      sessionStorage.setItem("userId", userId);
 
       message.success("Login successful");
 
@@ -57,6 +58,7 @@ function Login() {
     <div className="login-page sarabun-light">
       <div className="login-container">
         <div className="login-info">
+        <img src={logo} alt="Logo" className="login-logo" />
           <h1>ยินดีต้อนรับ!</h1>
           <p>กรุณาล็อคอินเพื่อเข้าใช้งานระบบ</p>
           <ul className="info-list">
@@ -86,9 +88,7 @@ function Login() {
               Login
             </button>
           </form>
-          <Link to="/register" className="register-link">
-            Register
-          </Link>
+
         </div>
       </div>
     </div>

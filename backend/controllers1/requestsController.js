@@ -2,8 +2,9 @@ const XLSX = require('xlsx');
 const fs = require('fs');
 const pool = require('../config/db');
 const calculationService = require('../services/calculationService');
+const {logUserAction} = require('../controllers1/loginController1');
 
-const logUserAction = async (userId, action) => {
+/*const logUserAction = async (userId, action) => {
     const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
         await client.query('BEGIN'); // เริ่ม transaction
@@ -21,7 +22,7 @@ const logUserAction = async (userId, action) => {
     } finally {
         client.release(); // ปล่อย client กลับคืน pool
     }
-};
+};*/
 
 // จัดการการอัปโหลดไฟล์
 const handleFileUpload = async (req, res, materialType, sheetName) => {

@@ -1,47 +1,72 @@
-const db = require('../db');
+const pool = require('../config/db');
 
 const getProcessPerformance = async (req, res) => {
+    const { month, year } = req.query; // รับข้อมูลเดือนและปีจาก query params
+  
     try {
-        const result = await db.query(`
-            SELECT 
-                a.upload_id,
-                AVG(EXTRACT(EPOCH FROM (confirm_time - upload_time)) / 60) AS upload_to_confirm_duration, 
-                AVG(EXTRACT(EPOCH FROM (accept_time - confirm_time)) / 60) AS confirm_to_accept_duration,
-                AVG(EXTRACT(EPOCH FROM (review_time - accept_time)) / 60) AS accept_to_review_duration,
-                AVG(EXTRACT(EPOCH FROM (completed_time - review_time)) / 60) AS review_to_complete_duration 
-            FROM
-                (
-                    SELECT 
-                        ua.upload_id, 
-                        MIN(CASE WHEN ua.action_type = 'upload' THEN ua.timestamp END) AS upload_time,
-                        MIN(CASE WHEN ua.action_type = 'ยืนยันรายการ' THEN ua.timestamp END) AS confirm_time,
-                        MIN(CASE WHEN ua.action_type = 'กดรับงาน' THEN ua.timestamp END) AS accept_time
-                    FROM 
-                        useractions ua
-                    JOIN 
-                        uploads u ON ua.upload_id = u.upload_id
-                    GROUP BY 
-                        ua.upload_id
-                ) AS a
-            LEFT JOIN 
-                (
-                    SELECT 
-                        upload_id, 
-                        MIN(CASE WHEN status = 'รอตรวจสอบ' THEN timestamp END) AS review_time,
-                        MIN(CASE WHEN status = 'ดำเนินการเรียบร้อย' THEN timestamp END) AS completed_time
-                    FROM 
-                        operationstatus
-                    GROUP BY 
-                        upload_id
-                ) AS o
-            ON a.upload_id = o.upload_id
-            GROUP BY a.upload_id;
-        `);
+        let query = `
+            SELECT assignee.username AS assignee_name,
+                   uploader.username AS uploader_name,
+                   u.upload_id,
+                   u.approved_date,
+                   EXTRACT(MONTH FROM u.approved_date) AS upload_month,
+                   EXTRACT(YEAR FROM u.approved_date) AS upload_year
+            FROM uploads u
+            LEFT JOIN users1 uploader ON u.user_id = uploader.user_id
+            LEFT JOIN users1 assignee ON u.assigned_to = assignee.user_id
+            WHERE ($1::int IS NULL OR EXTRACT(MONTH FROM u.approved_date) = $1::int)
+            AND ($2::int IS NULL OR EXTRACT(YEAR FROM u.approved_date) = $2::int)
+            ORDER BY assignee.username, uploader.username, u.upload_id;
+        `;
 
-        res.json(result.rows);
+        const values = [month ? parseInt(month) : null, year ? parseInt(year) : null];
+        const { rows } = await pool.query(query, values);
+
+        const totalUploads = rows.length;
+
+        // แสดงผลลัพธ์ที่ไม่ได้จัดกลุ่ม
+        console.log("Raw Data", rows , totalUploads);
+
+        const groupedData = rows.reduce((acc, item) => {
+            const uploaderName = item.uploader_name || 'Unknown Uploader';
+            const assigneeName = item.assignee_name || 'Unknown Assignee';
+        
+            if (!acc.uploader) {
+                acc.uploader = {};
+            }
+            if (!acc.assignee) {
+                acc.assignee = {};
+            }
+        
+            if (!acc.uploader[uploaderName]) {
+                acc.uploader[uploaderName] = [];
+            }
+            if (!acc.assignee[assigneeName]) {
+                acc.assignee[assigneeName] = [];
+            }
+        
+            acc.uploader[uploaderName].push({
+                upload_id: item.upload_id,
+                upload_month: item.upload_month,
+            });
+            acc.assignee[assigneeName].push({
+                upload_id: item.upload_id,
+                upload_month: item.upload_month,
+            });
+        
+            return acc;
+        }, {});
+
+        console.log("Data", groupedData);
+
+        res.json({
+            ...groupedData,
+            totalUploads
+        });
+
     } catch (error) {
-        console.error('Error fetching process performance:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error("Error fetching process performance:", error);
+        res.status(500).json({ error: "Error fetching process performance" });
     }
 };
 

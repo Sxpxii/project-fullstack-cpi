@@ -14,6 +14,7 @@ import {
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/TaskDetails.css";
+import config from '../../configAPI';
 
 const TaskDetails = () => {
   const { upload_id } = useParams();
@@ -30,9 +31,9 @@ const TaskDetails = () => {
 
   const fetchTaskDetails = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/tasks/detail/${upload_id}`,
+        `${config.API_URL}/tasks/detail/${upload_id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -47,9 +48,9 @@ const TaskDetails = () => {
 
   const fetchTotalRequestedQuantity = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/tasks/detail/${upload_id}/total-requested-quantity`,
+        `${config.API_URL}/tasks/detail/${upload_id}/total-requested-quantity`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -62,9 +63,9 @@ const TaskDetails = () => {
 
   const fetchCheckDetails = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/tasks/detail/${upload_id}/check`,
+        `${config.API_URL}/tasks/detail/${upload_id}/check`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -79,15 +80,21 @@ const TaskDetails = () => {
 
   const completeTask = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
-        `http://localhost:3001/tasks/complete/${upload_id}`,
+        `${config.API_URL}/tasks/complete/${upload_id}`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       message.success("Task marked as completed");
+
+      setIsTaskCompleted(true);
+      console.log("isTaskCompleted after completeTask:", true);
+
+      await fetchTaskDetails();
+
       fetchUploadStatus();
     } catch (err) {
       console.error("Failed to complete task:", err);
@@ -97,13 +104,15 @@ const TaskDetails = () => {
 
   const fetchUploadStatus = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/tasks/status/${upload_id}`,
+        `${config.API_URL}/tasks/status/${upload_id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
+      console.log("Data received from backend:", response.data);
 
       const completedStatuses = ["ดำเนินการเรียบร้อย", "รอตรวจสอบ"];
       setIsTaskCompleted(completedStatuses.includes(response.data.status));
@@ -113,7 +122,7 @@ const TaskDetails = () => {
   };
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
       setUsername(storedUsername);
     }
@@ -125,7 +134,7 @@ const TaskDetails = () => {
 
   const handleSaveCountedQuantities = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       console.log("Temporary Data:", temporaryData);
 
       const payload = Object.entries(temporaryData).map(([id, details]) => ({
@@ -137,7 +146,7 @@ const TaskDetails = () => {
       console.log("Payload to send:", payload);
 
       const response = await axios.post(
-        `http://localhost:3001/tasks/save-counted-quantities/${upload_id}`,
+        `${config.API_URL}/tasks/save-counted-quantities/${upload_id}`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -146,6 +155,7 @@ const TaskDetails = () => {
 
       console.log("Successfully updated:", response.data);
       message.success("บันทึกการเบิกจ่ายเรียบร้อย");
+      
       await completeTask();
     } catch (err) {
       console.error("Failed to save counted quantities:", err);
@@ -159,7 +169,7 @@ const TaskDetails = () => {
         ...prevQuantities,
         [id]: value,
       }));
-      console.log('Updated Counted Quantities:', countedQuantities);
+      console.log("Updated Counted Quantities:", countedQuantities);
     }
   };
 
@@ -191,9 +201,10 @@ const TaskDetails = () => {
     if (!isTaskCompleted) {
       const currentTime = new Date().toISOString(); // เก็บเวลาปัจจุบัน
       const item = formattedData.find((item) => item.id === id);
-      const countedQuantity = countedQuantities[item.id] !== undefined
-            ? countedQuantities[item.id]
-            : item.remaining_quantity;
+      const countedQuantity =
+        countedQuantities[item.id] !== undefined
+          ? countedQuantities[item.id]
+          : item.remaining_quantity;
 
       setTemporaryData((prevData) => {
         const newData = { ...prevData };
@@ -209,7 +220,7 @@ const TaskDetails = () => {
         }
 
         // Log ข้อมูลที่ถูกเก็บชั่วคราว
-        console.log('Temporary Data:', newData);
+        console.log("Temporary Data:", newData);
 
         return newData;
       });
@@ -220,7 +231,12 @@ const TaskDetails = () => {
           : prevSelectedRows.filter((rowId) => rowId !== id)
       );
 
-      console.log('Selected Rows:', checked ? [...selectedRows, id] : selectedRows.filter((rowId) => rowId !== id));
+      console.log(
+        "Selected Rows:",
+        checked
+          ? [...selectedRows, id]
+          : selectedRows.filter((rowId) => rowId !== id)
+      );
     }
   };
 
@@ -276,13 +292,13 @@ const TaskDetails = () => {
   };
 
   const columns = [
-    {
+    /*{
       title: "ลำดับ",
       key: "index",
       render: (text, record, index) =>
         record.rowSpanMaterialId > 0 ? index + 1 : null,
       align: "left",
-    },
+    },*/
     {
       title: "รหัส",
       dataIndex: "matunit",
@@ -360,6 +376,7 @@ const TaskDetails = () => {
           <InputNumber
             defaultValue={record.remaining_quantity}
             onChange={(value) => handleQuantityChange(value, record.id)}
+            disabled={isTaskCompleted}
           />
         ),
       align: "center",
@@ -466,6 +483,22 @@ const TaskDetails = () => {
         }}
       >
         <div className="table-container">
+          <Table
+            columns={columns}
+            dataSource={formattedData}
+            pagination={false}
+            rowKey={(record) => record.material_id}
+            rowClassName={rowClassName}
+            scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+          />
+          <div className="total-quantity sarabun-bold">
+            <p
+              style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
+            >
+              <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
+              {formatNumber(totalRequestedQuantity)}
+            </p>
+          </div>
           <div className="table-buttons">
             <Link to="/MyTasks">
               <Button
@@ -480,21 +513,6 @@ const TaskDetails = () => {
                 ย้อนกลับ
               </Button>
             </Link>
-          </div>
-          <Table
-            columns={columns}
-            dataSource={formattedData}
-            pagination={false}
-            rowKey={(record) => record.material_id}
-            scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
-          />
-          <div className="total-quantity sarabun-bold">
-            <p
-              style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
-            >
-              <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
-              {formatNumber(totalRequestedQuantity)}
-            </p>
           </div>
           {!isTaskCompleted && (
             <div
@@ -513,6 +531,7 @@ const TaskDetails = () => {
                   backgroundColor: "#5755FE",
                   borderColor: "#5755FE",
                 }}
+                disabled={selectedRows.length !== formattedData.length}
               >
                 เสร็จสิ้น
               </Button>
@@ -535,7 +554,7 @@ const TaskDetails = () => {
           dataSource={filteredData}
           pagination={false}
           rowKey={(record) => record.id}
-          scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+          //scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
           rowClassName={rowClassName}
         />
       </Modal>

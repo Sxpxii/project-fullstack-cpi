@@ -16,6 +16,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/MyTasks.css";
+import config from '../../configAPI';
 
 const MyTasks = () => {
   const [username, setUsername] = useState("");
@@ -27,8 +28,8 @@ const MyTasks = () => {
 
   const fetchMyTasks = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3001/tasks/mytasks", {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.get(`${config.API_URL}/tasks/mytasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -40,7 +41,7 @@ const MyTasks = () => {
   };
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
       setUsername(storedUsername);
     }
@@ -61,9 +62,9 @@ const MyTasks = () => {
   const handleReturnTask = async () => {
     if (taskToReturn === null) return; // ตรวจสอบว่า taskToReturn มีค่าหรือไม่
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
-        `http://localhost:3001/tasks/return/${taskToReturn}`, // ใช้ taskToReturn แทน upload_id
+        `${config.API_URL}/tasks/return/${taskToReturn}`, // ใช้ taskToReturn แทน upload_id
         {},
         {
           headers: {
@@ -274,7 +275,7 @@ const MyTasks = () => {
               <div className="title sarabun-bold" style={{ fontSize: "22px" }}>
                 งานที่ดำเนินการเรียบร้อย
               </div>
-              <DatePicker onChange={handleDateFilter} />
+              
             </div>
 
             <Table

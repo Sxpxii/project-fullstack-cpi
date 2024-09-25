@@ -1,10 +1,21 @@
 // src/pages1/staff/Dashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Button, Modal, message, Tag, Card, Breadcrumb } from "antd";
+import {
+  Table,
+  Button,
+  Modal,
+  message,
+  Tag,
+  Card,
+  Checkbox,
+  Row,
+  Col,
+} from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/OperationDashboard.css";
+import config from '../../configAPI';
 
 const OperationsDashboard = () => {
   const [username, setUsername] = useState("");
@@ -12,12 +23,13 @@ const OperationsDashboard = () => {
   const [mytasks, setMyTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedMaterialTypes, setSelectedMaterialTypes] = useState([]);
   const navigate = useNavigate();
 
   const fetchTasks = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3001/tasks", {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.get(`${config.API_URL}/tasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -30,8 +42,8 @@ const OperationsDashboard = () => {
 
   const fetchMyTasks = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3001/tasks/mytasks", {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.get(`${config.API_URL}/tasks/mytasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -42,8 +54,25 @@ const OperationsDashboard = () => {
     }
   };
 
+  const handleMaterialTypeChange = (checkedValues) => {
+    setSelectedMaterialTypes(checkedValues); // อัปเดตประเภทวัตถุดิบที่เลือก
+  };
+
+  // กรองข้อมูลก่อนแสดงผลตามประเภทวัตถุดิบที่เลือก
+  const filteredTasks = tasks.filter((task) =>
+    selectedMaterialTypes.length > 0
+      ? selectedMaterialTypes.includes(task.material_type)
+      : true
+  )
+  .sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
+  
+  const getCurrentDate = () => {
+    return new Date().toISOString().split('T')[0]; // คืนค่าปัจจุบันในรูปแบบ YYYY-MM-DD
+  };
+
+
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
       setUsername(storedUsername);
     }
@@ -63,9 +92,9 @@ const OperationsDashboard = () => {
     }
 
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(
-        `http://localhost:3001/tasks/accept/${selectedTask.upload_id}`,
+        `${config.API_URL}/tasks/accept/${selectedTask.upload_id}`,
         { username },
         {
           headers: {
@@ -121,7 +150,7 @@ const OperationsDashboard = () => {
       render: (date) => new Date(date).toLocaleDateString(),
       align: "left",
     },
-    {
+    /*{
       title: "สถานะ",
       dataIndex: "current_status",
       key: "current_status",
@@ -131,7 +160,7 @@ const OperationsDashboard = () => {
           color = "green";
         } else if (status === "กำลังดำเนินการ") {
           color = "orange";
-        } else if (status === "ตรวจสอบ") {
+        } else if (status === "รอตรวจสอบ") {
           color = "red";
         }
         return (
@@ -139,6 +168,16 @@ const OperationsDashboard = () => {
             {status}
           </Tag>
         );
+      },
+      align: "center",
+    },*/
+    {
+      title: "สถานะ",
+      key: "overdue",
+      render: (record) => {
+        const currentDate = getCurrentDate();
+        const isOverdue = new Date(record.upload_date).toISOString().split('T')[0] < currentDate;
+        return isOverdue ? <Tag color="red">เกินกำหนด</Tag> : null;
       },
       align: "center",
     },
@@ -203,31 +242,6 @@ const OperationsDashboard = () => {
       </div>
 
       <div>
-        {/* <div className="header">
-          <div className="header-content">
-    
-            {/* <div className="header-info">
-                            <p className="greeting sarabun-light">ยินดีต้อนรับ {username}</p>
-                            <p className="date-time sarabun-light">{getCurrentDateTime()}</p>
-                        </div> */}
-        {/* <div>
-                            <Button
-                                className="sarabun-light"
-                                type="primary"
-                                onClick={() => navigate('/mytasks')}
-                                style={{ 
-                                    color: "#f0f0f0",
-                                    backgroundColor: "#5755FE",
-                                    borderColor: "#5755FE",
-                                }}
-                            >
-                            ไปที่หน้าภาระงานของฉัน
-                            </Button>
-                        </div>     */}
-        {/* </div> */}
-        {/* </div> */}
-
-        
         <Card
           style={{
             borderRadius: "15px",
@@ -244,8 +258,31 @@ const OperationsDashboard = () => {
             <span className="ms-2"> {tasks.length} </span>
             <span className="ms-2">รายการ</span>
           </div>
+
+          {/* Checkbox สำหรับกรองประเภทวัตถุดิบ */}
+          <Checkbox.Group
+            style={{ 
+              marginBottom: "20px",
+              fontSize: "18px", 
+              fontFamily: "Sarabun-Light", 
+            }}
+            onChange={handleMaterialTypeChange}
+            options={[
+              { label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
+              { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },
+              { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
+              { label: "สลัก/ตะขอ", value: "PIN" },
+              { label: "แผ่นเหล็ก", value: "BP" },
+              { label: "เคมี", value: "CHEMICAL" },
+            ]}
+          />
+
           <div className="table-responsive">
-            <Table columns={columns} dataSource={tasks} pagination={false} />
+            <Table 
+            columns={columns} 
+            dataSource={filteredTasks} 
+            pagination={false} 
+            />
           </div>
         </Card>
       </div>

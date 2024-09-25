@@ -8,15 +8,19 @@ const dashboardRouter = require('./routes1/dashboard');
 const taskRouter = require('./routes1/task')
 const uploadMaterialRouter = require('./routes1/uploadMaterial');
 const supervisorDashboardRouter = require('./routes1/supervisorDashboard');
+const supervisorAnalysisRouter = require('./routes1/supervisorAnalysis');
 const UserManagementRoutes = require('./routes1/UserManagement')
 
 const app = express();
+const host = '0.0.0.0'; 
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+    origin: '*', // หรือกำหนดเป็น IP เครื่องที่คุณจะเข้าถึงได้ เช่น 'http://192.168.5.93:5173'
+  }));
 app.use(fileUpload({
     useTempFiles: true, // ใช้ temp files สำหรับการอัพโหลด
     tempFileDir: '/tmp/' // ตั้งค่า temp directory
@@ -40,6 +44,7 @@ app.use('/dashboard', dashboardRouter);
 app.use('/tasks', taskRouter);
 app.use('/materials', uploadMaterialRouter);
 app.use('/supervisorDashboard', supervisorDashboardRouter);
+app.use('/supervisorAnalysis', supervisorAnalysisRouter);
 app.use('/UserManagement', UserManagementRoutes);
 
 // Additional GET routes if needed
@@ -48,5 +53,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port http://${host}:${PORT}/`);
 });

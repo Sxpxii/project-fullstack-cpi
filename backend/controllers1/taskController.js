@@ -37,12 +37,12 @@ console.log(todayDate); // แสดงวันที่ในรูปแบ�
 // ฟังก์ชันสำหรับดึงรายการงานทั้งหมด
 const getTasks = async (req, res) => {
     try {
-        const today = getTodayDate();
+        
         const tasks = await db.query(
-            'SELECT * FROM uploads WHERE current_status = $1 AND assigned_to IS NULL AND DATE(upload_date) = $2',
-            ['กำลังดำเนินการ', today]
+            'SELECT * FROM uploads WHERE current_status = $1 AND assigned_to IS NULL' ,
+            ['กำลังดำเนินการ']
         );
-        console.log('Query Parameters:', ['กำลังดำเนินการ', today]);
+        console.log('Query Parameters:', ['กำลังดำเนินการ']);
 
         console.log('Tasks fetched:', tasks.rows);
         res.json(tasks.rows);
@@ -75,10 +75,9 @@ const acceptTask = async (req, res) => {
 // ฟังก์ชันสำหรับดึงงานของผู้ใช้
 const getMyTasks = async (req, res) => {
     const { userId } = req.user; 
-    const today = getTodayDate();
-
+    
     try {
-        const tasks = await db.query('SELECT * FROM uploads WHERE assigned_to = $1 AND DATE(upload_date) = $2', [userId , today]);
+        const tasks = await db.query('SELECT * FROM uploads WHERE assigned_to = $1 ', [userId ]);
         res.json(tasks.rows);
     } catch (error) {
         console.error('Error fetching my tasks:', error);
@@ -124,7 +123,8 @@ const getTaskDetails = async (req, res) => {
               'matin', b.matin,
               'location', b.location,
               'used_quantity', b.used_quantity,
-              'remaining_quantity', b.remaining_quantity
+              'remaining_quantity', b.remaining_quantity,
+              'counted_quantity', b.counted_quantity
             )
             ORDER BY b.matin
           ) AS details
@@ -290,7 +290,8 @@ const getStatus = async (req, res) => {
       const result = await db.query('SELECT current_status FROM uploads WHERE upload_id = $1', [upload_id]);
   
       if (result.rows.length > 0) {
-        res.json({ status: result.rows[0].status });
+        console.log("Status from database:", result.rows[0].current_status);
+        res.json({ status: result.rows[0].current_status });
       } else {
         res.status(404).json({ error: 'Upload not found' });
       }

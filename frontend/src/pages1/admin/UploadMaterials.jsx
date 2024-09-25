@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
-  Spin,
+  Space,
   message,
   Card,
   Row,
@@ -18,6 +18,7 @@ import { HiMiniPencilSquare } from "react-icons/hi2";
 import { FaCheck, FaTrashCan } from "react-icons/fa6";
 import MainLayout from "../../components/LayoutAdmin";
 import "../../styles1/UploadMaterial.css"; // นำเข้า CSS
+import config from '../../configAPI';
 
 function UploadMaterials() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -41,7 +42,7 @@ function UploadMaterials() {
     const fetchMaterials = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:3001/materials", {
+        const response = await axios.get(`${config.API_URL}/materials`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setMaterials(response.data); // เก็บข้อมูลใน state
@@ -78,7 +79,7 @@ function UploadMaterials() {
       title: "",
       key: "actions",
       render: (text, record) => (
-        <div>
+        <Space>
           <Button
             style={{
               color: "#5755FE",
@@ -98,7 +99,7 @@ function UploadMaterials() {
             icon={<FaTrashCan />}
             onClick={() => handleDelete(record)}
           />
-        </div>
+        </Space>
       ),
       align: "center",
     },
@@ -149,7 +150,7 @@ function UploadMaterials() {
       const values = form.getFieldsValue();
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:3001/materials/${editingRecord.material_id}`,
+        `${config.API_URL}/materials/${editingRecord.material_id}`,
         values,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -158,7 +159,7 @@ function UploadMaterials() {
       message.success("อัปเดตข้อมูลวัสดุเรียบร้อยแล้ว");
       // รีเฟรชข้อมูลวัสดุหลังจากอัปเดต
       const updatedMaterials = await axios.get(
-        "http://localhost:3001/materials",
+        `${config.API_URL}/materials`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -183,11 +184,25 @@ function UploadMaterials() {
       content: `คุณแน่ใจหรือไม่ว่าต้องการลบ  ${record.matunit} : ${record.mat_name}`,
       okText: "ยืนยัน",
       cancelText: "ยกเลิก",
+      okButtonProps: {
+        style: {
+          color: "#f0f0f0",
+          backgroundColor: "#5755FE",
+          borderColor: "#5755FE",
+        },
+      },
+      cancelButtonProps: {
+        style: {
+          color: "#5755FE",
+          backgroundColor: "#f0f0f0",
+          borderColor: "#f0f0f0",
+        },
+      },
       onOk: async () => {
         try {
           const token = localStorage.getItem("token");
           await axios.delete(
-            `http://localhost:3001/materials/${record.material_id}`,
+            `${config.API_URL}/materials/${record.material_id}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -195,7 +210,7 @@ function UploadMaterials() {
           message.success("ลบข้อมูลเรียบร้อยแล้ว");
           // Refresh data
           const updatedMaterials = await axios.get(
-            "http://localhost:3001/materials",
+            `${config.API_URL}/materials`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -226,7 +241,7 @@ function UploadMaterials() {
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
-        "http://localhost:3001/materials/upload",
+        `${config.API_URL}/materials/upload`,
         formData,
         {
           headers: {
@@ -239,7 +254,7 @@ function UploadMaterials() {
       setUploadMessage("บันทึกข้อมูลเรียบร้อยแล้ว");
       // รีเฟรชข้อมูลวัสดุหลังอัปโหลด
       const updatedMaterials = await axios.get(
-        "http://localhost:3001/materials",
+        `${config.API_URL}/materials`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -261,13 +276,13 @@ function UploadMaterials() {
   const handleSaveRow = async (values) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:3001/materials", values, {
+      await axios.post(`${config.API_URL}/materials`, values, {
         headers: { Authorization: `Bearer ${token}` },
       });
       message.success("บันทึกข้อมูลเรียบร้อยแล้ว");
       setAddingNewRow(false);
       const updatedMaterials = await axios.get(
-        "http://localhost:3001/materials",
+        `${config.API_URL}/materials`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -386,6 +401,20 @@ function UploadMaterials() {
         onCancel={handleCancelEdit}
         okText="บันทึก"
         cancelText="ยกเลิก"
+        okButtonProps={{
+          style: {
+            color: "#f0f0f0",
+            backgroundColor: "#5755FE",
+            borderColor: "#5755FE",
+          },
+        }}
+        cancelButtonProps={{
+          style: {
+            color: "#f0f0f0",
+            backgroundColor: "#5755FE",
+            borderColor: "#5755FE",
+          },
+        }}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -419,6 +448,20 @@ function UploadMaterials() {
         onCancel={handleCancelRow}
         okText="บันทึก"
         cancelText="ยกเลิก"
+        okButtonProps={{
+          style: {
+            color: "#f0f0f0",
+            backgroundColor: "#5755FE",
+            borderColor: "#5755FE",
+          },
+        }}
+        cancelButtonProps={{
+          style: {
+            color: "#f0f0f0",
+            backgroundColor: "#5755FE",
+            borderColor: "#5755FE",
+          },
+        }}
       >
         <Form layout="vertical" form={form}>
           <Form.Item

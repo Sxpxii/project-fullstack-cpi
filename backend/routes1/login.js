@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, logout, refreshToken, authenticateToken, authorizeRoles, checkSession } = require('../controllers1/loginController1');
+const { register, login, logout, refreshToken, authenticateToken, authorizeRoles } = require('../controllers1/loginController1');
 
 // Routes
 router.post('/register',  register);
 router.post('/login', login);
 router.post('/logout', authenticateToken, logout);
 router.post('/refreshToken', refreshToken);
-router.post('/checkSession', checkSession);
+router.post('/check-role', authorizeRoles);
+
+
 
 // GET Routes
 router.get('/register', (req, res) => {

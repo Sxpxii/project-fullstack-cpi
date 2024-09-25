@@ -5,6 +5,7 @@ import { Button, Table, Radio, Card, Modal, Input, Breadcrumb } from "antd";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/EditDetails.css";
 import { HiMiniPencilSquare } from "react-icons/hi2";
+import config from '../../configAPI';
 
 const EditDetails = () => {
   const [username, setUsername] = useState("");
@@ -23,9 +24,9 @@ const EditDetails = () => {
     }
 
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/dashboard/edit-details/${upload_id}`,
+        `${config.API_URL}/dashboard/edit-details/${upload_id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -54,9 +55,9 @@ const EditDetails = () => {
       console.log(
         `Fetching total requested quantity for upload_id: ${upload_id}`
       );
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.get(
-        `http://localhost:3001/dashboard/details/${upload_id}/total-requested-quantity`,
+        `${config.API_URL}/dashboard/details/${upload_id}/total-requested-quantity`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -69,7 +70,7 @@ const EditDetails = () => {
   };
 
   useEffect(() => {
-    const storedUsername = localStorage.getItem("username");
+    const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
       setUsername(storedUsername);
     }
@@ -95,7 +96,7 @@ const EditDetails = () => {
           : currentRecord.reason;
 
       await axios.post(
-        `http://localhost:3001/dashboard/update-details/${upload_id}`,
+        `${config.API_URL}/dashboard/update-details/${upload_id}`,
         { ...currentRecord, reason: reasonToSave }
       );
 
@@ -139,12 +140,12 @@ const EditDetails = () => {
   };
 
   const columns = [
-    {
+    /*{
       title: "ลำดับ",
       key: "index",
       render: (text, record, index) => index + 1,
       align: "left",
-    },
+    },*/
     {
       title: "รหัส",
       dataIndex: "matunit",
@@ -338,11 +339,14 @@ const EditDetails = () => {
             flexDirection: "column",
           }}
         >
-          <Radio className="sarabun-light" value="ส่งมาไม่ครบจาก Supplier">
-            ส่งมาไม่ครบจาก Supplier
+          <Radio className="sarabun-light" value="เช็คยอดคงเหลือผิด">
+            เช็คยอดคงเหลือผิด
           </Radio>
-          <Radio className="sarabun-light" value="สูญหาย/หาไม่เจอ">
-            สูญหาย/หาไม่เจอ
+          <Radio className="sarabun-light" value="จ่ายไม่ครบ">
+            จ่ายไม่ครบ
+          </Radio>
+          <Radio className="sarabun-light" value="ยังไม่ได้ Move ของไปจัดเก็บจริง">
+            ยังไม่ได้ Move ของไปจัดเก็บจริง
           </Radio>
           <Radio className="sarabun-light" value="อื่นๆ">
             อื่นๆ

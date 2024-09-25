@@ -6,6 +6,7 @@ import Chart from "react-apexcharts";
 import "../../styles1/SupervisorDashboard.css";
 import MainLayout from "../../components/LayoutSupervisor";
 import ReactApexChart from "react-apexcharts";
+import config from '../../configAPI';
 
 const { Option } = Select;
 
@@ -42,21 +43,21 @@ const SupervisorDashboard = () => {
           uploadDetailsResponse,
         ] = await Promise.all([
           axios.get(
-            `http://localhost:3001/supervisorDashboard/daily-overview`,
+           `${config.API_URL}/supervisorDashboard/daily-overview`,
             {
               params: { date: today },
             }
           ),
           axios.get(
-            `http://localhost:3001/supervisorDashboard/inventory-stock`,
+            `${config.API_URL}/supervisorDashboard/inventory-stock`,
             {
               params: { materialType: selectedMaterialType },
             }
           ),
-          axios.get(`http://localhost:3001/supervisorDashboard/daily-issues`, {
+          axios.get(`${config.API_URL}/supervisorDashboard/daily-issues`, {
             params: { date: today },
           }),
-          axios.get(`http://localhost:3001/supervisorDashboard/daily-details`, {
+          axios.get(`${config.API_URL}/supervisorDashboard/daily-details`, {
             // ดึงข้อมูล upload details
             params: { date: today },
           }),
@@ -193,23 +194,39 @@ const SupervisorDashboard = () => {
       title: "Inventory ID",
       dataIndex: "inventory_id",
       key: "inventory_id",
+      align: "center",
+    },
+    {
+      title: "วัตถุดิบ",  // เพิ่มคอลัมน์สำหรับวัตถุดิบ
+      dataIndex: "material_type",
+      key: "material_type",
+      align: "center",
+    },
+    {
+      title: "จำนวนสั่งเบิกทั้งหมด",  // เพิ่มคอลัมน์สำหรับยอดสั่งเบิกทั้งหมด
+      dataIndex: "total_requested",
+      key: "total_requested",
+      align: "center", 
     },
     {
       title: "ธุรการ",
       dataIndex: "user_username",
       key: "user_username",
       render: (text, record) => `${record.user_username}`,
+      align: "center",
     },
     {
       title: "เจ้าหน้าที่",
       dataIndex: "assigned_username",
       key: "assigned_username",
       render: (text, record) => `${record.assigned_username}`,
+      align: "center",
     },
     {
       title: "เวลา",
       dataIndex: "duration",
       key: "duration",
+      align: "center",
     },
   ];
 
@@ -239,32 +256,33 @@ const SupervisorDashboard = () => {
         >
           <Row gutter={16}>
             <Col className="gutter-row" span={6}>
-              <Card>
+              <Card  style={{ backgroundColor: '#91caff'}}>
                 <div className="sarabun-bold" >จำนวนงานทั้งหมด</div>
                 <div className="sarabun-bold" >{dailyOverview.total || 0} รายการ</div>
               </Card>
             </Col>
             <Col className="gutter-row" span={6}>
-              <Card >
+              <Card  style={{ backgroundColor: '#ffd591'}}>
                 <div className="sarabun-bold" >กำลังดำเนินการ</div>
                 <div className="sarabun-bold" >{dailyOverview.in_progress || 0} รายการ</div>
               </Card>
             </Col>
             <Col className="gutter-row" span={6}>
-              <Card>
+              <Card  style={{ backgroundColor: '#ffa5a1'}}>
                 <div className="sarabun-bold" >รอตรวจสอบ</div>
                 <div className="sarabun-bold" >{dailyOverview.pending_review || 0} รายการ</div>
               </Card>
             </Col>
             <Col className="gutter-row" span={6}>
-              <Card>
+              <Card  style={{ backgroundColor: '#b7eb8f'}}>
                 <div className="sarabun-bold" >ดำเนินการเรียบร้อย</div>
                 <div className="sarabun-bold" >{dailyOverview.completed || 0} รายการ</div>
               </Card>
             </Col>
           </Row>
-          <Row gutter={16}>
-            <Col>
+
+          <Row gutter={16} style={{ marginTop: 30 }}>
+            <Col span={12}>
               <Card className="sarabun-light" title="Problem">
                 <ReactApexChart
                   options={donutChartOptions}
@@ -274,7 +292,20 @@ const SupervisorDashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={24}>
+
+            <Col span={12}>
+            <Card className="sarabun-light" title="Upload Details">
+                <Table
+                  dataSource={uploadDetails}
+                  columns={columns}
+                  rowKey="upload_id"
+                  pagination={{ pageSize: 10 }}
+                />
+            </Card>
+            </Col>
+          </Row>
+          <Row style={{ marginTop: 30 }}>
+          <Col span={24}>
               <Card className="sarabun-light" title="Inventory Stock">
                 <Select
                   className="sarabun-light"
@@ -307,27 +338,6 @@ const SupervisorDashboard = () => {
                 />
               </Card>
             </Col>
-          </Row>
-          <Row>
-            <Card>
-              <div style={{ marginTop: 30 }}>
-                <div
-                  style={{
-                    fontSize: "20px",
-                    marginBottom: "10px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Upload Details
-                </div>
-                <Table
-                  dataSource={uploadDetails}
-                  columns={columns}
-                  rowKey="upload_id"
-                  pagination={{ pageSize: 10 }}
-                />
-              </div>
-            </Card>
           </Row>
         </div>
       </div>

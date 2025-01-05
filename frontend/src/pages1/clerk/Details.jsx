@@ -5,7 +5,7 @@ import { Table, Button, Card } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/Details.css"; // นำเข้าไฟล์ CSS
-import config from '../../configAPI';
+import config from "../../configAPI";
 
 const Details = () => {
   const [username, setUsername] = useState("");
@@ -59,7 +59,6 @@ const Details = () => {
       fetchTotalRequested(id);
     }
   }, [id, upload_id]);
-  
 
   // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
   const formatNumber = (number) => {
@@ -89,25 +88,38 @@ const Details = () => {
 
   const columns = [
     /*{
-      title: "ลำดับ",
-      key: "index",
-      render: (text, record, index) => index + 1,
-      align: "left",
-    },*/
-    {
       title: "รหัส",
       dataIndex: "matunit",
       key: "matunit",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
       render: (text, record, index) => ({
         children: text,
         props: { rowSpan: record.rowSpanMatunit },
       }),
       align: "left",
-    },
+    },*/
     {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
+      width: 270,
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
       render: (text, record, index) => ({
         children: text,
         props: { rowSpan: record.rowSpanMatName },
@@ -115,9 +127,18 @@ const Details = () => {
       align: "left",
     },
     {
-      title: "จำนวนที่สั่งเบิก",
+      title: "จำนวนสั่งเบิก",
       dataIndex: "quantity",
       key: "quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
       render: (text, record, index) => ({
         children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
         props: { rowSpan: record.rowSpanQuantity },
@@ -129,17 +150,60 @@ const Details = () => {
       dataIndex: "lot",
       key: "lot",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
     {
       title: "ตำแหน่ง",
       dataIndex: "location",
       key: "location",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
+    },
+    {
+      title: "จำนวนที่หยิบ",
+      dataIndex: "used_quantity",
+      key: "used_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
+      render: (text) => formatNumber(text),
+      align: "center",
     },
     {
       title: "จำนวนคงเหลือ",
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
       render: (text) => formatNumber(text),
       align: "center",
     },
@@ -148,6 +212,15 @@ const Details = () => {
       dataIndex: "reason",
       key: "reason",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
   ];
 
@@ -160,7 +233,7 @@ const Details = () => {
     <MainLayout>
       <div
         style={{
-          backgroundColor: " #ffffff",
+          backgroundColor: " #DCDCDC",
           padding: "15px 30p",
           marginBottom: "20px",
           borderRadius: "15px",
@@ -173,20 +246,10 @@ const Details = () => {
             style={{
               fontSize: "28px",
               marginLeft: "20px",
-              padding: "10px",
+              padding: "20px",
             }}
           >
             รายละเอียดการเบิก-จ่ายวัตถุดิบ
-          </div>
-          <div
-            className="sarabun-light"
-            style={{
-              fontSize: "14px",
-              marginLeft: "20px",
-              padding: "10px",
-            }}
-          >
-            <span className="ms-2"> {getCurrentDateTime()}</span>
           </div>
         </div>
       </div>
@@ -201,10 +264,20 @@ const Details = () => {
             columns={columns}
             dataSource={formattedData}
             pagination={false}
+            //pagination={{ pageSize: 10 }}
             rowKey={(record) => record.id}
+            scroll={{ y: "calc(200vh - 250px)" }}
+            className="custom-table"
           />
         </div>
-        <div className="total-quantity sarabun-bold">
+        <div
+          className="total-quantity sarabun-bold"
+          style={{
+            backgroundColor: " #DCDCDC",
+            marginBottom: "20px",
+            borderRadius: "8px",
+          }}
+        >
           <p style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}>
             <strong>รวมจำนวนที่สั่งเบิก:</strong> {formatNumber(totalRequested)}
           </p>
@@ -214,8 +287,8 @@ const Details = () => {
             <button
               className="sarabun-light"
               style={{
-                color: "#f0f0f0",
-                backgroundColor: "#5755FE",
+                color: "#5755FE ",
+                backgroundColor: "#f0f0f0",
                 borderColor: "#5755FE",
                 marginRight: "5px",
               }}

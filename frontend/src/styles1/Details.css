@@ -64,6 +64,7 @@ h1 {
 
 .ant-table {
   width: 100%;
+  border: 2px solid #000000; 
 }
 
 .ant-table-wrapper {
@@ -81,7 +82,50 @@ h1 {
 
 .ant-table-thead > tr > th {
   background: #f9f9f9;
+  border-bottom: 2px solid #000000;
 }
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #000000; /* สีเส้นขอบของแถวในตาราง */
+}
+
+.custom-table .ant-table {
+  border: none; /* ซ่อนเส้นขอบรอบตาราง */
+}
+
+.custom-table .ant-table-thead > tr > th {
+  border-bottom: 1px solid #A9A9A9; /* แสดงเส้นขอบที่ด้านล่างของ header */
+}
+
+.custom-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #A9A9A9; /* แสดงเส้นขอบที่ด้านล่างของ cell */
+}
+
+.custom-table .ant-table-tbody > tr > td:first-child {
+  border-left: none; /* ซ่อนเส้นขอบด้านซ้ายของ cell แรก */
+}
+
+.custom-table .ant-table-tbody > tr > td:last-child {
+  border-right: none; /* ซ่อนเส้นขอบด้านขวาของ cell สุดท้าย */
+}
+
+.custom-table .ant-table-body::-webkit-scrollbar {
+  width: 10px; /* กำหนดความกว้างของ Scrollbar */
+}
+
+.custom-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: #5755FE; /* กำหนดสีของ Scrollbar */
+  border-radius: 5px; /* ทำให้ขอบ Scrollbar โค้งมน */
+}
+
+.custom-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #4c4aff; /* เปลี่ยนสีเมื่อ Hover */
+}
+
+.custom-table .ant-table-body::-webkit-scrollbar-track {
+  background: #f0f0f0; /* กำหนดสีพื้นหลังของ Scrollbar */
+}
+
 
 /* Responsive design */
 @media (max-width: 768px) {

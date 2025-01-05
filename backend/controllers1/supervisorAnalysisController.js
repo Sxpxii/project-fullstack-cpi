@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { pool1 } = require('../config/db');
 
 const getProcessPerformance = async (req, res) => {
     const { month, year } = req.query; // รับข้อมูลเดือนและปีจาก query params
@@ -20,7 +20,7 @@ const getProcessPerformance = async (req, res) => {
         `;
 
         const values = [month ? parseInt(month) : null, year ? parseInt(year) : null];
-        const { rows } = await pool.query(query, values);
+        const { rows } = await pool1.query(query, values);
 
         const totalUploads = rows.length;
 

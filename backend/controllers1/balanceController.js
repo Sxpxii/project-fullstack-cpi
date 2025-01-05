@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const pool = require('../config/db');
+const { pool1 } = require('../config/db');
 const {logUserAction} = require('../controllers1/loginController1');
 
 /*const logUserAction = async (userId, action) => {
-    const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
+    const client = await pool1.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
         await client.query('BEGIN'); // เริ่ม transaction
 
@@ -26,7 +26,7 @@ const {logUserAction} = require('../controllers1/loginController1');
 
 const findMaterialId = async (matunit, matname) => {
     try {
-        const result = await pool.query('SELECT material_id FROM materials WHERE matunit = $1 AND mat_name = $2', [matunit, matname]);
+        const result = await pool1.query('SELECT material_id FROM materials WHERE matunit = $1 AND mat_name = $2', [matunit, matname]);
         return result.rows.length > 0 ? result.rows[0].material_id : null;
     } catch (error) {
         console.error('Error finding material ID:', error);
@@ -35,7 +35,7 @@ const findMaterialId = async (matunit, matname) => {
 };
 
 const insertMaterialBalance = async (materialId, row) => {
-    const client = await pool.connect();
+    const client = await pool1.connect();
     try {
         const queryText = `
             INSERT INTO materialbalances (material_id, date, lot, matin, location, quantity, remaining_quantity)
@@ -64,7 +64,7 @@ const insertMaterialBalance = async (materialId, row) => {
 };
 
 const moveToHistoryAndClearBalances = async () => {
-    const client = await pool.connect();
+    const client = await pool1.connect();
     try {
         await client.query('BEGIN');
         await client.query(`

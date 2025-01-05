@@ -2,10 +2,10 @@
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const pool = require('../config/db');
+const { pool1 , pool2 } = require('../config/db');
 
 const logUserAction = async (userId, action) => {
-    const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
+    const client = await pool1.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
         await client.query('BEGIN'); // เริ่ม transaction
 
@@ -24,9 +24,55 @@ const logUserAction = async (userId, action) => {
     }
 };
 
+const fetchMaterialsFromDB2 = async () => {
+  const client = await pool2.connect();
+  try {
+      const query = 'SELECT matunit, mat_name FROM materials'; // ปรับ query ให้เหมาะสมกับโครงสร้างฐานข้อมูลที่ 2
+      const result = await client.query(query);
+      console.log('Materials fetched from DB2:', result);
+      return result.rows; // คืนค่าข้อมูลที่ดึงมา
+  } catch (error) {
+      console.error('Error fetching data from DB2:', error);
+      throw error;
+  } finally {
+      client.release(); // ปล่อย client กลับไปยัง pool
+  }
+};
+
+const insertMaterialsFromDB2 = async (req, res) => {
+  try {
+      const materials = await fetchMaterialsFromDB2(); // ดึงข้อมูลจากฐานข้อมูลตัวที่ 2
+      console.log('Materials fetched from DB2:', materials);
+
+      const data = [];
+      const errors = [];
+
+      for (const material of materials) {
+          try {
+              await insertMaterial(material, true); // บันทึกข้อมูลลงในฐานข้อมูลตัวที่ 1
+              data.push(material);
+          } catch (error) {
+              console.error('Error inserting material:', material, error);
+              errors.push(material);
+          }
+      }
+
+      const userId = req.user ? req.user.userId : null;
+      if (userId) {
+          await logUserAction(userId, 'ดึงข้อมูลจาก DB2 และบันทึกใน DB1');
+      }
+
+      res.json({ data, errors });
+  } catch (error) {
+      console.error('Error inserting materials from DB2:', error);
+      res.status(500).send(error.message);
+  }
+};
+
+
 // ฟังก์ชันเพิ่มข้อมูลวัตถุดิบ
 const insertMaterial = async (row, skipDuplicateCheck = false) => {
-    const client = await pool.connect();
+    const client = await pool1.connect();
     try {
         // ตรวจสอบว่ามีวัสดุนี้อยู่ในฐานข้อมูลแล้วหรือไม่
         const duplicateCheckQuery = `
@@ -56,7 +102,7 @@ const insertMaterial = async (row, skipDuplicateCheck = false) => {
     }
 };
 
-// ฟังก์ชันจัดการการอัปโหลด
+/*// ฟังก์ชันจัดการการอัปโหลด
 const handleUpload = async (req, res) => {
     try {
       if (!req.files || !req.files.file) {
@@ -151,7 +197,7 @@ const insertMaterialFromForm = async (req, res) => {
       console.error('Error inserting material from form:', error);
       res.status(500).json({ message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' });
     }
-  };
+  };*/
   
 
 // ดึงข้อมูลวัสดุทั้งหมดจากตาราง materials
@@ -176,7 +222,7 @@ const getMaterials = async (req, res) => {
             }
         }
 
-        const result = await pool.query(query, queryParams);
+        const result = await pool1.query(query, queryParams);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching materials:', error);
@@ -196,7 +242,7 @@ const updateMaterial = async (req, res) => {
         WHERE material_id = $3
       `;
       const values = [matunit, mat_name, material_id];
-      await pool.query(updateQuery, values);
+      await pool1.query(updateQuery, values);
       
       res.json({ success: true, message: 'ข้อมูลวัสดุถูกอัปเดตเรียบร้อยแล้ว' });
     } catch (error) {
@@ -209,7 +255,7 @@ const updateMaterial = async (req, res) => {
 const deleteMaterial = async (req, res) => {
     const { material_id } = req.params;
     try {
-      await pool.query('DELETE FROM materials WHERE material_id = $1', [material_id]);
+      await pool1.query('DELETE FROM materials WHERE material_id = $1', [material_id]);
       res.status(200).json({ message: 'ลบข้อมูลเรียบร้อยแล้ว' });
     } catch (error) {
       console.error('Error deleting material:', error);
@@ -219,9 +265,8 @@ const deleteMaterial = async (req, res) => {
   
 
 module.exports = {
-    handleUpload,
-    insertMaterialFromForm, 
     getMaterials,
     deleteMaterial,
     updateMaterial, 
+    insertMaterialsFromDB2
 };

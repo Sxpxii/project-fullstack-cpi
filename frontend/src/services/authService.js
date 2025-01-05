@@ -20,7 +20,7 @@ axios.interceptors.response.use(
     response => response,
     async error => {
         const originalRequest = error.config;
-        if (error.response.status === 401 && error.response.data.error === 'TokenExpiredError') {
+        if (error.response && error.response.status === 401 && error.response.data.error === 'TokenExpiredError') {
             try {
                 const refreshToken = sessionStorage.getItem('refreshToken');
                 if (!refreshToken) throw new Error('No refresh token available');

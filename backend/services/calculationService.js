@@ -1,11 +1,12 @@
-const pool = require('../config/db');
+const { pool1 } = require('../config/db');
 
 // ฟังก์ชันดึงข้อมูลจากตารางวัตถุดิบ
 const getMaterialRequestData = async (uploadId) => {
     try {
         const queryText = `
             SELECT * FROM materialrequests WHERE upload_id = $1`;
-        const res = await pool.query(queryText, [uploadId]);
+        const res = await pool1.query(queryText, [uploadId]);
+        console.log("MaterialRequestData:", res.rows);
         return res.rows;
     } catch (err) {
         console.error('Error fetching material request data:', err);
@@ -22,7 +23,8 @@ const getMaterialBalanceData = async (materialIds) => {
             AND quantity != 0
             AND remaining_quantity != 0
         `;
-        const res = await pool.query(queryText, [materialIds]);
+        const res = await pool1.query(queryText, [materialIds]);
+        console.log("BalanceData:", res.rows);
         return res.rows;
     } catch (err) {
         console.error('Error fetching material balance data:', err);
@@ -62,15 +64,15 @@ const compareMatin = (a, b) => {
 const checkTask = async (uploadId) => {
     try {
         // ดึงข้อมูล material_id จากตาราง materialrequests ตาม upload_id
-        const materialRequestsResult = await pool.query(`
+        const materialRequestsResult = await pool1.query(`
             SELECT material_id FROM materialrequests WHERE upload_id = $1
         `, [uploadId]);
 
         const materialIds = materialRequestsResult.rows.map(row => row.material_id);
-        console.log('Material IDs:', materialIds);
+        //console.log('Material IDs:', materialIds);
 
         // ดึงข้อมูลจากตาราง materialbalances ตาม material_ids
-        const materialBalancesResult = await pool.query(`
+        const materialBalancesResult = await pool1.query(`
             SELECT material_id, lot, matin, location, quantity, remaining_quantity
             FROM materialbalances
             WHERE material_id = ANY($1)
@@ -78,10 +80,10 @@ const checkTask = async (uploadId) => {
         `, [materialIds]);
 
         const materialBalances = materialBalancesResult.rows;
-        console.log('Material Balances:', materialBalances);
+        //console.log('Material Balances:', materialBalances);
 
         // ดึงข้อมูลจากตาราง materials ตาม material_ids
-        const materialsResult = await pool.query(`
+        const materialsResult = await pool1.query(`
             SELECT material_id, matunit, mat_name
             FROM materials
             WHERE material_id = ANY($1)
@@ -92,15 +94,15 @@ const checkTask = async (uploadId) => {
             acc[row.material_id] = { matunit: row.matunit, mat_name: row.mat_name };
             return acc;
         }, {});
-        console.log('Materials:', materials);
+        //console.log('Materials:', materials);
 
         // ตรวจสอบการตัดจากตาราง material_usage
-        const materialUsageResult = await pool.query(`
+        const materialUsageResult = await pool1.query(`
             SELECT DISTINCT matin FROM material_usage WHERE upload_id = $1
         `, [uploadId]);
 
         const usedMatins = new Set(materialUsageResult.rows.map(row => row.matin));
-        console.log('Used Matins:', usedMatins); 
+        //console.log('Used Matins:', usedMatins); 
 
         const sortedMaterialBalances = materialBalances.sort((a, b) => {
             if (a.material_id === b.material_id) {
@@ -108,7 +110,7 @@ const checkTask = async (uploadId) => {
             }
             return a.material_id - b.material_id;
         });
-        console.log('Sorted Material Balances:', sortedMaterialBalances);
+        //console.log('Sorted Material Balances:', sortedMaterialBalances);
 
         // คำนวณข้อมูลที่ต้องบันทึกลงในตาราง check_cutting
         const checkCuttingData = sortedMaterialBalances.map(balance => {
@@ -149,10 +151,10 @@ const checkTask = async (uploadId) => {
             data.cut_status
         ]);
 
-        console.log('Query Text:', queryText); 
-        console.log('Values:', values);
+        //console.log('Query Text:', queryText); 
+        //console.log('Values:', values);
 
-        await pool.query(queryText, values);
+        await pool1.query(queryText, values);
 
     } catch (error) {
         console.error('Error checking task:', error);
@@ -163,7 +165,7 @@ const checkTask = async (uploadId) => {
 
 // ฟังก์ชันคำนวณ FIFO
 const calculateFIFO = async (uploadId) => {
-    const client = await pool.connect();
+    const client = await pool1.connect();
     try {
         await client.query('BEGIN');
 
@@ -185,23 +187,25 @@ const calculateFIFO = async (uploadId) => {
         }, {});
         
         const results = [];
+        const insufficientStock = [];
 
         for (let request of requestData) {
             const balances = balanceGroupedByMaterial[request.material_id] || [];
             balances.sort((a, b) => compareMatin(a.matin, b.matin));
 
             let requestedQuantity = request.quantity;
+            const usedBalances = [];
 
             for (let balance of balances) {
                 if (requestedQuantity <= 0 || (balance.remaining_quantity !== null && balance.remaining_quantity <= 0)) break;
 
                 const currentRemainingQuantity = balance.remaining_quantity !== null ? balance.remaining_quantity : balance.quantity;
                 if (currentRemainingQuantity <= 0) continue;
-                
+
                 const usedQuantity = Math.min(requestedQuantity, currentRemainingQuantity);
                 const remainingQuantity = currentRemainingQuantity - usedQuantity;
 
-                results.push({
+                usedBalances.push({
                     material_id: request.material_id,
                     lot: balance.lot,
                     matin: balance.matin,
@@ -211,34 +215,89 @@ const calculateFIFO = async (uploadId) => {
                     remaining_quantity: remainingQuantity,
                 });
 
-                // อัพเดตในฐานข้อมูล
-                await client.query(`
-                    UPDATE materialbalances
-                    SET remaining_quantity = $1
-                    WHERE material_id = $2 AND lot = $3 AND matin = $4 AND location = $5
-                `, [remainingQuantity, request.material_id, balance.lot, balance.matin, balance.location]);
-                
-                // บันทึกการใช้ `matin` กับ `uploadId`
-                await client.query(`
-                    INSERT INTO material_usage (upload_id, material_id, lot, matin, location, quantity, used_quantity, remaining_quantity)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                `, [uploadId, request.material_id, balance.lot, balance.matin, balance.location, request.quantity, usedQuantity, remainingQuantity]);
-
+                // ลดค่า requestedQuantity
                 requestedQuantity -= usedQuantity;
+            }
+
+            // หากยอดไม่พอ ให้เก็บใน insufficientStock
+            if (requestedQuantity > 0) {
+                const materialName = await getMaterialNameById(request.material_id); 
+                insufficientStock.push({
+                    material_id: request.material_id,
+                    material_name: materialName,
+                    required_quantity: request.quantity,
+                    available_quantity: request.quantity - requestedQuantity,
+                });
+            } else {
+                results.push(...usedBalances);
             }
         }
 
+        if (insufficientStock.length > 0) {
+            console.log("Insufficient stock data:", insufficientStock);
+            await client.query('ROLLBACK');
+            await rollbackData(client, uploadId);
+            return { insufficientStock };
+        }
+
+        console.log("FIFO results data:", results);
+
+        // บันทึกข้อมูลลงฐานข้อมูลในกรณีที่มีข้อมูลใน results
+        for (let result of results) {
+            await client.query(`
+                UPDATE materialbalances
+                SET remaining_quantity = $1
+                WHERE material_id = $2 AND lot = $3 AND matin = $4 AND location = $5
+            `, [result.remaining_quantity, result.material_id, result.lot, result.matin, result.location]);
+
+            await client.query(`
+                INSERT INTO material_usage (upload_id, material_id, lot, matin, location, quantity, used_quantity, remaining_quantity)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `, [uploadId, result.material_id, result.lot, result.matin, result.location, result.quantity, result.used_quantity, result.remaining_quantity]);
+            
+            // ปรับค่า requestedQuantity ที่นี่หลังจากการบันทึก
+            //requestedQuantity -= result.used_quantity;
+        }
+
         await client.query('COMMIT');
-        console.log('FIFO calculation results:', results);
-        return results;
+        return { results };
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error calculating FIFO:', err);
+        await rollbackData(client, uploadId);
+        res.status(500).json({ error: 'เกิดข้อผิดพลาดในการคำนวณ FIFO กรุณาลองใหม่อีกครั้ง' });
         throw err;
     } finally {
         client.release();
     }
 };
+
+const rollbackData = async (client, uploadId) => {
+    try {
+        // ลบข้อมูลที่เกี่ยวข้องจาก materialrequests และ uploads
+        await client.query(`
+            DELETE FROM materialrequests WHERE upload_id = $1
+        `, [uploadId]);
+        await client.query(`
+            DELETE FROM operationstatuses WHERE upload_id = $1
+        `, [uploadId]);
+        await client.query(`
+            DELETE FROM uploads WHERE upload_id = $1
+        `, [uploadId]);
+        console.log(`Rolled back data for uploadId: ${uploadId}`);
+    } catch (err) {
+        console.error('Error rolling back data:', err);
+        throw err;
+    }
+};
+
+
+const getMaterialNameById = async (materialId) => {
+    const query = 'SELECT mat_name FROM materials WHERE material_id = $1';
+    const result = await pool1.query(query, [materialId]);
+    return result.rows[0]?.mat_name || 'Unknown';
+};
+
 
 module.exports = {
     calculateFIFO,

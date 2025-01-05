@@ -158,9 +158,8 @@
 
 /* เพิ่มสไตล์สำหรับแถวที่ถูกไฮไลต์ */
 .highlight-row {
-    background-color: #e6f7ff !important; /* สีพื้นหลังของแถวที่ไฮไลต์ */
-}
-
+    background-color: red; /* หรือสีที่ต้องการ */
+  }
 
 /* Style สำหรับ Modal Table */
 .custom-modal-table .ant-table {

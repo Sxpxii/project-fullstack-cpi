@@ -41,6 +41,8 @@ function Login() {
         navigate("/Dashboard");
       } else if (role === "Operations") {
         navigate("/OperationsDashboard");
+      } else if (role === "Supervisor Clerk") {
+        navigate("/SupClerkDashboard");
       } else if (role === "Supervisor") {
         navigate("/SupervisorDashboard");
       } else if (role === "Admin") {
@@ -76,6 +78,7 @@ function Login() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Username"
               className="login-input"
+              autoComplete="username"
             />
             <input
               type="password"
@@ -83,6 +86,7 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               className="login-input"
+              autoComplete="current-password"
             />
             <button type="submit" className="login-button">
               Login

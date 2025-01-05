@@ -107,7 +107,7 @@ function UploadBalance() {
     <MainLayout username="User">
       <div
         style={{
-          backgroundColor: " #ffffff",
+          backgroundColor: " #DCDCDC",
           padding: "15px 30p",
           marginBottom: "20px",
           borderRadius: "15px",

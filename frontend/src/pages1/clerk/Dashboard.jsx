@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Input,
   Table,
   Tag,
   Space,
   Button,
-  Select,
-  DatePicker,
+  List,
   Modal,
   Row,
   Col,
@@ -15,17 +14,12 @@ import {
   message,
 } from "antd";
 import axios from "axios";
-//import Sidebar from "../../components/Sidebar";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/Dashboard.css";
-import { BsCheckCircleFill, BsSearch } from "react-icons/bs";
 import { FaCheck, FaTrashCan } from "react-icons/fa6";
-import { FaEye } from "react-icons/fa";
-import { HiMiniPencilSquare } from "react-icons/hi2";
 import config from "../../configAPI";
-
-const { RangePicker } = DatePicker;
-const { Option } = Select;
+import ChatApp from "../../components/ChatApp";
+import { debounce } from "lodash";
 
 const materialTypeMap = {
   PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
@@ -41,16 +35,37 @@ const Dashboard = () => {
   const [data, setData] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedUploadId, setSelectedUploadId] = useState(null);
-  const [selectedMaterialType, setSelectedMaterialType] = useState("");
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [confirmUploadId, setConfirmUploadId] = useState(null);
   const [idStatus, setIdStatus] = useState(1);
-  const [approveModalVisible, setApproveModalVisible] = useState(false);
   const [inputValues, setInputValues] = useState({});
   const [isInputHidden, setIsInputHidden] = useState({});
   const [isButtonHidden, setIsButtonHidden] = useState({});
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [materialRequests, setMaterialRequests] = useState([]);
+  const [editedRows, setEditedRows] = useState({});
+  const [editMode, setEditMode] = useState({});
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [summaryActions, setSummaryActions] = useState([]);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState(null);
+  const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
 
   const navigate = useNavigate();
+
+  const correctPin = "1234";
+
+  const handlePinSubmit = () => {
+    if (pin === correctPin) {
+      // PIN ถูกต้อง ทำการบันทึกการแก้ไข
+      handleSaveAllChanges();
+      setPinModalVisible(false);
+    } else {
+      // PIN ไม่ถูกต้อง แสดงข้อความผิดพลาด
+      setPinError("PIN ไม่ถูกต้อง กรุณาลองใหม่");
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -60,9 +75,6 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      // ลองพิมพ์ response.data เพื่อดูว่ามีข้อมูลสถานะหรือไม่
-      console.log("Response Data: ", response.data);
 
       if (Array.isArray(response.data)) {
         const sortedData = response.data.sort(
@@ -74,6 +86,66 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
+    }
+  };
+
+  // ตรวจจับการโต้ตอบของผู้ใช้
+  const handleUserInteraction = debounce(() => {
+    setLastInteractionTime(Date.now());
+  }, 300);
+
+  useEffect(() => {
+    // เริ่มต้นดึงข้อมูล
+    fetchData();
+
+    // ตั้งค่าตัวตรวจจับการโต้ตอบ
+    window.addEventListener("mousemove", handleUserInteraction);
+    window.addEventListener("keydown", handleUserInteraction);
+
+    // ตั้ง Auto Refresh
+    const intervalId = setInterval(() => {
+      if (Date.now() - lastInteractionTime >= 60000) {
+        fetchData(); // รีเฟรชข้อมูลทุก 1 นาทีถ้าไม่มีการโต้ตอบ
+      }
+    }, 60000);
+
+    // ล้างการตั้งค่าเมื่อคอมโพเนนต์ถูกลบ
+    return () => {
+      window.removeEventListener("mousemove", handleUserInteraction);
+      window.removeEventListener("keydown", handleUserInteraction);
+      clearInterval(intervalId);
+    };
+  }, [lastInteractionTime]);
+
+  // ฟังก์ชันสำหรับดึงข้อมูล material requests
+  const fetchMaterialRequests = async (uploadId) => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.get(
+        `${config.API_URL}/dashboard/materialrequests/${uploadId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("Material Requests Data: ", response.data); // ตรวจสอบข้อมูล
+      setMaterialRequests(response.data);
+    } catch (err) {
+      console.error("Failed to fetch material requests:", err);
+    }
+  };
+
+  // ฟังก์ชันเรียกเมื่อคลิกปุ่มแก้ไข
+  const handleEditDetailClick = async (record) => {
+    setSelectedUploadId(record.upload_id);
+
+    try {
+      await fetchMaterialRequests(record.upload_id);
+      console.log("Successfully fetched material requests.");
+      setEditModalVisible(true); // เปิด Modal
+    } catch (err) {
+      console.error("Failed to fetch material requests:", err);
     }
   };
 
@@ -93,10 +165,6 @@ const Dashboard = () => {
   const handleViewDetailsClick = async (record) => {
     setSelectedUploadId(record.upload_id);
     navigate(`/details/${record.upload_id}`); // เปลี่ยนไปยังหน้า Details
-  };
-
-  const handleMaterialTypeChange = (value) => {
-    setSelectedMaterialType(value);
   };
 
   const handleConfirm = async () => {
@@ -127,7 +195,7 @@ const Dashboard = () => {
     }
 
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.delete(
         `${config.API_URL}/dashboard/delete-uploads/${confirmUploadId}`,
         {
@@ -145,66 +213,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteClick = (uploadId) => {
+  /*const handleDeleteClick = (uploadId) => {
     if (uploadId) {
       setConfirmUploadId(uploadId);
       setModalVisible(true);
     } else {
       console.error("Invalid uploadId:", uploadId);
-    }
-  };
-
-  const handleApprove = (uploadId) => {
-    setConfirmUploadId(uploadId);
-    setApproveModalVisible(true);
-  };
-
-  const handleApproveConfirm = async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      await axios.post(
-        `${config.API_URL}/dashboard/approve/${confirmUploadId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      message.success("อนุมัติรายการเบิกจ่ายสำเร็จ");
-      fetchData();
-      setApproveModalVisible(false);
-    } catch (err) {
-      console.error("Failed to approve upload:", err);
-      message.error("อนุมัติรายการเบิกจ่ายล้มเหลว");
-    }
-  };
-
-  // Utility function to check if the item date matches the current date
-  const isCurrentDate = (dateString) => {
-    const itemDate = new Date(dateString);
-    const today = new Date();
-    return (
-      itemDate.getFullYear() === today.getFullYear() &&
-      itemDate.getMonth() === today.getMonth() &&
-      itemDate.getDate() === today.getDate()
-    );
-  };
-
-  /*const filteredData = () => {
-    console.log("Current idStatus: ", idStatus);
-
-    switch (idStatus) {
-      case 1:
-        return data.filter((item) => item.status === "รอยืนยัน");
-      case 2:
-        return data.filter((item) => item.status === "กำลังดำเนินการ");
-      case 3:
-        return data.filter((item) => item.status === "รอตรวจสอบ");
-      case 4:
-        return data.filter((item) => item.status === "ดำเนินการเรียบร้อย");
-      default:
-        return [];
     }
   };*/
 
@@ -250,7 +264,17 @@ const Dashboard = () => {
       title: "Inventory ID",
       dataIndex: "inventory_id",
       key: "inventory_id",
-      align: "left",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
       render: (text, record) => {
         // ถ้า inventory_id เป็น null แสดงช่องกรอกและปุ่มบันทึก
         if (text === null) {
@@ -267,7 +291,7 @@ const Dashboard = () => {
               {!isButtonHidden[record.upload_id] && (
                 <Button
                   style={{
-                    color: "#5755FE",
+                    color: "green",
                     backgroundColor: "#f0f0f0",
                     borderColor: "#f0f0f0",
                   }}
@@ -279,7 +303,6 @@ const Dashboard = () => {
             </Space>
           );
         } else {
-          // ถ้า inventory_id ไม่เป็น null แสดงค่า inventory_id ที่ถูกดึงมาจากหลังบ้าน
           return text;
         }
       },
@@ -289,13 +312,29 @@ const Dashboard = () => {
       dataIndex: "material_type",
       key: "material_type",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (matType) => materialTypeMap[matType] || matType,
     },
     {
       title: "วันที่",
       dataIndex: "date",
       key: "date",
-      align: "left",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       sorter: (a, b) => new Date(a.date) - new Date(b.date), // เพิ่มการจัดเรียง
       render: (date) => (date ? new Date(date).toLocaleDateString() : "N/A"),
     },
@@ -304,6 +343,14 @@ const Dashboard = () => {
       dataIndex: "status",
       key: "status",
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (status) => {
         let color;
         switch (status) {
@@ -316,7 +363,7 @@ const Dashboard = () => {
           case "รอตรวจสอบ":
             color = "red";
             break;
-          case "รอยืนยัน":
+          case "รอรับงาน":
             color = "blue";
             break;
           default:
@@ -333,38 +380,53 @@ const Dashboard = () => {
       title: "การดำเนินการ",
       key: "action",
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
       render: (_, record) => {
-        if (record.status === "รอยืนยัน") {
+        if (record.status === "รอรับงาน") {
           return (
-            <Space size="middle">
+            <Space size="large">
               <Button
                 style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#f0f0f0",
+                  color: "#000000",
+                  backgroundColor: "#ffd591",
+                  borderColor: "#ffd591",
+                  marginRight: "40px",
                 }}
-                icon={<FaTrashCan />}
-                onClick={() => handleDeleteClick(record.upload_id)}
-              />
+                //icon={<FaTrashCan />}
+                //onClick={() => handleDeleteClick(record.upload_id)}
+                onClick={() => handleEditDetailClick(record)}
+              >
+                แก้ไข
+              </Button>
 
               <Button
                 style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#f0f0f0",
+                  display: "none",
+                  color: "#f0f0f0",
+                  backgroundColor: "green",
+                  borderColor: "green",
                 }}
                 type="primary"
-                icon={<FaCheck />}
+                //icon={<FaCheck />}
                 onClick={() => {
                   setConfirmUploadId(record.upload_id);
                   setConfirmModalVisible(true);
                 }}
-              />
+              >
+                ยืนยัน
+              </Button>
             </Space>
           );
-        } else if (
-          ["ดำเนินการเรียบร้อย", "กำลังดำเนินการ"].includes(record.status)
-        ) {
+        } else if (record.status === "กำลังดำเนินการ") {
           return (
             <Space
               size="middle"
@@ -377,13 +439,42 @@ const Dashboard = () => {
             >
               <Button
                 style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#f0f0f0",
+                  color: "#000000",
+                  backgroundColor: "#ffd591",
+                  borderColor: "#ffd591",
+                  marginRight: "40px",
                 }}
-                icon={<FaEye />}
+                onClick={() => handleEditDetailClick(record)}
+              >
+                แก้ไข
+              </Button>
+              <Button
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "#5755FE",
+                  borderColor: "#5755FE",
+                }}
                 onClick={() => handleViewDetailsClick(record)}
-              />
+              >
+                ดูรายละเอียด
+              </Button>
+            </Space>
+          );
+        } else if (record.status === "ดำเนินการเรียบร้อย") {
+          // แสดงเฉพาะปุ่มดูรายละเอียดสำหรับสถานะดำเนินการเรียบร้อย
+          return (
+            <Space size="middle">
+              <Button
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "#5755FE",
+                  borderColor: "#5755FE",
+                }}
+                //icon={<FaEye />}
+                onClick={() => handleViewDetailsClick(record)}
+              >
+                ดูรายละเอียด
+              </Button>
             </Space>
           );
         } else if (["รอตรวจสอบ"].includes(record.status)) {
@@ -391,25 +482,15 @@ const Dashboard = () => {
             <Space size="middle">
               <Button
                 style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#f0f0f0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  color: "#f0f0f0",
+                  backgroundColor: "red",
+                  borderColor: "red",
                 }}
-                icon={<HiMiniPencilSquare />}
+                //icon={<HiMiniPencilSquare />}
                 onClick={() => handleEditClick(record)}
-              />
-              <Button
-                style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#f0f0f0",
-                }}
-                icon={<FaCheck />}
-                onClick={() => handleApprove(record.upload_id)}
-              />
+              >
+                ตรวจสอบ
+              </Button>
             </Space>
           );
         } else {
@@ -419,12 +500,456 @@ const Dashboard = () => {
     },
   ];
 
+  // ฟังก์ชันสำหรับการแก้ไขแต่ละแถว
+  const handleEditChange = (request_id, field, value) => {
+    setEditedRows((prev) => ({
+      ...prev,
+      [request_id]: {
+        ...prev[request_id],
+        [field]: value,
+        isEditing: true,
+        original_value: materialRequests.find(
+          (row) => row.request_id === request_id
+        )?.[field],
+      },
+    }));
+  };
+
+  // ฟังก์ชันเพื่อรวบรวมข้อมูลที่ถูกแก้ไข เพิ่ม หรือ ลบ
+  const getSummaryActions = () => {
+    const actions = [];
+
+    Object.keys(editedRows).forEach((request_id) => {
+      const editedData = editedRows[request_id];
+
+      if (editedData && editedData.action === "delete") {
+        actions.push({
+          action_type: "delete",
+          request_id: request_id,
+          matunit: editedData.matunit,
+          mat_name: editedData.mat_name,
+          quantity: parseFloat(editedData.quantity),
+        });
+      } else if (!request_id || request_id === "undefined") {
+        actions.push({
+          action_type: "add",
+          data: editedData,
+        });
+      } else if (editedData && editedData.isEditing) {
+        actions.push({
+          action_type: "update",
+          request_id: request_id,
+          matunit: editedData.matunit,
+          mat_name: editedData.mat_name,
+          original_quantity: editedData.original_quantity,
+          quantity: parseFloat(editedData.quantity),
+        });
+      }
+    });
+
+    return actions;
+  };
+
+  // ฟังก์ชันเพื่อแสดง Modal ให้ผู้ใช้ตรวจสอบข้อมูล
+  const handlePreviewChanges = () => {
+    const actions = getSummaryActions();
+    console.log("Summary Actions:", actions);
+    setSummaryActions(actions);
+    setPreviewModalVisible(true); // เปิด Modal แสดงรายการที่ถูกแก้ไข
+  };
+
+  // ฟังก์ชันสำหรับบันทึกข้อมูลการแก้ไขทั้งหมด
+  const handleSaveAllChanges = async () => {
+    setPreviewModalVisible(false);
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const payload = {
+        upload_id: selectedUploadId,
+        //actions: actions,
+        actions: summaryActions,
+      };
+      console.log("Payload to be sent:", JSON.stringify(payload, null, 2));
+
+      // เพิ่มการพิมพ์ข้อมูลที่ผู้ใช้แก้ไข
+      console.log(
+        "Temporary changes before saving:",
+        JSON.stringify(summaryActions, null, 2)
+      );
+
+      // ส่งข้อมูลไปยัง backend
+      await axios.put(
+        `${config.API_URL}/dashboard/materialrequests/edit`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      message.success("บันทึกการแก้ไขสำเร็จ");
+      // อาจจะมีการคำนวณ FIFO ที่นี่หรือส่งไปยัง backend เพื่อให้คำนวณ FIFO
+    } catch (err) {
+      message.error("บันทึกการแก้ไขล้มเหลว");
+    }
+  };
+
+  // ฟังก์ชันสำหรับเพิ่มแถวใหม่ที่ด้านบนสุดของตาราง
+  const handleAddRow = () => {
+    const newRow = {
+      request_id: undefined,
+      matunit: "",
+      mat_name: "",
+      quantity: "",
+      isEditing: true,
+    };
+    setMaterialRequests([newRow, ...materialRequests]); // เพิ่มแถวใหม่ที่ด้านบนสุด
+
+    /*console.log("Material Requests after adding row:", [
+      newRow,
+      ...materialRequests,
+    ]);*/
+
+    setEditedRows((prev) => ({ ...prev, [newRow.request_id]: newRow }));
+    setEditMode((prev) => ({ ...prev, [newRow.request_id]: true }));
+  };
+
+  // ฟังก์ชันสำหรับลบแถว โดยบันทึกสถานะการลบไว้ใน editedRows และ materialRequests
+  const handleDeleteRow = (request_id) => {
+    Modal.confirm({
+      title: "ยืนยันการลบ",
+      content: "คุณต้องการลบแถวนี้จริงๆ ใช่ไหม?",
+      okText: "ยืนยัน",
+      cancelText: "ยกเลิก",
+      onOk: () => {
+        const rowToDelete = materialRequests.find(
+          (row) => row.request_id === request_id
+        );
+        if (rowToDelete) {
+          // เพิ่มสถานะ isDeleted ใน materialRequests
+          setMaterialRequests((prev) =>
+            prev.map((row) =>
+              row.request_id === request_id ? { ...row, isDeleted: true } : row
+            )
+          );
+
+          // เพิ่มการลบแถวใน editedRows ด้วย action delete
+          setEditedRows((prev) => ({
+            ...prev,
+            [request_id]: {
+              ...prev[request_id],
+              isDeleted: true,
+              action: "delete",
+              matunit: rowToDelete.matunit, // ระบุค่า matunit จาก rowToDelete
+              mat_name: rowToDelete.mat_name, // ระบุค่า mat_name จาก rowToDelete
+              quantity: rowToDelete.quantity,
+            },
+          }));
+        }
+      },
+    });
+  };
+
+  // กรองแถวที่ถูกลบออกก่อนที่จะทำการแสดงผลในตาราง
+  const visibleMaterialRequests = materialRequests.filter(
+    (row) => !row.isDeleted
+  );
+
+  const toggleEditRow = (request_id) => {
+    setEditMode((prev) => ({
+      ...prev,
+      [request_id]: !prev[request_id], // สลับสถานะ editMode ของแถวที่เลือก
+    }));
+
+    // ถ้าเป็นการเริ่มแก้ไข จะเก็บข้อมูลของแถวไว้ใน editedRows
+    if (!editMode[request_id]) {
+      const rowToEdit = materialRequests.find(
+        (row) => row.request_id === request_id
+      );
+      setEditedRows((prev) => ({
+        ...prev,
+        [request_id]: {
+          ...rowToEdit,
+          original_quantity: rowToEdit.quantity, // เก็บจำนวนเดิม
+          isEditing: true,
+        },
+      }));
+    }
+  };
+
+  // ฟังก์ชันสำหรับยกเลิกการแก้ไขแถว
+  const cancelEditRow = (request_id) => {
+    // ปิดสถานะแก้ไขของแถวนั้นๆ
+    setEditMode((prev) => ({
+      ...prev,
+      [request_id]: false,
+    }));
+
+    // ลบการแก้ไขที่เกิดขึ้นในแถวนี้ออกจาก editedRows
+    setEditedRows((prev) => {
+      const newEditedRows = { ...prev };
+      delete newEditedRows[request_id];
+      return newEditedRows;
+    });
+  };
+
+  const saveRowChanges = (request_id) => {
+    // เมื่อบันทึกข้อมูลเรียบร้อยแล้ว จะปิดสถานะแก้ไข
+    setEditMode((prev) => ({
+      ...prev,
+      [request_id]: false,
+    }));
+
+    // เพิ่มข้อมูลใหม่เข้าสู่ materialRequests
+    const updatedRow = editedRows[request_id];
+    setMaterialRequests((prev) =>
+      prev.map((row) => (row.request_id === request_id ? updatedRow : row))
+    );
+  };
+
+  /*useEffect(() => {
+    console.log("Edited Rows:", editedRows);
+  }, [editedRows]);
+
+  useEffect(() => {
+    console.log("Updated Material Requests:", materialRequests);
+  }, [materialRequests]);*/
+
+  // Columns ของตารางใน Modal
+  const materialRequestColumns = [
+    {
+      title: "",
+      key: "action",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "16px",
+          color: "#000000E0",
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
+      render: (_, record) => (
+        <Space
+          style={{
+            display: "flex",
+            justifyContent: "center", // จัดให้อยู่ตรงกลางในคอนเทนเนอร์
+            alignItems: "center",
+            width: "100%", // ทำให้คอนเทนเนอร์กว้างเต็มที่
+            textAlign: "center",
+          }}
+        >
+          <Button
+            style={{
+              color: "#f0f0f0",
+              backgroundColor: "red",
+              borderColor: "red",
+            }}
+            type="link"
+            icon={<FaTrashCan />}
+            onClick={() => handleDeleteRow(record.request_id)}
+          ></Button>
+        </Space>
+      ),
+    },
+    {
+      title: "รหัส",
+      dataIndex: "matunit",
+      key: "matunit",
+      align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "16px",
+          color: "#000000E0",
+          //border: "1px solid #d9d9d9",
+        },
+      }),
+      sorter: (a, b) => a.matunit.localeCompare(b.matunit), // เพิ่มการเรียงลำดับอัตโนมัติ
+      defaultSortOrder: "ascend", // กำหนดเรียงจากน้อยไปมาก (ascend) เริ่มต้น
+      render: (text, record) =>
+        !record.request_id || editMode[record.request_id] ? (
+          <Input
+            value={editedRows[record.request_id]?.matunit || text}
+            onChange={(e) =>
+              handleEditChange(record.request_id, "matunit", e.target.value)
+            }
+            disabled={!!record.request_id} // ปิดการแก้ไขถ้าเป็นแถวที่มี request_id แล้ว
+          />
+        ) : (
+          text
+        ),
+    },
+    {
+      title: "รายการ",
+      dataIndex: "mat_name",
+      key: "mat_name",
+      align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "16px",
+          color: "#000000E0",
+          //border: "1px solid #d9d9d9",
+        },
+      }),
+      render: (text, record) =>
+        !record.request_id || editMode[record.request_id] ? (
+          <Input
+            value={editedRows[record.request_id]?.mat_name || text}
+            onChange={(e) =>
+              handleEditChange(record.request_id, "mat_name", e.target.value)
+            }
+            disabled={!!record.request_id} // ปิดการแก้ไขถ้าเป็นแถวที่มี request_id แล้ว
+          />
+        ) : (
+          text
+        ),
+    },
+    {
+      title: "จำนวน",
+      dataIndex: "quantity",
+      key: "quantity",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "16px",
+          color: "#000000E0",
+        },
+      }),
+      render: (text, record) =>
+        editMode[record.request_id] ? (
+          <Input
+            value={editedRows[record.request_id]?.quantity || text}
+            onChange={(e) =>
+              handleEditChange(record.request_id, "quantity", e.target.value)
+            }
+          />
+        ) : (
+          text
+        ),
+    },
+    {
+      title: "",
+      key: "action",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "16px",
+          color: "#000000E0",
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
+      render: (_, record) => (
+        <Space
+          style={{
+            display: "flex",
+            justifyContent: "center", // จัดให้อยู่ตรงกลางในคอนเทนเนอร์
+            alignItems: "center",
+            width: "100%", // ทำให้คอนเทนเนอร์กว้างเต็มที่
+            textAlign: "center",
+          }}
+        >
+          {editMode[record.request_id] ? (
+            <>
+              <Button
+                type="primary"
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "green",
+                  borderColor: "green",
+                  marginRight: "10px",
+                }}
+                onClick={() => saveRowChanges(record.request_id)}
+              >
+                บันทึก
+              </Button>
+              <Button
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "#5755FE",
+                  borderColor: "#5755FE",
+                }}
+                onClick={() => cancelEditRow(record.request_id)}
+                //icon={<MdCancel />}
+              >
+                ปิด
+              </Button>
+            </>
+          ) : (
+            <Button
+              style={{
+                color: "#000000",
+                backgroundColor: "#ffd591",
+                borderColor: "#ffd591",
+              }}
+              onClick={() => toggleEditRow(record.request_id)}
+            >
+              แก้ไข
+            </Button>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
+  const isToday = (dateString) => {
+    const today = new Date();
+    const date = new Date(dateString);
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const handleCancelModal = () => {
+    Modal.confirm({
+      title: "ยืนยันการละทิ้งการแก้ไข",
+      content: "คุณต้องการละทิ้งการแก้ไขทั้งหมดใช่หรือไม่?",
+      okText: "ยืนยัน",
+      cancelText: "ยกเลิก",
+      onOk: () => {
+        setEditModalVisible(false); // ปิด Modal หากผู้ใช้งานยืนยัน
+      },
+      // กำหนดสไตล์ให้กับปุ่มยืนยัน
+      okButtonProps: {
+        style: {
+          color: "#f0f0f0",
+          backgroundColor: "#5755FE",
+          borderColor: "#5755FE",
+        },
+      },
+      // กำหนดสไตล์ให้กับปุ่มยกเลิก
+      cancelButtonProps: {
+        style: {
+          color: "#5755FE",
+          backgroundColor: "#f0f0f0",
+          borderColor: "#5755FE",
+        },
+      },
+    });
+  };
+
   const dataStatus = [
     {
       id: 1,
-      statusName: "รอยืนยัน",
+      statusName: "รอรับงาน",
       total: data
-        ? data.filter((item) => item.status === "รอยืนยัน").length
+        ? data.filter(
+            (item) =>
+              item.status === "รอรับงาน" && isToday(item.last_status_update)
+          ).length
         : 0,
       color: "#91caff",
     },
@@ -432,7 +957,11 @@ const Dashboard = () => {
       id: 2,
       statusName: "กำลังดำเนินการ",
       total: data
-        ? data.filter((item) => item.status === "กำลังดำเนินการ").length
+        ? data.filter(
+            (item) =>
+              item.status === "กำลังดำเนินการ" &&
+              isToday(item.last_status_update)
+          ).length
         : 0,
       color: "#ffd591",
     },
@@ -440,7 +969,10 @@ const Dashboard = () => {
       id: 3,
       statusName: "รอตรวจสอบ",
       total: data
-        ? data.filter((item) => item.status === "รอตรวจสอบ").length
+        ? data.filter(
+            (item) =>
+              item.status === "รอตรวจสอบ" && isToday(item.last_status_update)
+          ).length
         : 0,
       color: "#ffa5a1",
     },
@@ -450,149 +982,356 @@ const Dashboard = () => {
       total: data
         ? data.filter(
             (item) =>
-              item.status === "ดำเนินการเรียบร้อย" && isCurrentDate(item.date)
+              item.status === "ดำเนินการเรียบร้อย" &&
+              isToday(item.last_status_update)
           ).length
         : 0,
       color: "#b7eb8f",
     },
   ];
 
+  // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number);
+  };
+
   return (
     <MainLayout>
-      <div className="header">
-        <div className="header-content">
-          <div
-            className="dashboard-title sarabun-bold"
-            style={{
-              fontSize: "28px",
-              marginLeft: "20px",
-              padding: "10px",
-              color: "#000000E0",
-            }}
-          >
-            การจัดการข้อมูลการเบิก-จ่ายวัตถุดิบ
-          </div>
+      <div
+        className="header"
+        style={{
+          backgroundColor: "#ffffff", // พื้นหลังสี #001529
+          padding: "10px", // เพิ่ม padding สำหรับ header
+          display: "block",
+        }}
+      >
+        <div
+          className="dashboard-title sarabun-bold"
+          style={{
+            fontSize: "20px",
+            marginLeft: "20px",
+            //padding: "10px",
+            color: "#000000E0",
+          }}
+        >
+          สถานะการเบิกจ่ายวัตถุดิบรายวัน
+        </div>
+        <div style={{ marginTop: "20px" }}>
+          <Row gutter={16}>
+            {dataStatus && dataStatus.length > 0 ? (
+              dataStatus.map((d, i) => (
+                <>
+                  <Col
+                    className="gutter-row"
+                    span={6}
+                    onClick={() => setIdStatus(d.id)}
+                  >
+                    <div
+                      style={{
+                        background: idStatus === d.id ? d.color : "#E8E8E8",
+                        //background: "#ffffff",
+                        padding: "8px 0",
+                        borderRadius: "15px",
+                        marginBottom: "15px",
+                        cursor: "pointer",
+                        //backgroundColor: d.color,
+                        boxShadow:
+                          idStatus === d.id
+                            ? "0px 4px 8px rgba(0, 0, 0, 0.5)" // เงาเมื่อถูกเลือก
+                            : "0px 4px 8px rgba(0, 0, 0, 0.1)", // เงาปกติ
+                      }}
+                    >
+                      <div className="sarabun-bold">
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            fontSize: "18px",
+                            color: idStatus === d.id ? "#000" : "#828282", // เปลี่ยนสีตัวอักษรเมื่อถูกเลือก
+                            fontWeight: idStatus === d.id ? "bold" : "normal", // เปลี่ยนเป็นตัวหนาเมื่อถูกเลือก
+                            opacity: idStatus === d.id ? 1 : 0.5,
+                          }}
+                        >
+                          {d.statusName}
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            fontSize: "28px",
+                            color: idStatus === d.id ? "#000" : "#828282", // เปลี่ยนสีตัวอักษรเมื่อถูกเลือก
+                            fontWeight: idStatus === d.id ? "bold" : "normal", // เปลี่ยนเป็นตัวหนาเมื่อถูกเลือก
+                            opacity: idStatus === d.id ? 1 : 0.5, // ทำให้สีจางลงถ้าไม่ได้เลือก
+                          }}
+                        >
+                          {d.total}
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                </>
+              ))
+            ) : (
+              <></>
+            )}
+          </Row>
         </div>
       </div>
 
-      <Row gutter={16}>
-        {dataStatus && dataStatus.length > 0 ? (
-          dataStatus.map((d, i) => (
-            <>
-              <Col
-                className="gutter-row"
-                span={6}
-                onClick={() => setIdStatus(d.id)}
-              >
-                <div
-                  style={{
-                    background: "#ffffff",
-                    padding: "8px 0",
-                    borderRadius: "15px",
-                    marginBottom: "15px",
-                    cursor: "pointer",
-                    backgroundColor: d.color,
-                  }}
-                >
-                  <div className="sarabun-bold">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        fontSize: "18px",
-                      }}
-                    >
-                      {d.statusName}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        fontSize: "32px",
-                      }}
-                    >
-                      {d.total}
-                    </div>
-                  </div>
-                </div>
-              </Col>
-            </>
-          ))
-        ) : (
-          <></>
-        )}
-      </Row>
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          zIndex: 1000,
+        }}
+      >
+        <ChatApp />
+      </div>
 
       <Card
         style={{
           borderRadius: "15px",
+          height: "calc(80vh - 150px)", // กำหนดความสูงของ Card ให้เต็มหน้าจอ ลบด้วย header (หรือ margin)
         }}
       >
         <div
+          className="dashboard-title sarabun-bold"
           style={{
-            marginBottom: "15px",
-            display: "flex",
-            justifyContent: "center",
+            fontSize: "20px",
+            padding: "10px",
+            color: "#000000E0",
           }}
         >
-          <Select
-            className="sarabun-light"
-            placeholder="เลือกวัตถุดิบ"
-            style={{ width: 200, marginRight: 10 }}
-            onChange={handleMaterialTypeChange}
-          >
-            {Object.entries(materialTypeMap).map(([key, value]) => (
-              <Option key={key} value={key}>
-                {value}
-              </Option>
-            ))}
-          </Select>
-          <RangePicker style={{ marginRight: 10 }} />
-          <Button
-            className="sarabun-light"
-            style={{
-              color: "#5755FE",
-              backgroundColor: "#f0f0f0",
-              borderColor: "#f0f0f0",
-            }}
-          >
-            <BsSearch />
-          </Button>
+          รายการเบิกจ่ายวัตถุดิบทั้งหมด
         </div>
+
         {idStatus && idStatus === 1 ? (
           <Table
             columns={columns}
-            dataSource={data.filter((item) => item.status === "รอยืนยัน")}
+            dataSource={data.filter((item) => item.status === "รอรับงาน")}
             pagination={false}
+            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+            className="custom-table"
           />
         ) : idStatus === 2 ? (
           <Table
             columns={columns}
-            dataSource={data.filter(
-              (item) =>
-                item.status === "กำลังดำเนินการ" 
-            )}
+            dataSource={data.filter((item) => item.status === "กำลังดำเนินการ")}
             pagination={false}
+            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+            className="custom-table"
           />
         ) : idStatus === 3 ? (
           <Table
             columns={columns}
-            dataSource={data.filter(
-              (item) => item.status === "รอตรวจสอบ" 
-            )}
+            dataSource={data.filter((item) => item.status === "รอตรวจสอบ")}
             pagination={false}
+            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+            className="custom-table"
           />
         ) : (
           <Table
             columns={columns}
             dataSource={data.filter(
-              (item) =>
-                item.status === "ดำเนินการเรียบร้อย" && isCurrentDate(item.date)
+              (item) => item.status === "ดำเนินการเรียบร้อย"
             )}
             pagination={false}
+            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+            className="custom-table"
           />
         )}
       </Card>
+
+      {/* Modal สำหรับการแก้ไข */}
+      <Modal
+        title={<span style={{ fontSize: "22px" }}>รายการสั่งเบิก</span>}
+        open={editModalVisible}
+        onCancel={handleCancelModal} // ปิด Modal เมื่อกดปุ่มปิด
+        footer={null} // ไม่ต้องมีปุ่ม footer
+        width={800}
+      >
+        <div>
+          <Button
+            type="primary"
+            style={{
+              color: "#f0f0f0",
+              backgroundColor: "#5755FE",
+              borderColor: "#5755FE",
+              marginBottom: 16,
+            }}
+            onClick={handleAddRow}
+          >
+            เพิ่มรายการ
+          </Button>
+          {/* ตารางแสดงข้อมูล material requests */}
+          <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+            {" "}
+            {/* กำหนดความสูงและการเลื่อน */}
+            <Table
+              columns={materialRequestColumns}
+              dataSource={visibleMaterialRequests}
+              rowKey="request_id"
+              pagination={false} // กำหนดจำนวนรายการต่อหน้า
+              className="custom-table"
+            />
+          </div>
+          {Object.keys(editedRows).length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: 16,
+              }}
+            >
+              <Button
+                onClick={handlePreviewChanges}
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "#5755FE",
+                  borderColor: "#5755FE",
+                  marginBottom: 16,
+                }}
+              >
+                ตรวจสอบการแก้ไข
+              </Button>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        title={<span style={{ fontSize: "22px" }}>ตรวจสอบการแก้ไข</span>}
+        open={previewModalVisible}
+        onCancel={() => setPreviewModalVisible(false)}
+        footer={null}
+        style={{
+          top: "50%",
+          transform: "translateY(-50%)",
+          maxWidth: "600px", // ความกว้างสูงสุด
+          width: "80%", // ความกว้างตามต้องการ
+        }}
+      >
+        <div>
+          {/* รายการที่ถูกเพิ่ม */}
+          {summaryActions.some((action) => action.action_type === "add") && (
+            <>
+              <h3 style={{ color: "green" }}>เพิ่มรายการ</h3>
+              <List
+                bordered
+                dataSource={summaryActions.filter(
+                  (action) => action.action_type === "add"
+                )}
+                renderItem={(action) => (
+                  <List.Item>
+                    <span className="sarabun-light">
+                      {action.data.matunit} : {action.data.mat_name}{" "}
+                      {action.data.quantity}
+                    </span>
+                  </List.Item>
+                )}
+              />
+            </>
+          )}
+
+          {/* รายการที่ถูกลบ */}
+          {summaryActions.some((action) => action.action_type === "delete") && (
+            <>
+              <h3 style={{ color: "red" }}>ลบรายการ</h3>
+              <List
+                bordered
+                dataSource={summaryActions.filter(
+                  (action) => action.action_type === "delete"
+                )}
+                renderItem={(action) => (
+                  <List.Item>
+                    <span className="sarabun-light">
+                      {action.matunit} : {action.mat_name} {action.quantity}
+                    </span>
+                  </List.Item>
+                )}
+              />
+            </>
+          )}
+
+          {/* รายการที่ถูกแก้ไข */}
+          {summaryActions.some((action) => action.action_type === "update") && (
+            <>
+              <h3 style={{ color: "orange" }}>แก้ไขรายการ</h3>
+              <List
+                bordered
+                dataSource={summaryActions.filter(
+                  (action) => action.action_type === "update"
+                )}
+                renderItem={(action) => (
+                  <List.Item>
+                    <span className="sarabun-light">
+                      {action.matunit} : {action.mat_name} จำนวนเดิม :{" "}
+                      {action.original_quantity}, ปริมาณใหม่: {action.quantity}
+                    </span>
+                  </List.Item>
+                )}
+              />
+            </>
+          )}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: 16,
+          }}
+        >
+          <Button
+            type="primary"
+            style={{
+              color: "#f0f0f0",
+              backgroundColor: "#5755FE",
+              borderColor: "#5755FE",
+              marginTop: 16,
+              marginBottom: 16,
+            }}
+            onClick={() => setPinModalVisible(true)}
+          >
+            บันทึกการแก้ไข
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        title={
+          <span style={{ fontSize: "18px" }}>กรอก PIN เพื่อยืนยันการแก้ไข</span>
+        }
+        open={pinModalVisible}
+        onCancel={() => setPinModalVisible(false)}
+        footer={null}
+        width={400}
+        style={{
+          top: "50%",
+          transform: "translateY(-50%)",
+        }}
+      >
+        <div>
+          <Input.Password
+            placeholder="กรอก PIN"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+          />
+          {pinError && <p style={{ color: "red" }}>{pinError}</p>}
+          <Button
+            type="primary"
+            style={{
+              marginTop: 16,
+              color: "#f0f0f0",
+              backgroundColor: "green",
+              borderColor: "green",
+            }}
+            onClick={handlePinSubmit} // ตรวจสอบ PIN
+          >
+            ยืนยัน
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         className="sarabun-light"
@@ -658,38 +1397,6 @@ const Dashboard = () => {
         ]}
       >
         <p>คุณต้องการยืนยันการดำเนินการนี้หรือไม่?</p>
-      </Modal>
-
-      <Modal
-        title="ยืนยันการอนุมัติ"
-        open={approveModalVisible}
-        onCancel={() => setApproveModalVisible(false)}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setModalVisible(false)}
-            style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
-            }}
-          >
-            ยกเลิก
-          </Button>,
-          <Button
-            key="confirm"
-            onClick={handleApproveConfirm}
-            style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
-            }}
-          >
-            อนุมัติ
-          </Button>,
-        ]}
-      >
-        <p>คุณแน่ใจว่าต้องการอนุมัติรายการนี้หรือไม่?</p>
       </Modal>
     </MainLayout>
   );

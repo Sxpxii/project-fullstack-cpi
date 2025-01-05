@@ -1,5 +1,6 @@
 // src/pages1/staff/MyTasks.jsx
 import React, { useState, useEffect } from "react";
+import { useMediaQuery } from "react-responsive";
 import {
   Table,
   Button,
@@ -16,7 +17,11 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/MyTasks.css";
-import config from '../../configAPI';
+import config from "../../configAPI";
+import { MdAssignmentReturn } from "react-icons/md";
+import { IoMdArrowDropright } from "react-icons/io";
+import { IoMdArrowDropleft } from "react-icons/io";
+import ChatApp from "../../components/ChatApp";
 
 const MyTasks = () => {
   const [username, setUsername] = useState("");
@@ -25,6 +30,8 @@ const MyTasks = () => {
   const [isModalVisible, setIsModalVisible] = useState(false); // สำหรับการเปิด/ปิด Modal
   const [taskToReturn, setTaskToReturn] = useState(null);
   const navigate = useNavigate();
+  const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1024px)" });
+  const [showCompletedTasks, setShowCompletedTasks] = useState(true);
 
   const fetchMyTasks = async () => {
     try {
@@ -34,7 +41,11 @@ const MyTasks = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      setMyTasks(response.data);
+      // จัดเรียงข้อมูลให้แสดงรายการล่าสุดก่อน
+      const sortedTasks = response.data.sort((a, b) => b.inventory_id - a.inventory_id);
+      console.log("ข้อมูลรายการ", response.data);
+      console.log("ข้อมูลรายการหลังเรียง", sortedTasks);
+      setMyTasks(sortedTasks);
     } catch (err) {
       console.error("Failed to fetch my tasks:", err);
     }
@@ -81,17 +92,81 @@ const MyTasks = () => {
     }
   };
 
+  const handleViewDetails = (record) => {
+    // เช็คสถานะของรายการ
+    if (record.current_status === "กำลังดำเนินการ") {
+      navigate(`/taskdetails/${record.upload_id}`);
+    } else if (record.current_status === "รอดำเนินการต่อ") {
+      navigate(`/PendingTaskDetails/${record.upload_id}`);
+    } else if (record.current_status === "รอดำเนินการต่อ") {
+      navigate(`/TaskDetailsFinished/${record.upload_id}`);
+    } else {
+      navigate(`/TaskDetailsFinished/${record.upload_id}`);
+    }
+  };
+
   const columns = [
+    {
+      title: "",
+      key: "action",
+      render: (_, record) => (
+        <div>
+          {record.current_status === "กำลังดำเนินการ" && (
+            <Button
+              className="sarabun-light"
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#cf1322",
+                borderColor: "#cf1322",
+              }}
+              icon={<MdAssignmentReturn />}
+              onClick={() => showReturnTaskConfirm(record.upload_id)}
+            ></Button>
+          )}
+        </div>
+      ),
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
+    },
     {
       title: "Inventory ID",
       dataIndex: "inventory_id",
       key: "inventory_id",
-      align: "left",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (inventory_id) => (
+        <div className="table-data">{inventory_id}</div>
+      ),
     },
     {
       title: "วัตถุดิบ",
       dataIndex: "material_type",
       key: "material_type",
+      className: "table-data",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (materialType) => {
         switch (materialType) {
           case "PK_DIS":
@@ -116,6 +191,14 @@ const MyTasks = () => {
       title: "สถานะ",
       dataIndex: "current_status",
       key: "current_status",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (status) => {
         let color;
         switch (status) {
@@ -128,9 +211,12 @@ const MyTasks = () => {
           case "รอตรวจสอบ":
             color = "red";
             break;
+          case "รอดำเนินการต่อ":
+            color = "purple";
+            break;
         }
         return (
-          <Tag className="sarabun-light" color={color}>
+          <Tag className="table-data sarabun-light" color={color}>
             {status}
           </Tag>
         );
@@ -140,33 +226,32 @@ const MyTasks = () => {
     {
       title: "",
       key: "action",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
       render: (_, record) => (
         <div>
           <Button
-            className="sarabun-light"
+            className="table-data sarabun-light"
             style={{
+              fontSize: isTabletOrMobile ? "12px" : "14px", // ลดขนาดฟอนต์ในปุ่มเมื่อหน้าจอเล็กลง
+              padding: isTabletOrMobile ? "2px 6px" : "4px 12px", // ลดขนาด padding ของปุ่ม
               color: "#f0f0f0",
               backgroundColor: "#5755FE",
               borderColor: "#5755FE",
               marginRight: "10px",
             }}
-            onClick={() => navigate(`/taskdetails/${record.upload_id}`)}
+            onClick={() => handleViewDetails(record)}
           >
             ดูรายละเอียด
           </Button>
-          {record.current_status === "กำลังดำเนินการ" && (
-            <Button
-              className="sarabun-light"
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "#cf1322",
-                borderColor: "#cf1322",
-              }}
-              onClick={() => showReturnTaskConfirm(record.upload_id)}
-            >
-              คืนงาน
-            </Button>
-          )}
         </div>
       ),
       align: "center",
@@ -190,16 +275,11 @@ const MyTasks = () => {
     setFilteredDate(date ? date.toDate() : null);
   };
 
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString(); // ใช้วิธีการแสดงผลวันที่และเวลาที่คุณต้องการ
-  };
-
   return (
     <MainLayout>
       <div
         style={{
-          backgroundColor: " #ffffff",
+          backgroundColor: " #DCDCDC",
           padding: "15px 30p",
           marginBottom: "20px",
           borderRadius: "15px",
@@ -211,28 +291,18 @@ const MyTasks = () => {
             className="dashboard-title sarabun-bold"
             style={{
               fontSize: "28px",
-              marginLeft: "20px",
-              padding: "10px",
+              marginLeft: "10px",
+              padding: "20px",
             }}
           >
             ภาระงานของฉัน
-          </div>
-          <div
-            className="sarabun-light"
-            style={{
-              fontSize: "14px",
-              marginLeft: "20px",
-              padding: "10px",
-            }}
-          >
-            <span className="ms-2"> {getCurrentDateTime()}</span>
           </div>
         </div>
       </div>
 
       <div>
         <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item >
+          <Breadcrumb.Item>
             <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
           </Breadcrumb.Item>
           <Breadcrumb.Item>รายการเบิก-จ่ายของฉัน</Breadcrumb.Item>
@@ -240,57 +310,102 @@ const MyTasks = () => {
       </div>
 
       <Row>
-        <Col span={12} className="p-5">
-          <Card
+        <Col span={24} style={{ marginBottom: "20px" }}>
+          <Button
+            onClick={() => setShowCompletedTasks(!showCompletedTasks)}
             style={{
-              borderRadius: "15px",
+              display: "flex", // ใช้ flexbox เพื่อจัดเรียง
+              alignItems: "center", // จัดให้แนวกลางในแนวตั้ง
+              justifyContent: "center", // จัดให้แนวกลางในแนวนอน
+              fontSize: isTabletOrMobile ? "14px" : "15px",
+              backgroundColor: showCompletedTasks ? "#006400" : "#FFA500",
+              color: showCompletedTasks ? "#fff" : "#000",
+              borderRadius: "8px",
+              border: "none",
+              float: "right",
             }}
           >
-            <div
-              className="sarabun-bold"
-              style={{ fontSize: "22px", marginBottom: "10px" }}
-            >
-              งานที่ต้องดำเนินการ
-            </div>
-            <Table
-              columns={columns}
-              dataSource={ongoingTasks}
-              pagination={false}
-            />
-          </Card>
+            {showCompletedTasks ? (
+              <>
+                ดูงานที่ดำเนินการเรียบร้อย{" "}
+                <IoMdArrowDropright
+                  style={{ fontSize: "20px", verticalAlign: "middle" }}
+                />
+              </>
+            ) : (
+              <>
+                <IoMdArrowDropleft
+                  style={{ fontSize: "20px", verticalAlign: "middle" }}
+                />{" "}
+                ดูงานที่ต้องดำเนินการ
+              </>
+            )}
+          </Button>
         </Col>
-        <Col span={12} className="p-5">
-          <Card
-            style={{
-              borderRadius: "15px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "10px",
-              }}
-            >
-              <div className="title sarabun-bold" style={{ fontSize: "22px" }}>
-                งานที่ดำเนินการเรียบร้อย
-              </div>
-              
-            </div>
 
-            <Table
-              columns={columns}
-              dataSource={completedTasks}
-              pagination={false}
-            />
+        <Col span={24}>
+          <Card
+            style={{ borderRadius: "15px", overflowX: "auto", height: "60vh" }}
+          >
+            {showCompletedTasks ? (
+              <div>
+                <div
+                  className="sarabun-bold"
+                  style={{ fontSize: "20px", marginBottom: "10px" }}
+                >
+                  งานที่ต้องดำเนินการ
+                </div>
+                <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                  <Table
+                    columns={columns}
+                    dataSource={ongoingTasks}
+                    pagination={false}
+                    className="custom-table"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div
+                  className="sarabun-bold"
+                  style={{ fontSize: "20px", marginBottom: "10px" }}
+                >
+                  งานที่ดำเนินการเรียบร้อย
+                </div>
+                <div style={{ maxHeight: "450px", overflowY: "auto" }}>
+                  <Table
+                    columns={columns}
+                    dataSource={completedTasks}
+                    pagination={false}
+                    className="custom-table"
+                  />
+                </div>
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
+
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          zIndex: 1000,
+        }}
+      >
+        <ChatApp />
+      </div>
 
       <Modal
         title="ยืนยันการคืนงาน"
         visible={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
+        width={isTabletOrMobile ? 300 : 600}
+        style={{
+          top: "50%", // ตั้งค่าตำแหน่งแนวดิ่ง
+          transform: "translateY(-50%)", // เลื่อนขึ้นครึ่งหนึ่งของความสูงของ modal
+        }}
         footer={[
           <Button
             key="cancel"
@@ -299,6 +414,7 @@ const MyTasks = () => {
               color: "#f0f0f0",
               backgroundColor: "#5755FE",
               borderColor: "#5755FE",
+              fontSize: isTabletOrMobile ? "10px" : "14px",
             }}
           >
             ยกเลิก
@@ -310,13 +426,16 @@ const MyTasks = () => {
               color: "#f0f0f0",
               backgroundColor: "#5755FE",
               borderColor: "#5755FE",
+              fontSize: isTabletOrMobile ? "10px" : "14px",
             }}
           >
             ยืนยัน
           </Button>,
         ]}
       >
-        <p>คุณแน่ใจหรือไม่ว่าต้องการคืนงานนี้?</p>
+        <p style={{ fontSize: isTabletOrMobile ? "12px" : "16px" }}>
+          คุณแน่ใจหรือไม่ว่าต้องการคืนงานนี้?
+        </p>
       </Modal>
     </MainLayout>
   );

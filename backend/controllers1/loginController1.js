@@ -1,10 +1,10 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const pool = require('../config/db');
+const { pool1 } = require('../config/db');
 
 const logUserAction = async (userId, action) => {
-    const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
+    const client = await pool1.connect(); // ใช้ client เพื่อควบคุม transaction
     try {
         await client.query('BEGIN'); // เริ่ม transaction
 
@@ -31,7 +31,7 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
-        const result = await pool.query('INSERT INTO users1 (username, password, role, invited_by, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING user_id', [username, hashedPassword, role, invited_by]);
+        const result = await pool1.query('INSERT INTO users1 (username, password, role, invited_by, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING user_id', [username, hashedPassword, role, invited_by]);
         const userId = result.rows[0].user_id;
 
         await logUserAction(invited_by, 'เพิ่มผู้ใช้งานใหม่');
@@ -45,7 +45,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     const { username, password } = req.body;
     try {
-        const result = await pool.query('SELECT * FROM users1 WHERE username = $1', [username]);
+        const result = await pool1.query('SELECT * FROM users1 WHERE username = $1', [username]);
         if (result.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid username or password' });
         }

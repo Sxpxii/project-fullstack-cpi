@@ -50,6 +50,7 @@ function Register() {
 
                     >
                         <option value="Warehouse Officer">ธุรการคลังวัตถุดิบ</option>
+                        <option value="Supervisor Clerk">หัวหน้าธุรการคลังวัตถุดิบ</option>
                         <option value="Operations">เจ้าหน้าที่คลังวัตถุดิบ</option>
                         <option value="Supervisor">หัวหน้า</option>
                         <option value="Admin">ผู้ดูแลระบบ</option>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
-import { Button, Table, Radio, Card, Modal, Input, Breadcrumb } from "antd";
+import { Button, Table, Radio, Card, Modal, Input, message } from "antd";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/EditDetails.css";
 import { HiMiniPencilSquare } from "react-icons/hi2";
-import config from '../../configAPI';
+import config from "../../configAPI";
 
 const EditDetails = () => {
   const [username, setUsername] = useState("");
@@ -16,6 +16,9 @@ const EditDetails = () => {
   const [additionalReason, setAdditionalReason] = useState("");
   const { upload_id } = useParams();
   const [totalRequested, setTotalRequested] = useState(0);
+  const [approveModalVisible, setApproveModalVisible] = useState(false);
+  const [confirmUploadId, setConfirmUploadId] = useState(null);
+
 
   const fetchData = async () => {
     if (!upload_id) {
@@ -85,13 +88,16 @@ const EditDetails = () => {
   const handleEditRow = (record) => {
     setEditingRow(record.id);
     setCurrentRecord({ ...record });
-    setAdditionalReason(record.reason === "อื่นๆ" ? record.additionalReason : "");
+    setAdditionalReason(
+      record.reason === "อื่นๆ" ? record.additionalReason : ""
+    );
     setIsEditModalVisible(true);
   };
 
   const handleSave = async () => {
     try {
-      const reasonToSave = currentRecord.reason === "อื่นๆ"
+      const reasonToSave =
+        currentRecord.reason === "อื่นๆ"
           ? additionalReason
           : currentRecord.reason;
 
@@ -102,7 +108,9 @@ const EditDetails = () => {
 
       setData((prevData) =>
         prevData.map((item) =>
-          item.id === currentRecord.id ? { ...item, reason: reasonToSave } : item
+          item.id === currentRecord.id
+            ? { ...item, reason: reasonToSave }
+            : item
         )
       );
       setIsEditModalVisible(false);
@@ -139,6 +147,41 @@ const EditDetails = () => {
     return new Intl.NumberFormat().format(number);
   };
 
+  const handleApprove = (uploadId) => {
+    // ตรวจสอบว่ามีรายการที่มีปัญหาและเหตุผลครบหรือไม่
+    const issuesWithMissingReasons = data.filter(
+      (item) => item.hasIssue && !item.reason
+    );
+    
+    if (issuesWithMissingReasons.length > 0) {
+      message.error("กรุณากรอกเหตุผลในรายการที่มีปัญหาก่อนอนุมัติ");
+    } else {
+      setConfirmUploadId(uploadId);
+      setApproveModalVisible(true); // เปิด Modal ยืนยัน
+    }
+  };
+
+  const handleApproveConfirm = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      await axios.post(
+        `${config.API_URL}/dashboard/approve/${confirmUploadId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      message.success("อนุมัติรายการเบิกจ่ายสำเร็จ");
+      fetchData();
+      setApproveModalVisible(false);
+    } catch (err) {
+      console.error("Failed to approve upload:", err);
+      message.error("อนุมัติรายการเบิกจ่ายล้มเหลว");
+    }
+  };
+
   const columns = [
     /*{
       title: "ลำดับ",
@@ -151,12 +194,30 @@ const EditDetails = () => {
       dataIndex: "matunit",
       key: "matunit",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
     {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
     {
       title: "จำนวน",
@@ -164,6 +225,15 @@ const EditDetails = () => {
       key: "quantity",
       render: (text) => formatNumber(text),
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
     {
       title: "จำนวนคงเหลือ",
@@ -171,6 +241,15 @@ const EditDetails = () => {
       key: "remaining_quantity",
       render: (text) => formatNumber(text),
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
     {
       title: "นับจริง",
@@ -178,23 +257,43 @@ const EditDetails = () => {
       key: "counted_quantity",
       render: (text) => formatNumber(text),
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
     },
     {
       title: "ตรวจสอบ",
       dataIndex: "",
       key: "",
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
       render: (_, record) =>
         record.hasIssue ? (
           <Button
             style={{
-              color: "#5755FE",
-              backgroundColor: "#f0f0f0",
-              borderColor: "#f0f0f0",
+              color: "#f0f0f0",
+              backgroundColor: "red",
+              borderColor: "red",
             }}
-            icon={<HiMiniPencilSquare />}
+            //icon={<HiMiniPencilSquare />}
             onClick={() => handleEditRow(record)}
-          />
+          >
+            ตรวจสอบ
+          </Button>
         ) : null,
     },
     {
@@ -202,20 +301,28 @@ const EditDetails = () => {
       dataIndex: "reason",
       key: "reason",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "16px", // ขนาดตัวอักษร
+          color: "#000000E0", // สีตัวอักษร
+          //border: "1px solid #d9d9d9", // สีเส้นขอบของหัวคอลัมน์
+        },
+      }),
       render: (text, record) => {
         return record.id === editingRow ? (
-          <span>{currentRecord.reason === "อื่นๆ" ? additionalReason : currentRecord.reason}</span>
+          <span>
+            {currentRecord.reason === "อื่นๆ"
+              ? additionalReason
+              : currentRecord.reason}
+          </span>
         ) : (
           <span>{record.reason}</span>
         );
       },
     },
   ];
-
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString();
-  };
 
   const rowClassName = (record) => {
     return record.hasIssue ? "highlight-row" : "";
@@ -225,8 +332,8 @@ const EditDetails = () => {
     <MainLayout>
       <div
         style={{
-          backgroundColor: " #ffffff",
-          padding: "15px 30px",
+          backgroundColor: " #DCDCDC",
+          padding: "15px 30p",
           marginBottom: "20px",
           borderRadius: "15px",
           boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
@@ -238,23 +345,14 @@ const EditDetails = () => {
             style={{
               fontSize: "28px",
               marginLeft: "20px",
-              padding: "10px",
+              padding: "20px",
             }}
           >
             รายละเอียดการเบิก-จ่ายวัตถุดิบ
           </div>
-          <div
-            className="sarabun-light"
-            style={{
-              fontSize: "14px",
-              marginLeft: "20px",
-              padding: "10px",
-            }}
-          >
-            <span className="ms-2"> {getCurrentDateTime()}</span>
-          </div>
         </div>
       </div>
+
       <div>
         <Card
           style={{
@@ -268,9 +366,15 @@ const EditDetails = () => {
               pagination={false}
               rowKey={(record) => record.id}
               rowClassName={rowClassName}
+              className="custom-table"
             />
           </div>
-          <div className="summary-container sarabun-bold">
+          <div className="summary-container sarabun-bold"
+          style={{
+            backgroundColor: " #DCDCDC",
+            marginBottom: "20px",
+            borderRadius: "8px",
+          }}>
             <p
               style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
             >
@@ -289,14 +393,27 @@ const EditDetails = () => {
             <Link to="/Dashboard">
               <Button
                 style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
+                  color: "#5755FE",
+                  backgroundColor: "#f0f0f0",
                   borderColor: "#5755FE",
+                  marginRight: "20px", 
                 }}
               >
                 ย้อนกลับ
               </Button>
             </Link>
+
+            <Button
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "green",
+                borderColor: "green",
+              }}
+              onClick={() => handleApprove(upload_id)} // เรียกฟังก์ชัน handleApprove
+            >
+              อนุมัติ
+            </Button>
+
           </div>
         </Card>
       </div>
@@ -345,7 +462,10 @@ const EditDetails = () => {
           <Radio className="sarabun-light" value="จ่ายไม่ครบ">
             จ่ายไม่ครบ
           </Radio>
-          <Radio className="sarabun-light" value="ยังไม่ได้ Move ของไปจัดเก็บจริง">
+          <Radio
+            className="sarabun-light"
+            value="ยังไม่ได้ Move ของไปจัดเก็บจริง"
+          >
             ยังไม่ได้ Move ของไปจัดเก็บจริง
           </Radio>
           <Radio className="sarabun-light" value="อื่นๆ">
@@ -362,6 +482,33 @@ const EditDetails = () => {
           />
         )}
       </Modal>
+
+      {/* Modal ยืนยัน */}
+      <Modal
+        title="ยืนยันการอนุมัติ"
+        open={approveModalVisible}
+        onOk={handleApproveConfirm}
+        onCancel={() => setApproveModalVisible(false)}
+        okText="ยืนยัน"
+        cancelText="ยกเลิก"
+        okButtonProps={{
+          style: {
+            color: "#f0f0f0",
+            backgroundColor: "#5755FE",
+            borderColor: "#5755FE",
+          },
+        }}
+        cancelButtonProps={{
+          style: {
+            color: "#5755FE",
+            backgroundColor: "#f0f0f0 ",
+            borderColor: "#5755FE",
+          },
+        }}
+      >
+        คุณต้องการอนุมัติรายการนี้ใช่หรือไม่?
+      </Modal>
+
     </MainLayout>
   );
 };

@@ -20,7 +20,7 @@ import MainLayout from "../../components/LayoutAdmin";
 import "../../styles1/UploadMaterial.css"; // นำเข้า CSS
 import config from '../../configAPI';
 
-function UploadMaterials() {
+const UploadMaterials= () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
@@ -41,7 +41,7 @@ function UploadMaterials() {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         const response = await axios.get(`${config.API_URL}/materials`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -148,7 +148,7 @@ function UploadMaterials() {
   const handleSaveEdit = async () => {
     try {
       const values = form.getFieldsValue();
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.put(
         `${config.API_URL}/materials/${editingRecord.material_id}`,
         values,
@@ -225,7 +225,34 @@ function UploadMaterials() {
     });
   };
 
-  // ฟังก์ชันบันทึกข้อมูลเมื่ออัปโหลดไฟล์
+  // ฟังก์ชันดึงข้อมูลจากฐานข้อมูลที่ 2 และเพิ่มข้อมูลลงในฐานข้อมูลที่ 1
+  const handleFetchAndAddMaterials = async () => {
+    setLoading(true);
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.get(`${config.API_URL}/materials/fetch-materials-db2`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      message.success("เพิ่มข้อมูลวัตถุดิบเรียบร้อยแล้ว");
+      // รีเฟรชข้อมูลวัสดุหลังจากเพิ่ม
+      const updatedMaterials = await axios.get(
+        `${config.API_URL}/materials`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMaterials(updatedMaterials.data);
+      setFilteredMaterials(updatedMaterials.data);
+    } catch (error) {
+      console.error("Error fetching and adding materials:", error);
+      message.error("เกิดข้อผิดพลาดในการเพิ่มข้อมูลวัสดุ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*// ฟังก์ชันบันทึกข้อมูลเมื่ออัปโหลดไฟล์
   const handleFileSaveClick = async () => {
     if (!selectedFile) {
       alert("กรุณาเลือกไฟล์.");
@@ -238,7 +265,7 @@ function UploadMaterials() {
     formData.append("file", selectedFile);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
 
       const response = await axios.post(
         `${config.API_URL}/materials/upload`,
@@ -267,15 +294,15 @@ function UploadMaterials() {
     } finally {
       setLoading(false);
     }
-  };
+  };*/
 
-  const handleAddRow = () => {
+  /*const handleAddRow = () => {
     setAddingNewRow(true);
   };
 
   const handleSaveRow = async (values) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.post(`${config.API_URL}/materials`, values, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -297,10 +324,11 @@ function UploadMaterials() {
 
   const handleCancelRow = () => {
     setAddingNewRow(false);
-  };
+  };*/
 
   return (
     <MainLayout username="User">
+      {/* 
       <Row gutter={16}>
         <Col span={12}>
           <Card
@@ -325,6 +353,7 @@ function UploadMaterials() {
           </Card>
         </Col>
       </Row>
+      */}
 
       <Row>
         <Col span={24}>
@@ -333,6 +362,21 @@ function UploadMaterials() {
             title="ตารางข้อมูลวัตถุดิบ"
             style={{ marginTop: "20px" }}
           >
+            <Button
+              type="primary"
+              onClick={handleFetchAndAddMaterials}
+              loading={loading}
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE",
+                marginBottom: "16px",
+              }}
+            >
+              ดึงข้อมูลวัตถุดิบ
+            </Button>
+
+            {/* 
             <Button
               type="primary"
               onClick={handleAddRow}
@@ -344,7 +388,7 @@ function UploadMaterials() {
               }}
             >
               เพิ่มวัตถุดิบใหม่
-            </Button>
+            </Button>*/}
 
             <Form layout="inline" style={{ marginBottom: "20px" }}>
               <Form.Item
@@ -394,6 +438,7 @@ function UploadMaterials() {
         </Col>
       </Row>
 
+{/* 
       <Modal
         title="เพิ่ม / แก้ไข วัตถุดิบ"
         open={isModalVisible}
@@ -479,7 +524,7 @@ function UploadMaterials() {
             <Input />
           </Form.Item>
         </Form>
-      </Modal>
+      </Modal>*/}
     </MainLayout>
   );
 }

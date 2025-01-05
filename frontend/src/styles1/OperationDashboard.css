@@ -157,7 +157,7 @@
 
 
   
-  @media (max-width: 768px) {
+  /*@media (max-width: 768px) {
     .header, .search-bar {
       flex-direction: column;
       align-items: flex-start;
@@ -192,7 +192,95 @@
     }
 
     .ant-modal-content {
-      width: 80vw; /* ปรับให้เหมาะสมในขนาดหน้าจอใหญ่ */
-      max-width: 1200px; /* ปรับความกว้างสูงสุด */
+      width: 80vw; 
+      max-width: 1200px; 
     }
+  }*/
+
+  /* Responsive styling for tablets (width: 768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .dashboard-title {
+    font-size: 24px;
+    text-align: center; /* Center align title on tablet */
   }
+
+  .sarabun-light {
+    font-size: 16px;
+  }
+
+  .table-responsive {
+    overflow-x: scroll; /* Add horizontal scroll for tables */
+  }
+
+  /* Adjust card and button styles */
+  .ant-card {
+    margin: 0 10px;
+    padding: 15px;
+  }
+
+  .ant-btn {
+    font-size: 16px;
+  }
+
+  /* Adjust modal size */
+  .ant-modal {
+    width: 90% !important;
+    max-width: 600px;
+  }
+
+  .ant-modal-footer button {
+    width: 100px;
+    margin: 0 5px;
+  }
+}
+
+.custom-table .ant-table {
+  border: none; /* ซ่อนเส้นขอบรอบตาราง */
+}
+
+.custom-table .ant-table-thead > tr > th {
+  border-bottom: 1px solid #A9A9A9; /* แสดงเส้นขอบที่ด้านล่างของ header */
+}
+
+.custom-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #A9A9A9; /* แสดงเส้นขอบที่ด้านล่างของ cell */
+}
+
+.custom-table .ant-table-tbody > tr > td:first-child {
+  border-left: none; /* ซ่อนเส้นขอบด้านซ้ายของ cell แรก */
+}
+
+/* Responsive styling for smaller devices (width: less than 768px) */
+@media (max-width: 768px) {
+  .dashboard-title {
+    font-size: 20px;
+    text-align: center; /* Center align title on small screens */
+  }
+
+  .sarabun-light {
+    font-size: 14px;
+  }
+
+  .table-responsive {
+    overflow-x: scroll; /* Ensure tables are scrollable on small screens */
+  }
+
+  .ant-card {
+    margin: 0 5px;
+    padding: 10px;
+  }
+
+  .ant-btn {
+    font-size: 14px;
+  }
+
+  .ant-modal {
+    width: 90% !important;
+    max-width: 500px;
+  }
+
+  .ant-modal-footer button {
+    width: 90px;
+    margin: 0 3px;
+  }
+}

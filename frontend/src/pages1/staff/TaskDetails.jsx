@@ -1,6 +1,6 @@
 // src/pages1/staff/TaskDetails.jsx
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
@@ -10,11 +10,15 @@ import {
   InputNumber,
   Card,
   Breadcrumb,
+  Radio,
+  Input,
 } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/TaskDetails.css";
-import config from '../../configAPI';
+import config from "../../configAPI";
+import ChatApp from "../../components/ChatApp";
+import Swal from "sweetalert2";
 
 const TaskDetails = () => {
   const { upload_id } = useParams();
@@ -25,9 +29,20 @@ const TaskDetails = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [isTaskCompleted, setIsTaskCompleted] = useState(false);
   const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
+  const [formattedData, setFormattedData] = useState([]);
   const [countedQuantities, setCountedQuantities] = useState({});
+  const [actualQuantities, setactualQuantities] = useState({});
   const [selectedRows, setSelectedRows] = useState([]);
   const [temporaryData, setTemporaryData] = useState({});
+  const [isDataChanged, setIsDataChanged] = useState(false);
+  const [isReasonModalVisible, setIsReasonModalVisible] = useState(false);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
+  const [currentRecordId, setCurrentRecordId] = useState(null);
+  const [showReasonButton, setShowReasonButton] = useState(false);
+  const [buttonType, setButtonType] = useState("savePartial");
+
+  const navigate = useNavigate();
 
   const fetchTaskDetails = async () => {
     try {
@@ -135,11 +150,12 @@ const TaskDetails = () => {
   const handleSaveCountedQuantities = async () => {
     try {
       const token = sessionStorage.getItem("token");
-      console.log("Temporary Data:", temporaryData);
+      console.log("Temporary Data ปกติ:", temporaryData);
 
       const payload = Object.entries(temporaryData).map(([id, details]) => ({
         id: parseInt(id, 10),
         counted_quantity: details.counted_quantity,
+        actual_quantity: details.actual_quantity,
         selected_time: details.timestamp,
       }));
 
@@ -155,11 +171,142 @@ const TaskDetails = () => {
 
       console.log("Successfully updated:", response.data);
       message.success("บันทึกการเบิกจ่ายเรียบร้อย");
-      
+
       await completeTask();
+      navigate("/MyTasks");
     } catch (err) {
       console.error("Failed to save counted quantities:", err);
       message.error("Failed to save counted quantities");
+    }
+  };
+
+  const handleSavePartial = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      console.log("Temporary Data สำหรับบันทึกชั่วคราว:", temporaryData);
+
+      const payload = Object.entries(temporaryData).map(([id, details]) => ({
+        id: parseInt(id, 10),
+        counted_quantity: details.counted_quantity,
+        actual_quantity: details.actual_quantity,
+        selected_time: details.timestamp,
+      }));
+
+      console.log("Payload to send:", payload);
+
+      const response = await axios.post(
+        `${config.API_URL}/tasks/save-partial/${upload_id}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      console.log("Successfully saved partial quantities:", response.data);
+      message.success("บันทึกจำนวนบางส่วนเรียบร้อย");
+
+      await handleUpdateStatus(upload_id);
+      navigate("/MyTasks");
+    } catch (err) {
+      console.error("Failed to save partial quantities:", err);
+      message.error("Failed to save partial quantities");
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const response = await axios.post(
+        `${config.API_URL}/tasks/update-status/${upload_id}`,
+        {
+          status: "รอดำเนินการต่อ",
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      console.log("Successfully updated status:", response.data);
+      message.success("สถานะถูกบันทึกชั่วคราวเรียบร้อยแล้ว");
+    } catch (err) {
+      console.error("Failed to update status:", err);
+      message.error("ไม่สามารถบันทึกสถานะชั่วคราวได้");
+    }
+  };
+
+  const handleSavePartialCountedQuantities = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      console.log("Temporary Data รายงานปัญหา:", temporaryData);
+
+      const payload = Object.entries(temporaryData).map(([id, details]) => ({
+        id: parseInt(id, 10),
+        counted_quantity: details.counted_quantity,
+        actual_quantity: details.actual_quantity,
+        used_quantity: temporaryData[id]?.used_quantity,
+        selected_time: details.timestamp,
+        employee_reason: details.employee_reason || "",
+      }));
+
+      console.log("Payload to send (คลาดเคลื่อน):", payload);
+
+      const response = await axios.post(
+        `${config.API_URL}/tasks/save-partial-counted-quantities/${upload_id}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      console.log("Successfully Save:", response.data);
+      message.success("บันทึกการเบิกจ่ายชั่วคราวเรียบร้อย");
+      await handleUpdateStatus(upload_id);
+
+      // ตรวจสอบข้อมูลที่ต้องแจ้งเตือน
+      const mismatchItems = payload.filter(
+        (item) => item.actual_quantity !== item.used_quantity // เปลี่ยนเงื่อนไขที่นี่
+      );
+
+      if (mismatchItems.length > 0) {
+        handleNotifyManager(upload_id); // เรียกฟังก์ชันการแจ้งเตือนแยกต่างหาก
+      }
+    } catch (err) {
+      console.error("ไม่สามารถบันทึกการเบิกจ่ายชั่วคราวได้:", err);
+      message.error("ไม่สามารถบันทึกการเบิกจ่ายชั่วคราวได้");
+    }
+  };
+
+  // ฟังก์ชันการแจ้งเตือน
+  const handleNotifyManager = (upload_id) => {
+    if (!upload_id) {
+      // ตรวจสอบว่า upload_id มีค่าหรือไม่
+      message.error("ไม่พบข้อมูล upload_id");
+      return;
+    }
+    Swal.fire({
+      title: "แจ้งเตือนหัวหน้าตรวจสอบ",
+      text: "มีวัตถุดิบบางรายการไม่เพียงพอ",
+      icon: "warning",
+      confirmButtonText: "ตกลง",
+      customClass: {
+        title: "sarabun-bold", // เพิ่มคลาสสำหรับ title
+        htmlContainer: "sarabun-light", // เพิ่มคลาสสำหรับข้อความ text
+      },
+    }).then(() => {
+      // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
+      navigate("/MyTasks");
+    });
+  };
+
+  const handleActualQuantityChange = (value, id) => {
+    if (!isTaskCompleted) {
+      setactualQuantities((prevQuantities) => ({
+        ...prevQuantities,
+        [id]: value || prevQuantities[id],
+      }));
+      console.log("Updated Counted Quantities:", actualQuantities);
+      setIsDataChanged(true);
     }
   };
 
@@ -167,10 +314,25 @@ const TaskDetails = () => {
     if (!isTaskCompleted) {
       setCountedQuantities((prevQuantities) => ({
         ...prevQuantities,
-        [id]: value,
+        [id]: value || prevQuantities[id],
       }));
       console.log("Updated Counted Quantities:", countedQuantities);
+      setIsDataChanged(true);
     }
+  };
+
+  // อัปเดตเหตุผลใน temporaryData
+  const handleReasonChange = (value, id) => {
+    setTemporaryData((prevData) => {
+      const newData = { ...prevData };
+      if (newData[id]) {
+        newData[id].employee_reason = value; // เพิ่มเหตุผล
+      } else {
+        newData[id] = { employee_reason: value }; // ถ้าไม่มีข้อมูลให้สร้างใหม่
+      }
+      return newData;
+    });
+    setIsDataChanged(true);
   };
 
   const handleRowClick = (record) => {
@@ -206,38 +368,95 @@ const TaskDetails = () => {
           ? countedQuantities[item.id]
           : item.remaining_quantity;
 
+      const actualQuantity =
+        actualQuantities[item.id] !== undefined
+          ? actualQuantities[item.id]
+          : item.used_quantity;
+
+      const usedQuantity =
+        temporaryData[id]?.used_quantity !== undefined
+          ? temporaryData[id].used_quantity
+          : item.used_quantity;
+
+      const employeeReason =
+        temporaryData[id]?.employee_reason !== undefined
+          ? temporaryData[id].employee_reason
+          : "";
+
       setTemporaryData((prevData) => {
         const newData = { ...prevData };
         if (checked) {
           // เก็บข้อมูล id, counted_quantity, และ timestamp
           newData[id] = {
             counted_quantity: countedQuantity,
+            actual_quantity: actualQuantity,
+            used_quantity: usedQuantity,
             timestamp: currentTime,
+            employee_reason: employeeReason,
           };
         } else {
           // ลบข้อมูลถ้า unchecked
           delete newData[id];
+          newData[id] = {
+            ...item, // คืนค่า `actual_quantity` และค่าอื่น ๆ เป็นค่าเดิม
+            counted_quantity: item.remaining_quantity,
+            actual_quantity: item.used_quantity,
+          };
         }
 
-        // Log ข้อมูลที่ถูกเก็บชั่วคราว
-        console.log("Temporary Data:", newData);
+        console.log("Temporary Data :", newData);
+
+        // ตรวจสอบเงื่อนไข actual_quantity และ used_quantity
+        if (
+          checked &&
+          newData[id]?.actual_quantity !== newData[id]?.used_quantity
+        ) {
+          setIsReasonModalVisible(true); // แสดงปุ่ม Reason
+          setCurrentRecordId(id); // เก็บ ID ปัจจุบัน
+        } else {
+          setIsReasonModalVisible(false); // ซ่อนปุ่ม Reason หากเงื่อนไขไม่ถูกต้อง
+          setCurrentRecordId(null);
+        }
 
         return newData;
       });
 
-      setSelectedRows((prevSelectedRows) =>
-        checked
+      setSelectedRows((prevSelectedRows) => {
+        const updatedRows = checked
           ? [...prevSelectedRows, id]
-          : prevSelectedRows.filter((rowId) => rowId !== id)
-      );
-
-      console.log(
-        "Selected Rows:",
-        checked
-          ? [...selectedRows, id]
-          : selectedRows.filter((rowId) => rowId !== id)
-      );
+          : prevSelectedRows.filter((rowId) => rowId !== id);
+        console.log("Selected Rows:", updatedRows);
+        return updatedRows;
+      });
+      setIsDataChanged(true);
     }
+  };
+
+  const handleReasonButtonClick = (id) => {
+    setCurrentRecordId(id); // เก็บ ID ของรายการที่เลือก
+    setIsReasonModalVisible(true); // เปิด Modal
+  };
+
+  const handleReasonOk = () => {
+    if (selectedReason === "อื่นๆ" && otherReason.trim() === "") {
+      message.error("กรุณากรอกเหตุผลในช่องอื่นๆ");
+      return;
+    }
+    const finalReason =
+      selectedReason === "อื่นๆ" ? otherReason.trim() : selectedReason;
+
+    if (currentRecordId) {
+      handleReasonChange(finalReason, currentRecordId);
+    }
+    setIsReasonModalVisible(false);
+    setSelectedReason("");
+    setOtherReason("");
+  };
+
+  const handleReasonCancel = () => {
+    setIsReasonModalVisible(false);
+    setSelectedReason("");
+    setOtherReason("");
   };
 
   const handleModalOk = () => {
@@ -248,16 +467,43 @@ const TaskDetails = () => {
     setIsModalVisible(false);
   };
 
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString(); // ใช้วิธีการแสดงผลวันที่และเวลาที่คุณต้องการ
-  };
-
   // เพิ่มฟังก์ชันสำหรับการไฮไลท์แถว
   const rowClassName = (record) => {
     return selectedRows.includes(record.id);
   };
 
+  // ฟังก์ชันสำหรับการนำทางกลับ
+  const handleBack = () => {
+    if (isDataChanged) {
+      Modal.confirm({
+        title: "ยืนยันการย้อนกลับ",
+        content: "คุณต้องการละทิ้งการบันทึกการเบิกจ่ายใช่ไหม?",
+        okText: "ยืนยัน",
+        cancelText: "ยกเลิก",
+        okButtonProps: {
+          style: {
+            color: "#f0f0f0",
+            backgroundColor: "#5755FE",
+            borderColor: "#5755FE",
+          },
+        },
+        cancelButtonProps: {
+          style: {
+            color: "#5755FE",
+            backgroundColor: "#f0f0f0",
+            borderColor: "#5755FE",
+          },
+        },
+        onOk: () => {
+          navigate("/MyTasks"); // นำทางกลับไปยัง MyTasks
+        },
+      });
+    } else {
+      navigate("/MyTasks"); // ถ้าไม่มีการเปลี่ยนแปลงข้อมูล นำทางกลับทันที
+    }
+  };
+
+  useEffect(() => {
   // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
   const formattedData = Array.isArray(data)
     ? data.flatMap((m) =>
@@ -265,6 +511,7 @@ const TaskDetails = () => {
           .sort((a, b) => a.matin.localeCompare(b.matin))
           .map((d, index) => {
             const countedQuantity = countedQuantities[d.id];
+            const actualQuantity = actualQuantities[d.id];
             return {
               ...d,
               matunit: m.matunit,
@@ -279,12 +526,56 @@ const TaskDetails = () => {
                 countedQuantity !== undefined
                   ? countedQuantity
                   : d.remaining_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
+              actual_quantity:
+                actualQuantity !== undefined
+                  ? actualQuantity
+                  : d.used_quantity,
             };
           })
       )
-    : [];
+      : [];
+
+      setFormattedData(formattedData); // อัปเดตข้อมูลใน formattedData
+  
+    }, [data, countedQuantities, actualQuantities, temporaryData]); // คำนวณใหม่เมื่อข้อมูลเหล่านี้เปลี่ยนแปลง
 
   console.log("Formatted Data:", formattedData);
+
+  const checkButtonType = () => {
+    if (!formattedData || formattedData.length === 0) return; // ตรวจสอบว่า formattedData มีค่าหรือไม่
+
+    const allChecked = selectedRows.length === formattedData.length;
+
+    const mismatchItems = formattedData.some(
+      (item) =>
+        temporaryData[item.id]?.actual_quantity !==
+        temporaryData[item.id]?.used_quantity
+    );
+
+    if (allChecked && !mismatchItems) {
+      setButtonType("complete");
+    } else if (mismatchItems) {
+      setButtonType("reportIssue");
+    } else {
+      setButtonType("savePartial");
+    }
+  };
+
+  useEffect(() => {
+    if (formattedData.length > 0) {
+      checkButtonType();
+    }
+  }, [formattedData, selectedRows, temporaryData]);
+
+  const handleButtonClick = () => {
+    if (buttonType === "savePartial") {
+      handleSavePartial(); // เรียกฟังก์ชันบันทึกชั่วคราว
+    } else if (buttonType === "reportIssue") {
+      handleSavePartialCountedQuantities(); // เรียกฟังก์ชันรายงานปัญหา
+    } else if (buttonType === "complete") {
+      handleSaveCountedQuantities(); // เรียกฟังก์ชันเสร็จสิ้น
+    }
+  };
 
   // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
   const formatNumber = (number) => {
@@ -292,23 +583,6 @@ const TaskDetails = () => {
   };
 
   const columns = [
-    /*{
-      title: "ลำดับ",
-      key: "index",
-      render: (text, record, index) =>
-        record.rowSpanMaterialId > 0 ? index + 1 : null,
-      align: "left",
-    },*/
-    {
-      title: "รหัส",
-      dataIndex: "matunit",
-      key: "matunit",
-      render: (text, record, index) => ({
-        children: text,
-        props: { rowSpan: record.rowSpanMatunit },
-      }),
-      align: "left",
-    },
     {
       title: "รายการ",
       dataIndex: "mat_name",
@@ -329,6 +603,16 @@ const TaskDetails = () => {
         props: { rowSpan: record.rowSpanMatName },
       }),
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
     },
     {
       title: "จำนวนที่สั่งเบิก",
@@ -339,44 +623,158 @@ const TaskDetails = () => {
         props: { rowSpan: record.rowSpanQuantity },
       }),
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
     },
     {
       title: "ล็อต",
       dataIndex: "lot",
       key: "lot",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
     },
     {
       title: "ตำแหน่ง",
       dataIndex: "location",
       key: "location",
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
     },
     {
       title: "จำนวนที่ต้องหยิบ",
       dataIndex: "used_quantity",
       key: "used_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (text) => formatNumber(text),
+      align: "center",
+    },
+    {
+      title: "จ่ายจริง",
+      dataIndex: "actual_quantity",
+      key: "actual_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (_, record) =>
+        isTaskCompleted ? (
+          <span
+            style={{
+              fontWeight: "bold",
+              color: "#9400D3",
+            }}
+          >
+            {formatNumber(record.actual_quantity)}
+          </span>
+        ) : (
+          <InputNumber
+            defaultValue={record.used_quantity}
+            formatter={(value) =>
+              `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+            }
+            parser={(value) => value.replace(/,/g, "")}
+            onChange={(value) => handleActualQuantityChange(value, record.id)}
+            disabled={isTaskCompleted}
+            style={{
+              backgroundColor: selectedRows.includes(record.id)
+                ? "#DFF2BF"
+                : "#E6E6FA",
+              fontWeight: "bold",
+              color: selectedRows.includes(record.id) ? "#4F8A10" : "#9400D3",
+              borderColor: selectedRows.includes(record.id)
+                ? "#4F8A10"
+                : "#9400D3",
+            }}
+          />
+        ),
       align: "center",
     },
     {
       title: "จำนวนคงเหลือ",
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (text) => formatNumber(text),
       align: "center",
     },
     {
       title: "นับจริง",
       dataIndex: "counted_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (_, record) =>
         isTaskCompleted ? (
-          <span>{formatNumber(record.counted_quantity)}</span>
+          <span
+            style={{
+              fontWeight: "bold",
+              color: "#9400D3",
+            }}
+          >
+            {formatNumber(record.counted_quantity)}
+          </span>
         ) : (
           <InputNumber
             defaultValue={record.remaining_quantity}
+            formatter={(value) =>
+              `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+            }
+            parser={(value) => value.replace(/,/g, "")}
             onChange={(value) => handleQuantityChange(value, record.id)}
             disabled={isTaskCompleted}
+            style={{
+              backgroundColor: selectedRows.includes(record.id)
+                ? "#DFF2BF"
+                : "#E6E6FA",
+              fontWeight: "bold",
+              color: selectedRows.includes(record.id) ? "#4F8A10" : "#9400D3",
+              borderColor: selectedRows.includes(record.id)
+                ? "#4F8A10"
+                : "#9400D3",
+            }}
           />
         ),
       align: "center",
@@ -384,15 +782,73 @@ const TaskDetails = () => {
     {
       title: "เรียบร้อย",
       key: "selection",
+      align: "center", // การจัดกึ่งกลาง
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (_, record) => {
         return (
-          <Checkbox
-            checked={selectedRows.includes(record.id)}
-            onChange={(e) => handleCheckboxChange(record.id, e.target.checked)}
-            disabled={isTaskCompleted}
-          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Checkbox
+              checked={selectedRows.includes(record.id)}
+              onChange={(e) =>
+                handleCheckboxChange(record.id, e.target.checked)
+              }
+              disabled={isTaskCompleted}
+              style={{
+                width: "30px", // ขนาดของ Checkbox
+                height: "30px", // ขนาดของ Checkbox
+                transform: "scale(1.5)", // เพิ่มขนาดให้ใหญ่ขึ้น
+                margin: "0 10px", // ระยะห่างจากข้อความ
+              }}
+            />
+            {/* แสดงข้อความเพิ่มเติมถ้าต้องการ */}
+            <span style={{ fontSize: "15px" }}>{record.name}</span>
+          </div>
         );
       },
+    },
+    ,
+    {
+      title: "เหตุผล",
+      dataIndex: "employee_reason",
+      key: "employee_reason",
+      align: "center",
+      render: (_, record) => {
+        if (isReasonModalVisible && currentRecordId === record.id) {
+          return (
+            <Button
+              type="primary"
+              onClick={() => handleReasonButtonClick(record.id)}
+            >
+              เลือกเหตุผล
+            </Button>
+          );
+        }
+        return temporaryData[record.id]?.employee_reason || "-";
+      },
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
     },
   ];
 
@@ -400,32 +856,76 @@ const TaskDetails = () => {
     {
       title: "ลำดับ",
       key: "index",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "15px",
+          color: "#000000E0",
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
       render: (text, record, index) => index + 1,
-    },
-    {
-      title: "รหัส",
-      dataIndex: "matunit",
-      key: "matunit",
     },
     {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "15px",
+          color: "#000000E0",
+        },
+      }),
     },
     {
       title: "ล็อต",
       dataIndex: "lot",
       key: "lot",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "15px",
+          color: "#000000E0",
+        },
+      }),
     },
     {
       title: "ตำแหน่ง",
       dataIndex: "location",
       key: "location",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "15px",
+          color: "#000000E0",
+        },
+      }),
     },
     {
       title: "จำนวนคงเหลือ",
       dataIndex: "display_quantity",
       key: "display_quantity",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#DCDCDC",
+          fontWeight: "bold",
+          fontSize: "15px",
+          color: "#000000E0",
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
       render: (text) => formatNumber(text),
     },
   ];
@@ -434,7 +934,7 @@ const TaskDetails = () => {
     <MainLayout>
       <div
         style={{
-          backgroundColor: " #ffffff",
+          backgroundColor: " #DCDCDC",
           padding: "15px 30p",
           marginBottom: "20px",
           borderRadius: "15px",
@@ -447,20 +947,10 @@ const TaskDetails = () => {
             style={{
               fontSize: "28px",
               marginLeft: "20px",
-              padding: "10px",
+              padding: "20px",
             }}
           >
-            รายละเอียดการเบิก-จ่ายวัตถุดิบ
-          </div>
-          <div
-            className="sarabun-light"
-            style={{
-              fontSize: "14px",
-              marginLeft: "20px",
-              padding: "10px",
-            }}
-          >
-            <span className="ms-2"> {getCurrentDateTime()}</span>
+            รายละเอียดการเบิกวัตถุดิบ
           </div>
         </div>
       </div>
@@ -468,7 +958,7 @@ const TaskDetails = () => {
       <div>
         <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
           <Breadcrumb.Item>
-            <Link to="//OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
+            <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
           </Breadcrumb.Item>
           <Breadcrumb.Item>
             <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
@@ -490,55 +980,114 @@ const TaskDetails = () => {
             rowKey={(record) => record.material_id}
             rowClassName={rowClassName}
             scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+            className="custom-table"
           />
-          <div className="total-quantity sarabun-bold">
+          <div
+            className="total-quantity sarabun-bold"
+            style={{
+              backgroundColor: " #DCDCDC",
+              marginBottom: "20px",
+              borderRadius: "8px",
+            }}
+          >
             <p
               style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
             >
               <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
               {formatNumber(totalRequestedQuantity)}
             </p>
+            <Modal
+              title="เลือกเหตุผล"
+              visible={isReasonModalVisible}
+              onOk={handleReasonOk}
+              onCancel={handleReasonCancel}
+            >
+              <div>
+                <Radio.Group
+                  onChange={(e) => setSelectedReason(e.target.value)}
+                  value={selectedReason}
+                  style={{ display: "flex", flexDirection: "column" }}
+                >
+                  <Radio value="วัตถุดิบหมด">วัตถุดิบหมด</Radio>
+                  <Radio value="จ่ายผิดพลาด">จ่ายผิดพลาด</Radio>
+                  <Radio value="อื่นๆ">อื่นๆ</Radio>
+                </Radio.Group>
+                {selectedReason === "อื่นๆ" && (
+                  <Input
+                    style={{ marginTop: 10 }}
+                    placeholder="กรุณากรอกเหตุผล"
+                    value={otherReason}
+                    onChange={(e) => setOtherReason(e.target.value)}
+                  />
+                )}
+              </div>
+            </Modal>
           </div>
           <div className="table-buttons">
-            <Link to="/MyTasks">
-              <Button
-                className="back-button"
-                type="default"
-                style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
-                }}
-              >
-                ย้อนกลับ
-              </Button>
-            </Link>
-          </div>
-          {!isTaskCompleted && (
-            <div
+            <Button
+              className="back-button"
+              onClick={handleBack}
+              type="default"
               style={{
-                display: "flex",
-                justifyContent: "center",
-                marginTop: "10px",
+                color: "#5755FE ",
+                backgroundColor: "#f0f0f0",
+                borderColor: "#5755FE",
               }}
             >
-              <Button
-                className="complete-button"
-                onClick={handleSaveCountedQuantities}
-                type="primary"
-                style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
-                }}
-                disabled={selectedRows.length !== formattedData.length}
-              >
-                เสร็จสิ้น
-              </Button>
-            </div>
-          )}
+              ย้อนกลับ
+            </Button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "10px",
+            }}
+          >
+            <Button
+              onClick={handleButtonClick}
+              style={{
+                backgroundColor:
+                  buttonType === "savePartial"
+                    ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
+                    : buttonType === "reportIssue"
+                    ? "#FFD700" // สีสำหรับรายงานปัญหา
+                    : buttonType === "complete"
+                    ? "green" // สีสำหรับเสร็จสิ้น
+                    : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
+                borderColor:
+                  buttonType === "savePartial"
+                    ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
+                    : buttonType === "reportIssue"
+                    ? "#FFD700" // สีสำหรับรายงานปัญหา
+                    : buttonType === "complete"
+                    ? "green" // สีสำหรับเสร็จสิ้น
+                    : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
+                color:
+                  buttonType === "reportIssue"
+                    ? "black" // ข้อความสีดำสำหรับรายงานปัญหา
+                    : "white", // ข้อความสีขาวสำหรับปุ่มอื่น ๆ
+              }}
+            >
+              {buttonType === "savePartial" && "บันทึกชั่วคราว"}
+              {buttonType === "reportIssue" && "รายงานปัญหา"}
+              {buttonType === "complete" && "เสร็จสิ้น"}
+            </Button>
+          </div>
         </div>
       </Card>
+
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          zIndex: 1000,
+        }}
+      >
+        <ChatApp />
+      </div>
 
       <Modal
         className="sarabun-light"
@@ -549,13 +1098,12 @@ const TaskDetails = () => {
         footer={null} // ซ่อนปุ่ม Footer ของ Modal
       >
         <Table
-          className="sarabun-light"
           columns={modalColumns}
           dataSource={filteredData}
           pagination={false}
           rowKey={(record) => record.id}
-          //scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
-          rowClassName={rowClassName}
+          className="custom-table"
+          scroll={{ x: "max-content" }}
         />
       </Modal>
     </MainLayout>

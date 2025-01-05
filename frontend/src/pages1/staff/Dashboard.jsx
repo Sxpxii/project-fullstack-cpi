@@ -1,5 +1,6 @@
 // src/pages1/staff/Dashboard.jsx
 import React, { useState, useEffect } from "react";
+import { useMediaQuery } from "react-responsive";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -9,13 +10,12 @@ import {
   Tag,
   Card,
   Checkbox,
-  Row,
-  Col,
 } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/OperationDashboard.css";
-import config from '../../configAPI';
+import config from "../../configAPI";
+import ChatApp from "../../components/ChatApp";
 
 const OperationsDashboard = () => {
   const [username, setUsername] = useState("");
@@ -25,6 +25,8 @@ const OperationsDashboard = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMaterialTypes, setSelectedMaterialTypes] = useState([]);
   const navigate = useNavigate();
+  const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1024px)" });
+  const [isUserActive, setIsUserActive] = useState(true);
 
   const fetchTasks = async () => {
     try {
@@ -59,17 +61,17 @@ const OperationsDashboard = () => {
   };
 
   // กรองข้อมูลก่อนแสดงผลตามประเภทวัตถุดิบที่เลือก
-  const filteredTasks = tasks.filter((task) =>
-    selectedMaterialTypes.length > 0
-      ? selectedMaterialTypes.includes(task.material_type)
-      : true
-  )
-  .sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
-  
-  const getCurrentDate = () => {
-    return new Date().toISOString().split('T')[0]; // คืนค่าปัจจุบันในรูปแบบ YYYY-MM-DD
-  };
+  const filteredTasks = tasks
+    .filter((task) =>
+      selectedMaterialTypes.length > 0
+        ? selectedMaterialTypes.includes(task.material_type)
+        : true
+    )
+    .sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
 
+  const getCurrentDate = () => {
+    return new Date().toISOString().split("T")[0]; // คืนค่าปัจจุบันในรูปแบบ YYYY-MM-DD
+  };
 
   useEffect(() => {
     const storedUsername = sessionStorage.getItem("username");
@@ -78,7 +80,26 @@ const OperationsDashboard = () => {
     }
     fetchTasks();
     fetchMyTasks();
-  }, []);
+    // Set up activity listener
+    const handleUserActivity = () => setIsUserActive(true);
+    window.addEventListener("mousemove", handleUserActivity);
+    window.addEventListener("keydown", handleUserActivity);
+
+    // Auto-refresh if user is inactive
+    const interval = setInterval(() => {
+      if (!isUserActive) {
+        fetchTasks();
+        fetchMyTasks();
+      }
+      setIsUserActive(false); // Reset user activity status
+    }, 60000); // 1 minute interval
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("mousemove", handleUserActivity);
+      window.removeEventListener("keydown", handleUserActivity);
+    };
+  }, [isUserActive]);
 
   const handleSelectTask = (record) => {
     setSelectedTask(record);
@@ -117,12 +138,30 @@ const OperationsDashboard = () => {
       title: "Inventory ID",
       dataIndex: "inventory_id",
       key: "inventory_id",
-      align: "left",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
     },
     {
       title: "วัตถุดิบ",
       dataIndex: "material_type",
       key: "material_type",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
       render: (materialType) => {
         switch (materialType) {
           case "PK_DIS":
@@ -148,7 +187,15 @@ const OperationsDashboard = () => {
       dataIndex: "upload_date",
       key: "upload_date",
       render: (date) => new Date(date).toLocaleDateString(),
-      align: "left",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
     },
     /*{
       title: "สถานะ",
@@ -176,14 +223,42 @@ const OperationsDashboard = () => {
       key: "overdue",
       render: (record) => {
         const currentDate = getCurrentDate();
-        const isOverdue = new Date(record.upload_date).toISOString().split('T')[0] < currentDate;
-        return isOverdue ? <Tag color="red">เกินกำหนด</Tag> : null;
+        const isOverdue =
+          new Date(record.upload_date).toISOString().split("T")[0] <
+          currentDate;
+        return isOverdue ? (
+          <Tag className="sarabun-light" color="red">
+            เกินกำหนด
+          </Tag>
+        ) : (
+          <Tag className="sarabun-light" color="blue">
+            รอรับงาน
+          </Tag>
+        );
       },
       align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
     },
     {
       title: "",
       key: "action",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
       render: (_, record) => (
         <Button
           className="sarabun-light"
@@ -201,17 +276,12 @@ const OperationsDashboard = () => {
     },
   ];
 
-  const getCurrentDateTime = () => {
-    const now = new Date();
-    return now.toLocaleString(); // ใช้วิธีการแสดงผลวันที่และเวลาที่คุณต้องการ
-  };
-
   return (
     <MainLayout>
       <div
         style={{
-          backgroundColor: " #ffffff",
-          padding: "15px 30p",
+          backgroundColor: " #DCDCDC",
+          padding: isTabletOrMobile ? "10px 20px" : "15px 30px",
           marginBottom: "20px",
           borderRadius: "15px",
           boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
@@ -221,30 +291,74 @@ const OperationsDashboard = () => {
           <div
             className="dashboard-title sarabun-bold"
             style={{
-              fontSize: "28px",
-              marginLeft: "20px",
-              padding: "10px",
+              fontSize: isTabletOrMobile ? "24px" : "28px",
+              textAlign: isTabletOrMobile ? "center" : "left",
+              marginLeft: isTabletOrMobile ? "0px" : "10px",
             }}
           >
             Operations Dashboard
           </div>
-          <div
-            className="sarabun-light"
-            style={{
-              fontSize: "14px",
-              marginLeft: "20px",
-              padding: "10px",
-            }}
-          >
-            <span className="ms-2"> {getCurrentDateTime()}</span>
-          </div>
         </div>
       </div>
+
+      {/* Checkbox สำหรับกรองประเภทวัตถุดิบ */}
+      <Checkbox.Group
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          padding: "15px",
+          backgroundColor: "#ffd591",
+          borderRadius: "10px",
+          border: "1px solid #ddd",
+          marginBottom: "20px",
+          fontSize: "18px",
+          width: "300px",
+          alignSelf: "flex-end",
+          boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)", // เพิ่มเงาให้ดูมีมิติ
+        }}
+        className="sarabun-light"
+        onChange={handleMaterialTypeChange}
+      >
+        {[
+          /*{ label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
+              { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },*/
+          { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
+          { label: "สลัก/ตะขอ", value: "PIN" },
+          { label: "แผ่นเหล็ก", value: "BP" },
+          { label: "เคมี", value: "CHEMICAL" },
+        ].map((option) => (
+          <div
+            key={option.value}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "10px",
+            }}
+          >
+            <Checkbox
+              value={option.value}
+              style={{
+                width: "30px", // ขนาดของ Checkbox
+                height: "30px", // ขนาดของ Checkbox
+                transform: "scale(1.5)",
+                marginLeft: "15px",
+              }}
+            />
+            <span
+              style={{ marginLeft: "10px", fontSize: "16px", color: "black" }}
+            >
+              {option.label}
+            </span>{" "}
+            {/* ขนาดข้อความ */}
+          </div>
+        ))}
+      </Checkbox.Group>
 
       <div>
         <Card
           style={{
             borderRadius: "15px",
+            height: "60vh",
           }}
         >
           <div
@@ -259,33 +373,34 @@ const OperationsDashboard = () => {
             <span className="ms-2">รายการ</span>
           </div>
 
-          {/* Checkbox สำหรับกรองประเภทวัตถุดิบ */}
-          <Checkbox.Group
-            style={{ 
-              marginBottom: "20px",
-              fontSize: "18px", 
-              fontFamily: "Sarabun-Light", 
+          <div
+            style={{
+              height: "350px", // กำหนดความสูงของตาราง
+              overflowY: "auto", // ทำให้เลื่อนขึ้นลงได้
             }}
-            onChange={handleMaterialTypeChange}
-            options={[
-              { label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
-              { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },
-              { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
-              { label: "สลัก/ตะขอ", value: "PIN" },
-              { label: "แผ่นเหล็ก", value: "BP" },
-              { label: "เคมี", value: "CHEMICAL" },
-            ]}
-          />
-
-          <div className="table-responsive">
-            <Table 
-            columns={columns} 
-            dataSource={filteredTasks} 
-            pagination={false} 
+            className="table-responsive"
+          >
+            <Table
+              columns={columns}
+              dataSource={filteredTasks}
+              pagination={false}
+              className="custom-table"
             />
           </div>
         </Card>
       </div>
+
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10px",
+          right: "10px",
+          zIndex: 1000,
+        }}
+      >
+        <ChatApp />
+      </div>
+
       <Modal
         title="ยืนยันการรับงาน"
         className="sarabun-light"

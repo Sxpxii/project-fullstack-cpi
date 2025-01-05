@@ -1,13 +1,10 @@
-import React, { useState, useEffect }  from "react";
-import { Layout, Menu, Avatar, Dropdown, message } from "antd";
-import {
-  UserOutlined,
-  LogoutOutlined,
-} from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import { Layout, Menu, Avatar, Dropdown, message, Space } from "antd";
+import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { TbBuildingWarehouse } from "react-icons/tb";
-import config from '../configAPI';
+import config from "../configAPI";
 
 const { Header, Content, Footer } = Layout;
 
@@ -88,9 +85,22 @@ const MainLayout = ({ children }) => {
           onClick={handleMenuClick}
           style={{ flex: 1, minWidth: 0 }}
         />
-        <Dropdown overlay={menu} trigger={["click"]}>
-          <Avatar icon={<UserOutlined />} style={{ cursor: "pointer" }} />
-        </Dropdown>
+        <Space>
+          <span style={{ color: "white", marginRight: "10px" }}>
+            {username} {/* แสดงชื่อผู้ใช้งานถัดจาก Avatar */}
+          </span>
+          <Dropdown overlay={menu} trigger={["click"]}>
+            <Avatar
+              icon={<UserOutlined />}
+              style={{
+                cursor: "pointer",
+                backgroundColor: "#5755FE",
+                width: "40px",
+                height: "40px",
+              }}
+            />
+          </Dropdown>
+        </Space>
       </Header>
       <Content style={{ padding: "0 48px" }}>
         {children} {/* This will render the content passed from other pages */}

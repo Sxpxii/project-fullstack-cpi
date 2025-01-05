@@ -1,7 +1,7 @@
-const pool = require('../config/db');
+const { pool1 } = require('../config/db');
 
 const logUserAction = async (userId, action) => {
-  const client = await pool.connect(); // ใช้ client เพื่อควบคุม transaction
+  const client = await pool1.connect(); // ใช้ client เพื่อควบคุม transaction
   try {
       await client.query('BEGIN'); // เริ่ม transaction
 
@@ -23,7 +23,7 @@ const logUserAction = async (userId, action) => {
 // ฟังก์ชันดึงข้อมูลผู้ใช้งานทั้งหมด
 const getAllUsers = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const result = await pool1.query(`
       SELECT u1.user_id, u1.username, u1.role, u2.username as invited_by, u1.created_at, u1.lastactivity
       FROM users1 u1
       LEFT JOIN users1 u2 ON u1.invited_by = u2.user_id
@@ -40,7 +40,7 @@ const getAllUsers = async (req, res) => {
 // ฟังก์ชันดึงข้อมูลผู้ใช้งานที่ออนไลน์
 /*const getOnlineUsers = async (req, res) => {
     try {
-      const result = await pool.query(
+      const result = await pool1.query(
         `SELECT user_id, username 
          FROM users1 
          WHERE lastActivity >= NOW() - INTERVAL '5 minutes'` // สมมติว่าผู้ใช้งานที่ออนไลน์ได้กระทำล่าสุดภายใน 5 นาทีที่ผ่านมา
@@ -55,7 +55,7 @@ const getAllUsers = async (req, res) => {
   // ฟังก์ชันดึงข้อมูลผู้ใช้งานที่ออฟไลน์
   const getOfflineUsers = async (req, res) => {
     try {
-      const result = await pool.query(
+      const result = await pool1.query(
         `SELECT user_id, username 
          FROM users1 
          WHERE lastActivity < NOW() - INTERVAL '5 minutes' OR lastActivity IS NULL`
@@ -74,7 +74,7 @@ const updateUser = async (req, res) => {
   const { updated_by } = req.body;
 
   try {
-    await pool.query(
+    await pool1.query(
       'UPDATE users1 SET username = $1, password = COALESCE($2, password), role = $3 WHERE user_id = $4',
       [username, password, role, user_id]
     );
@@ -100,9 +100,9 @@ const deleteUser = async (req, res) => {
     }
 
     // ลบข้อมูลที่อ้างอิงถึงในตาราง useractions ก่อน
-    await pool.query('DELETE FROM useractions WHERE user_id = $1', [user_id]);
+    await pool1.query('DELETE FROM useractions WHERE user_id = $1', [user_id]);
 
-    const result = await pool.query('DELETE FROM users1 WHERE user_id = $1 RETURNING *', [user_id]);
+    const result = await pool1.query('DELETE FROM users1 WHERE user_id = $1 RETURNING *', [user_id]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'User not found' });

@@ -1,10 +1,10 @@
-const pool = require('../config/db'); // สมมติว่าคุณใช้ PostgreSQL และใช้ pool จาก pg library
+const { pool1 } = require('../config/db'); // สมมติว่าคุณใช้ PostgreSQL และใช้ pool จาก pg library
 
 const getDailyOverview = async (req, res) => {
     try {
         const { date } = req.query;
     
-        const result = await pool.query(`
+        const result = await pool1.query(`
           SELECT 
             COUNT(*) AS total,
             COUNT(CASE WHEN current_status = 'กำลังดำเนินการ' THEN 1 END) AS in_progress,
@@ -30,7 +30,7 @@ const getInventoryStock = async (req, res) => {
     const today = new Date().toISOString().split('T')[0]; // วันที่ปัจจุบันในรูปแบบ YYYY-MM-DD
 
     try {
-      const result = await pool.query(`
+      const result = await pool1.query(`
         WITH Requests AS (
             SELECT 
                 u.upload_date::date AS date,
@@ -94,7 +94,7 @@ const getInventoryStock = async (req, res) => {
   const getDailyIssues = async (req, res) => {
     const { date } = req.query; // รับวันที่จาก query params
     try {
-      const result = await pool.query(`
+      const result = await pool1.query(`
         SELECT
           mu.reason,
           COUNT(*) AS issue_count
@@ -163,7 +163,7 @@ const getInventoryStock = async (req, res) => {
                 us_user.username
         `;
 
-        const results = await pool.query(query, [date]);
+        const results = await pool1.query(query, [date]);
 
         const detailedResults = results.rows.map(row => {
           if (row.start_time && row.end_time) {
@@ -212,7 +212,7 @@ const getUserInfo = async (req, res) => {
           return res.status(400).json({ error: 'User ID not found' });
       }
 
-      const result = await pool.query(`
+      const result = await pool1.query(`
           SELECT username, role FROM user1 WHERE user_id = $1
       `, [userId]);
 

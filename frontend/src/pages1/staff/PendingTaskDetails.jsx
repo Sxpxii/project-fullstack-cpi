@@ -17,7 +17,6 @@ import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/TaskDetails.css";
 import config from "../../configAPI";
-import ChatApp from "../../components/ChatApp";
 import Swal from "sweetalert2";
 
 const PendingTaskDetails = () => {
@@ -31,7 +30,6 @@ const PendingTaskDetails = () => {
   const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
   const [formattedData, setFormattedData] = useState([]);
   const [countedQuantities, setCountedQuantities] = useState({});
-  const [actualQuantities, setactualQuantities] = useState({});
   const [selectedRows, setSelectedRows] = useState([]);
   const [temporaryData, setTemporaryData] = useState({});
   const [isDataChanged, setIsDataChanged] = useState(false);
@@ -40,7 +38,6 @@ const PendingTaskDetails = () => {
   const [otherReason, setOtherReason] = useState("");
   const [currentRecordId, setCurrentRecordId] = useState(null);
   const [buttonType, setButtonType] = useState("savePartial");
-  const [isCloseTaskEnabled, setIsCloseTaskEnabled] = useState(false);
   const [isCompleteButtonClicked, setIsCompleteButtonClicked] = useState(false);
 
   const navigate = useNavigate();
@@ -244,7 +241,7 @@ const PendingTaskDetails = () => {
         id: parseInt(id, 10),
         counted_quantity: details.counted_quantity,
         actual_quantity: details.actual_quantity,
-        used_quantity: temporaryData[id]?.used_quantity,
+        quantity: temporaryData[id]?.quantity,
         selected_time: details.timestamp,
         employee_reason: details.employee_reason || "",
       }));
@@ -265,7 +262,7 @@ const PendingTaskDetails = () => {
 
       // ตรวจสอบข้อมูลที่ต้องแจ้งเตือน
       const mismatchItems = payload.filter(
-        (item) => item.actual_quantity !== item.used_quantity // เปลี่ยนเงื่อนไขที่นี่
+        (item) => item.actual_quantity !== item.quantity // เปลี่ยนเงื่อนไขที่นี่
       );
 
       if (mismatchItems.length > 0) {
@@ -388,12 +385,12 @@ const PendingTaskDetails = () => {
           : item.actual_quantity // ถ้าเป็น true ใช้ actual_quantity
         : temporaryData[id]?.actual_quantity !== undefined
         ? temporaryData[id]?.actual_quantity
-        : item.used_quantity; // ถ้าเป็น false ใช้ used_quantity
+        : item.quantity; // ถ้าเป็น false ใช้ quantity
 
       const usedQuantity =
-        temporaryData[id]?.used_quantity !== undefined
-          ? temporaryData[id].used_quantity
-          : item.used_quantity;
+        temporaryData[id]?.quantity !== undefined
+          ? temporaryData[id].quantity
+          : item.quantity;
 
       const employeeReason = temporaryData[id]?.employee_reason || "";
 
@@ -404,7 +401,7 @@ const PendingTaskDetails = () => {
           newData[id] = {
             counted_quantity: countedQuantity,
             actual_quantity: actualQuantity,
-            used_quantity: usedQuantity,
+            quantity: usedQuantity,
             timestamp: currentTime,
             employee_reason: employeeReason,
           };
@@ -414,16 +411,16 @@ const PendingTaskDetails = () => {
           newData[id] = {
             ...item, // คืนค่า `actual_quantity` และค่าอื่น ๆ เป็นค่าเดิม
             counted_quantity: item.remaining_quantity,
-            actual_quantity: item.used_quantity,
+            actual_quantity: item.quantity,
           };
         }
 
         console.log("Temporary Data :", newData);
 
-        // ตรวจสอบเงื่อนไข actual_quantity และ used_quantity
+        // ตรวจสอบเงื่อนไข actual_quantity และ quantity
         if (
           checked &&
-          newData[id]?.actual_quantity !== newData[id]?.used_quantity
+          newData[id]?.actual_quantity !== newData[id]?.quantity
         ) {
           setIsReasonModalVisible(true); // แสดงปุ่ม Reason
           setCurrentRecordId(id); // เก็บ ID ปัจจุบัน
@@ -517,13 +514,11 @@ const PendingTaskDetails = () => {
     const formattedData = Array.isArray(data)
       ? data.flatMap((m) =>
           m.details
-            .sort((a, b) => a.matin.localeCompare(b.matin))
             .map((d, index) => {
               return {
                 ...d,
-                matunit: m.matunit,
+                mat_unit: m.mat_unit,
                 mat_name: m.mat_name,
-                quantity: m.quantity,
                 material_index: index + 1,
                 rowSpanMatunit: index === 0 ? m.details.length : 0,
                 rowSpanMatName: index === 0 ? m.details.length : 0,
@@ -603,7 +598,7 @@ const PendingTaskDetails = () => {
     const mismatchItems = formattedData.some(
       (item) =>
         temporaryData[item.id]?.actual_quantity !==
-        temporaryData[item.id]?.used_quantity
+        temporaryData[item.id]?.quantity
     );
 
     if (allChecked && !mismatchItems) {
@@ -639,7 +634,7 @@ const PendingTaskDetails = () => {
   const getRowClassName = (record) => {
     if (
       record.is_temporary &&
-      record.actual_quantity !== record.used_quantity
+      record.actual_quantity !== record.quantity
     ) {
       return "highlight-row"; // เพิ่มคลาสไฮไลท์แถว
     }
@@ -653,14 +648,7 @@ const PendingTaskDetails = () => {
       key: "mat_name",
       render: (text, record, index) => ({
         children: (
-          <span
-            onClick={() => handleRowClick(record)}
-            style={{
-              cursor: "pointer",
-              color: "blue",
-              textDecoration: "underline",
-            }}
-          >
+          <span>
             {text}
           </span>
         ),
@@ -679,27 +667,9 @@ const PendingTaskDetails = () => {
       }),
     },
     {
-      title: "จำนวนที่สั่งเบิก",
-      dataIndex: "quantity",
-      key: "quantity",
-      render: (text, record, index) => ({
-        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
-        props: { rowSpan: record.rowSpanQuantity },
-      }),
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
-          fontWeight: "bold", // ความหนาของตัวอักษร
-          fontSize: "14px", // ขนาดตัวอักษร
-          color: "#ffffff", // สีตัวอักษร
-        },
-      }),
-    },
-    {
       title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
+      dataIndex: "mat_lot",
+      key: "mat_lot",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -712,8 +682,8 @@ const PendingTaskDetails = () => {
     },
     {
       title: "ตำแหน่ง",
-      dataIndex: "location",
-      key: "location",
+      dataIndex: "loc",
+      key: "loc",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -726,8 +696,8 @@ const PendingTaskDetails = () => {
     },
     {
       title: "จำนวนที่ต้องหยิบ",
-      dataIndex: "used_quantity",
-      key: "used_quantity",
+      dataIndex: "quantity",
+      key: "quantity",
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -767,7 +737,7 @@ const PendingTaskDetails = () => {
               record.is_temporary
                 ? temporaryData[record.id]?.actual_quantity ||
                   record.actual_quantity
-                : record.used_quantity
+                : record.quantity
             }
             formatter={(value) =>
               `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
@@ -861,6 +831,21 @@ const PendingTaskDetails = () => {
             }}
           />
         ),
+      align: "center",
+    },
+    {
+      title: "คงเหลือรวม",
+      dataIndex: "total_quantity",
+      key: "total_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => (text === 0 ? "" : formatNumber(text)),
       align: "center",
     },
     {
@@ -958,84 +943,6 @@ const PendingTaskDetails = () => {
           borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
         },
       }),
-    },
-  ];
-
-  const modalColumns = [
-    {
-      title: "ลำดับ",
-      key: "index",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
-          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
-        },
-      }),
-      render: (text, record, index) => index + 1,
-    },
-    {
-      title: "รายการ",
-      dataIndex: "mat_name",
-      key: "mat_name",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-        },
-      }),
-    },
-    {
-      title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-        },
-      }),
-    },
-    {
-      title: "ตำแหน่ง",
-      dataIndex: "location",
-      key: "location",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-        },
-      }),
-    },
-    {
-      title: "จำนวนคงเหลือ",
-      dataIndex: "display_quantity",
-      key: "display_quantity",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
-          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
-        },
-      }),
-      render: (text) => formatNumber(text),
     },
   ];
 
@@ -1199,34 +1106,6 @@ const PendingTaskDetails = () => {
         </div>
       </Card>
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 1000,
-        }}
-      >
-        <ChatApp />
-      </div>
-
-      <Modal
-        className="sarabun-light"
-        title="ตรวจสอบสถานะการตัด"
-        open={isModalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        footer={null} // ซ่อนปุ่ม Footer ของ Modal
-      >
-        <Table
-          columns={modalColumns}
-          dataSource={filteredData}
-          pagination={false}
-          rowKey={(record) => record.id}
-          className="custom-table"
-          scroll={{ x: "max-content" }}
-        />
-      </Modal>
     </MainLayout>
   );
 };

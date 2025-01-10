@@ -1106,6 +1106,22 @@ const Dashboard = () => {
           รายการเบิกจ่ายวัตถุดิบทั้งหมด
         </div>
 
+        {/* ปุ่มอัปโหลดไฟล์ */}
+        <div style={{ padding: "10px", textAlign: "right" }}>
+          <Button
+            type="primary"
+            onClick={() => navigate("/UploadItemRequest")}
+            style={{
+              color: "#f0f0f0",
+              backgroundColor: "#5755FE",
+              borderColor: "#5755FE",
+              marginBottom: 16,
+            }}
+          >
+            อัปโหลดไฟล์
+          </Button>
+        </div>
+
         {idStatus && idStatus === 1 ? (
           <Table
             columns={columns}

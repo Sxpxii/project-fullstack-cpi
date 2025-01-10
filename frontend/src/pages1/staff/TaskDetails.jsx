@@ -17,7 +17,6 @@ import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/TaskDetails.css";
 import config from "../../configAPI";
-import ChatApp from "../../components/ChatApp";
 import Swal from "sweetalert2";
 
 const TaskDetails = () => {
@@ -25,8 +24,6 @@ const TaskDetails = () => {
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [], status: "" });
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [checkDetails, setCheckDetails] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [isTaskCompleted, setIsTaskCompleted] = useState(false);
   const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
   const [formattedData, setFormattedData] = useState([]);
@@ -73,23 +70,6 @@ const TaskDetails = () => {
       setTotalRequestedQuantity(response.data.totalRequestedQuantity || 0);
     } catch (err) {
       console.error("Failed to fetch total requested quantity:", err);
-    }
-  };
-
-  const fetchCheckDetails = async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      const response = await axios.get(
-        `${config.API_URL}/tasks/detail/${upload_id}/check`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      console.log(response.data);
-
-      setCheckDetails(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error("Failed to fetch check details:", err);
     }
   };
 
@@ -142,7 +122,6 @@ const TaskDetails = () => {
       setUsername(storedUsername);
     }
     fetchTaskDetails();
-    fetchCheckDetails();
     fetchTotalRequestedQuantity();
     fetchUploadStatus();
   }, [upload_id]);
@@ -244,7 +223,7 @@ const TaskDetails = () => {
         id: parseInt(id, 10),
         counted_quantity: details.counted_quantity,
         actual_quantity: details.actual_quantity,
-        used_quantity: temporaryData[id]?.used_quantity,
+        used_quantity: temporaryData[id]?.quantity,
         selected_time: details.timestamp,
         employee_reason: details.employee_reason || "",
       }));
@@ -265,7 +244,7 @@ const TaskDetails = () => {
 
       // ตรวจสอบข้อมูลที่ต้องแจ้งเตือน
       const mismatchItems = payload.filter(
-        (item) => item.actual_quantity !== item.used_quantity // เปลี่ยนเงื่อนไขที่นี่
+        (item) => item.actual_quantity !== item.quantity // เปลี่ยนเงื่อนไขที่นี่
       );
 
       if (mismatchItems.length > 0) {
@@ -335,7 +314,7 @@ const TaskDetails = () => {
     setIsDataChanged(true);
   };
 
-  const handleRowClick = (record) => {
+  /*const handleRowClick = (record) => {
     console.log("Clicked record:", record);
     const filtered = checkDetails.filter(
       (item) => item.mat_name === record.mat_name
@@ -357,7 +336,7 @@ const TaskDetails = () => {
     }
 
     setIsModalVisible(true);
-  };
+  };*/
 
   const handleCheckboxChange = (id, checked) => {
     if (!isTaskCompleted) {
@@ -371,12 +350,12 @@ const TaskDetails = () => {
       const actualQuantity =
         actualQuantities[item.id] !== undefined
           ? actualQuantities[item.id]
-          : item.used_quantity;
+          : item.quantity;
 
       const usedQuantity =
-        temporaryData[id]?.used_quantity !== undefined
-          ? temporaryData[id].used_quantity
-          : item.used_quantity;
+        temporaryData[id]?.quantity !== undefined
+          ? temporaryData[id].quantity
+          : item.quantity;
 
       const employeeReason =
         temporaryData[id]?.employee_reason !== undefined
@@ -390,7 +369,7 @@ const TaskDetails = () => {
           newData[id] = {
             counted_quantity: countedQuantity,
             actual_quantity: actualQuantity,
-            used_quantity: usedQuantity,
+            quantity: usedQuantity,
             timestamp: currentTime,
             employee_reason: employeeReason,
           };
@@ -400,7 +379,7 @@ const TaskDetails = () => {
           newData[id] = {
             ...item, // คืนค่า `actual_quantity` และค่าอื่น ๆ เป็นค่าเดิม
             counted_quantity: item.remaining_quantity,
-            actual_quantity: item.used_quantity,
+            actual_quantity: item.quantity,
           };
         }
 
@@ -409,7 +388,7 @@ const TaskDetails = () => {
         // ตรวจสอบเงื่อนไข actual_quantity และ used_quantity
         if (
           checked &&
-          newData[id]?.actual_quantity !== newData[id]?.used_quantity
+          newData[id]?.actual_quantity !== newData[id]?.quantity
         ) {
           setIsReasonModalVisible(true); // แสดงปุ่ม Reason
           setCurrentRecordId(id); // เก็บ ID ปัจจุบัน
@@ -508,15 +487,13 @@ const TaskDetails = () => {
   const formattedData = Array.isArray(data)
     ? data.flatMap((m) =>
         m.details
-          .sort((a, b) => a.matin.localeCompare(b.matin))
           .map((d, index) => {
             const countedQuantity = countedQuantities[d.id];
             const actualQuantity = actualQuantities[d.id];
             return {
               ...d,
-              matunit: m.matunit,
+              mat_unit: m.mat_unit,
               mat_name: m.mat_name,
-              quantity: m.quantity,
               material_index: index + 1,
               rowSpanMatunit: index === 0 ? m.details.length : 0,
               rowSpanMatName: index === 0 ? m.details.length : 0,
@@ -529,7 +506,7 @@ const TaskDetails = () => {
               actual_quantity:
                 actualQuantity !== undefined
                   ? actualQuantity
-                  : d.used_quantity,
+                  : d.quantity,
             };
           })
       )
@@ -539,7 +516,7 @@ const TaskDetails = () => {
   
     }, [data, countedQuantities, actualQuantities, temporaryData]); // คำนวณใหม่เมื่อข้อมูลเหล่านี้เปลี่ยนแปลง
 
-  console.log("Formatted Data:", formattedData);
+  //console.log("Formatted Data:", formattedData);
 
   const checkButtonType = () => {
     if (!formattedData || formattedData.length === 0) return; // ตรวจสอบว่า formattedData มีค่าหรือไม่
@@ -549,7 +526,7 @@ const TaskDetails = () => {
     const mismatchItems = formattedData.some(
       (item) =>
         temporaryData[item.id]?.actual_quantity !==
-        temporaryData[item.id]?.used_quantity
+        temporaryData[item.id]?.quantity
     );
 
     if (allChecked && !mismatchItems) {
@@ -590,12 +567,7 @@ const TaskDetails = () => {
       render: (text, record, index) => ({
         children: (
           <span
-            onClick={() => handleRowClick(record)}
-            style={{
-              cursor: "pointer",
-              color: "blue",
-              textDecoration: "underline",
-            }}
+            //onClick={() => handleRowClick(record)}
           >
             {text}
           </span>
@@ -615,27 +587,9 @@ const TaskDetails = () => {
       }),
     },
     {
-      title: "จำนวนที่สั่งเบิก",
-      dataIndex: "quantity",
-      key: "quantity",
-      render: (text, record, index) => ({
-        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
-        props: { rowSpan: record.rowSpanQuantity },
-      }),
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
-          fontWeight: "bold", // ความหนาของตัวอักษร
-          fontSize: "14px", // ขนาดตัวอักษร
-          color: "#ffffff", // สีตัวอักษร
-        },
-      }),
-    },
-    {
       title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
+      dataIndex: "mat_lot",
+      key: "mat_lot",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -648,8 +602,8 @@ const TaskDetails = () => {
     },
     {
       title: "ตำแหน่ง",
-      dataIndex: "location",
-      key: "location",
+      dataIndex: "loc",
+      key: "loc",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -662,8 +616,8 @@ const TaskDetails = () => {
     },
     {
       title: "จำนวนที่ต้องหยิบ",
-      dataIndex: "used_quantity",
-      key: "used_quantity",
+      dataIndex: "quantity",
+      key: "quantity",
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -699,7 +653,7 @@ const TaskDetails = () => {
           </span>
         ) : (
           <InputNumber
-            defaultValue={record.used_quantity}
+            defaultValue={record.quantity}
             formatter={(value) =>
               `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
             }
@@ -780,6 +734,21 @@ const TaskDetails = () => {
       align: "center",
     },
     {
+      title: "คงเหลือรวม",
+      dataIndex: "total_quantity",
+      key: "total_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => (text === 0 ? "" : formatNumber(text)),
+      align: "center",
+    },
+    {
       title: "เรียบร้อย",
       key: "selection",
       align: "center", // การจัดกึ่งกลาง
@@ -852,7 +821,7 @@ const TaskDetails = () => {
     },
   ];
 
-  const modalColumns = [
+  /*const modalColumns = [
     {
       title: "ลำดับ",
       key: "index",
@@ -928,7 +897,7 @@ const TaskDetails = () => {
       }),
       render: (text) => formatNumber(text),
     },
-  ];
+  ];*/
 
   return (
     <MainLayout>
@@ -1077,35 +1046,6 @@ const TaskDetails = () => {
           </div>
         </div>
       </Card>
-
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 1000,
-        }}
-      >
-        <ChatApp />
-      </div>
-
-      <Modal
-        className="sarabun-light"
-        title="ตรวจสอบสถานะการตัด"
-        open={isModalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        footer={null} // ซ่อนปุ่ม Footer ของ Modal
-      >
-        <Table
-          columns={modalColumns}
-          dataSource={filteredData}
-          pagination={false}
-          rowKey={(record) => record.id}
-          className="custom-table"
-          scroll={{ x: "max-content" }}
-        />
-      </Modal>
     </MainLayout>
   );
 };

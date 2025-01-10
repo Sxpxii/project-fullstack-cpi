@@ -9,6 +9,7 @@ const loginRouter = require('./routes1/login');
 const requestsRouter = require('./routes1/requests');
 const balanceRouter = require('./routes1/balance');
 const dashboardRouter = require('./routes1/dashboard');
+const dashboardClerkRouter = require('./routes1/dashboardClerk')
 const taskRouter = require('./routes1/task');
 const uploadMaterialRouter = require('./routes1/uploadMaterial');
 const supervisorDashboardRouter = require('./routes1/supervisorDashboard');
@@ -17,6 +18,7 @@ const UserManagementRouter = require('./routes1/UserManagement');
 const supClerkdashboardRouter = require('./routes1/supClerkdashboard');
 const notificationRouter = require('./routes1/notifications');
 const supClerkRouter = require('./routes1/supClerk');
+const UploadItemRequestRouter = require('./routes1/UploadItemRequest')
 
 const app = express();
 const host = '0.0.0.0'; 
@@ -57,7 +59,9 @@ app.use((err, req, res, next) => {
 app.use('/api', loginRouter);
 app.use('/requests', requestsRouter);
 app.use('/balance', balanceRouter);
+app.use('/itemrequests', UploadItemRequestRouter);
 app.use('/dashboard', dashboardRouter);
+app.use('/dashboardClerk', dashboardClerkRouter);
 app.use('/tasks', taskRouter);
 app.use('/materials', uploadMaterialRouter);
 app.use('/supervisorDashboard', supervisorDashboardRouter);

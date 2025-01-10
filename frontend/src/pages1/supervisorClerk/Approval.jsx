@@ -62,14 +62,30 @@ const Approval = () => {
 
   // ฟังก์ชันที่เพิ่มมาจากหน้า DashboardSupervisorClerk
   const handleEditClick = async (record) => {
-    // ตรวจสอบสถานะและทำการ navigate ไปยัง URL ที่แตกต่างกัน
+    const token = sessionStorage.getItem("token");
+  
     if (record.status === "รอดำเนินการต่อ") {
-      navigate(`/Sup-Edit/${record.upload_id}`, { state: { record } });
+      try {
+        // อัพเดตสถานะการแจ้งเตือนเป็น "read"
+        await axios.post(
+          `${config.API_URL}/supClerkTasks/update-status-notification/${record.upload_id}`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+  
+        // Navigate to the appropriate page
+        navigate(`/Sup-Edit/${record.upload_id}`, { state: { record } });
+      } catch (error) {
+        console.error("Failed to update notification status:", error);
+      }
     } else if (record.status === "รอตรวจสอบ") {
       navigate(`/Edit-Remaining/${record.upload_id}`, { state: { record } });
     }
-  };
-  
+  };  
 
   const columns = [
     {

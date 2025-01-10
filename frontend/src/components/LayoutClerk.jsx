@@ -9,9 +9,11 @@ import config from "../configAPI";
 const { Header, Content, Footer } = Layout;
 
 const items = [
-  { key: "/dashboard", label: "ติดตามสถานะการเบิก-จ่าย" },
-  { key: "/UploadBalance", label: "อัปโหลดยอดคงเหลือรายวัน" },
-  { key: "/UploadRequest", label: "อัปโหลดไฟล์สั่งเบิก" },
+  //{ key: "/dashboard", label: "ติดตามสถานะการเบิก-จ่าย" },
+  { key: "/dashboardClerk", label: "แดชบอร์ด" },
+  //{ key: "/UploadBalance", label: "อัปโหลดยอดคงเหลือรายวัน" },
+  //{ key: "/UploadRequest", label: "อัปโหลดไฟล์สั่งเบิก" },
+  //{ key: "/UploadItemRequest", label: "อัปโหลดไฟล์สั่งเบิกใหม่" },
 ];
 
 const MainLayout = ({ children }) => {

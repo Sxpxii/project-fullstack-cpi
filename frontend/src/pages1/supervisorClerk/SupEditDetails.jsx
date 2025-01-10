@@ -143,7 +143,7 @@ const SupEditDetails = () => {
         try {
           const token = sessionStorage.getItem("token");
           const response = await axios.post(
-            `${config.API_URL}/supClerkTasks/confirm-edit`,
+            `${config.API_URL}/supClerkTasks/confirm-edit/${upload_id}`,
             { tempData },
             {
               headers: { Authorization: `Bearer ${token}` },
@@ -155,19 +155,27 @@ const SupEditDetails = () => {
             Swal.fire({
               icon: "success",
               title: "บันทึกการตรวจสอบสำเร็จ",
-              text: "การตรวจสอบของคุณได้รับการบันทึกเรียบร้อยแล้ว!",
+              html: '<span class="sarabun-light">การตรวจสอบของคุณได้รับการบันทึกเรียบร้อยแล้ว!</span>',
               confirmButtonText: "ตกลง",
+              customClass: {
+                title: "sarabun-bold", // ใส่คลาสให้กับ title
+              },
             }).then(() => {
               // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
               fetchData(); // โหลดข้อมูลใหม่หลังจากบันทึกสำเร็จ
               navigate("/Approval");
+
+              
             });
           } else {
             Swal.fire({
               icon: "error",
               title: "การบันทึกไม่สำเร็จ",
-              text: "เกิดข้อผิดพลาดในการบันทึกการตรวจสอบนี้!",
+              html: '<span class="sarabun-light">เกิดข้อผิดพลาดในการบันทึกการตรวจสอบนี้!</span>',
               confirmButtonText: "ตกลง",
+              customClass: {
+                title: "sarabun-bold", // ใส่คลาสให้กับ title
+              },
             });
           }
         } catch (error) {
@@ -203,8 +211,11 @@ const SupEditDetails = () => {
             Swal.fire({
               icon: "success",
               title: "อนุมัติรายการสำเร็จ",
-              text: "รายการของคุณได้รับการอนุมัติเรียบร้อยแล้ว!",
+              html: '<span class="sarabun-light">คุณได้อนุมัติรายการเรียบร้อยแล้ว!</span>',
               confirmButtonText: "ตกลง",
+              customClass: {
+                title: "sarabun-bold", // ใส่คลาสให้กับ title
+              },
             }).then(() => {
               // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
               navigate("/Approval");
@@ -213,8 +224,11 @@ const SupEditDetails = () => {
             Swal.fire({
               icon: "error",
               title: "การอนุมัติไม่สำเร็จ",
-              text: "เกิดข้อผิดพลาดในการอนุมัติรายการนี้!",
+              html: '<span class="sarabun-light">เกิดข้อผิดพลาดในการอนุมัติรายการนี้!</span>',
               confirmButtonText: "ตกลง",
+              customClass: {
+                title: "sarabun-bold", // ใส่คลาสให้กับ title
+              },
             });
           }
         } catch (error) {
@@ -247,27 +261,9 @@ const SupEditDetails = () => {
       }),
     },
     {
-      title: "จำนวนที่สั่งเบิก",
-      dataIndex: "quantity",
-      key: "quantity",
-      render: (text, record, index) => ({
-        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
-        props: { rowSpan: record.rowSpanQuantity },
-      }),
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
-          fontWeight: "bold", // ความหนาของตัวอักษร
-          fontSize: "14px", // ขนาดตัวอักษร
-          color: "#ffffff", // สีตัวอักษร
-        },
-      }),
-    },
-    {
       title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
+      dataIndex: "mat_lot",
+      key: "mat_lot",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -280,8 +276,8 @@ const SupEditDetails = () => {
     },
     {
       title: "จำนวนที่ต้องหยิบ",
-      dataIndex: "used_quantity",
-      key: "used_quantity",
+      dataIndex: "quantity",
+      key: "quantity",
       render: (text, record) => <span>{formatNumber(text)}</span>,
       align: "center",
       onHeaderCell: () => ({
@@ -330,7 +326,7 @@ const SupEditDetails = () => {
       align: "center",
       render: (text, record) => {
         if (
-          record.used_quantity !== record.actual_quantity &&
+          record.quantity !== record.actual_quantity &&
           !tempData.find((item) => item.id === record.id)
         ) {
           // If there is a manager_reason from the backend, show it, otherwise show the "ตรวจสอบ" button
@@ -380,7 +376,6 @@ const SupEditDetails = () => {
     const formattedData = Array.isArray(data)
       ? data.flatMap((m) =>
           m.details
-            .sort((a, b) => a.matin.localeCompare(b.matin))
             .map((d, index) => {
               const reason =
                 d.manager_reason || tempData[d.id]?.manager_reason || "-";
@@ -388,7 +383,6 @@ const SupEditDetails = () => {
                 ...d,
                 matunit: m.matunit,
                 mat_name: m.mat_name,
-                quantity: m.quantity,
                 rowSpanMatunit: index === 0 ? m.details.length : 0,
                 rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
                 rowSpanQuantity: index === 0 ? m.details.length : 0,
@@ -469,8 +463,8 @@ const SupEditDetails = () => {
               scroll={{ x: "max-content" }}
               className="custom-table"
               rowClassName={(record) => {
-                // ตรวจสอบว่าค่า used_quantity ไม่เท่ากับ actual_quantity
-                return record.used_quantity !== record.actual_quantity
+                // ตรวจสอบว่าค่า quantity ไม่เท่ากับ actual_quantity
+                return record.quantity !== record.actual_quantity
                   ? "highlight-row"
                   : "";
               }}

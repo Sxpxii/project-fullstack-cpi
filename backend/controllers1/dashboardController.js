@@ -313,37 +313,6 @@ const addRequest = async (data, upload_id) => {
   }
 };
 
-
-/*const confirmUpload = async (req, res) => {
-    const { upload_id } = req.params;
-    const { userId } = req.user;
-
-    try {
-        const client = await pool1.connect();
-        await client.query('BEGIN');
-        
-        // อัปเดตสถานะในตาราง uploads
-        await client.query('UPDATE uploads SET current_status = $1, last_status_update = NOW() WHERE upload_id = $2', ['รอรับงาน', upload_id]);
-        
-        // บันทึกการเปลี่ยนแปลงสถานะในตาราง operationstatuses
-        await client.query('INSERT INTO operationstatuses (upload_id, status, timestamp) VALUES ($1, $2, NOW())', [upload_id, 'รอรับงาน']);
-        
-        // อัปเดต duration และ average_duration
-        await updateDurationAndAverage(upload_id, 'รอยืนยัน');
-
-        // บันทึกการกระทำของผู้ใช้
-        await logUserAction(userId, 'ยืนยันรายการ', upload_id);
-
-        await client.query('COMMIT');
-        client.release();
-        
-        res.send('Upload confirmed and status updated');
-    } catch (err) {
-        console.error('Error confirming upload:', err);
-        res.status(500).send('Error confirming upload');
-    }
-};*/
-
 const approveUpload = async (req, res) => {
     const { uploadId } = req.params;
     const { userId } = req.user;
@@ -510,7 +479,6 @@ const updateApprovedDate = async (req, res) => {
 module.exports = {
     getDashboardData,
     getDetails,
-    //confirmUpload,
     approveUpload,
     getMaterialUsageData,
     updateDetails,

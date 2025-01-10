@@ -73,27 +73,9 @@ const TaskDetailsFinished = () => {
       }),
     },
     {
-      title: "จำนวนที่สั่งเบิก",
-      dataIndex: "quantity",
-      key: "quantity",
-      render: (text, record, index) => ({
-        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
-        props: { rowSpan: record.rowSpanQuantity },
-      }),
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
-          fontWeight: "bold", // ความหนาของตัวอักษร
-          fontSize: "14px", // ขนาดตัวอักษร
-          color: "#ffffff", // สีตัวอักษร
-        },
-      }),
-    },
-    {
       title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
+      dataIndex: "mat_lot",
+      key: "mat_lot",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -106,8 +88,8 @@ const TaskDetailsFinished = () => {
     },
     {
       title: "ตำแหน่ง",
-      dataIndex: "location",
-      key: "location",
+      dataIndex: "loc",
+      key: "loc",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -120,8 +102,8 @@ const TaskDetailsFinished = () => {
     },
     {
       title: "จำนวนที่ต้องหยิบ",
-      dataIndex: "used_quantity",
-      key: "used_quantity",
+      dataIndex: "quantity",
+      key: "quantity",
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -207,18 +189,15 @@ const TaskDetailsFinished = () => {
   const formattedData = Array.isArray(data)
     ? data.flatMap((m) =>
         m.details
-          .sort((a, b) => a.matin.localeCompare(b.matin))
           .map((d, index) => ({
             ...d,
-            matunit: m.matunit,
+            mat_unit: m.mat_unit,
             mat_name: m.mat_name,
-            quantity: m.quantity,
             rowSpanMatunit: index === 0 ? m.details.length : 0,
             rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
             rowSpanQuantity: index === 0 ? m.details.length : 0,
             counted_quantity: d.counted_quantity || d.remaining_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
             actual_quantity: d.actual_quantity, // ใช้ข้อมูลจาก d (แต่ละแถวใน details)
-            employee_reason: d.employee_reason, // เหตุผลจาก d (แต่ละแถวใน details)
           }))
       )
     : [];

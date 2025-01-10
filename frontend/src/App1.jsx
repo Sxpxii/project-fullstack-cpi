@@ -3,10 +3,12 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
 import Login from "./pages1/Login";
 import Dashboard from "./pages1/clerk/Dashboard";
+import Dashboardclerk from "./pages1/clerk/Dashboard1";
 import Details from "./pages1/clerk/Details";
 import Register from "./pages1/Register";
 import UploadBalance from "./pages1/clerk/UploadBalance";
 import UploadRequest from "./pages1/clerk/UploadRequest";
+import UploadItemRequest from "./pages1/clerk/UploadItemRequest";
 import OperationsDashboard from "./pages1/staff/Dashboard";
 import MyTasks from "./pages1/staff/MyTasks";
 import TaskDetails from "./pages1/staff/TaskDetails";
@@ -14,13 +16,10 @@ import TaskDetailsFinished from "./pages1/staff/TaskDetailsFinished";
 import PendingTaskDetails from "./pages1/staff/PendingTaskDetails";
 import SupervisorDashboard from "./pages1/supervisor/Dashboard";
 import Analysis from "./pages1/supervisor/Analysis";
-//import EditDetails from "./pages1/clerk/EditDetails";
 import UploadMaterials from "./pages1/admin/UploadMaterials";
 import UserManagement from "./pages1/admin/UserManagement";
-import DashboardSupervisorClerk from "./pages1/supervisorClerk/Dashboard";
 import Approval from "./pages1/supervisorClerk/Approval";
-import DashboardSupClerk from "./pages1/supervisorClerk/Dashboard1";
-import EditDetails from "./pages1/supervisorClerk/EditDetails";
+import DashboardSupClerk from "./pages1/supervisorClerk/Dashboard";
 import SupEditDetails from "./pages1/supervisorClerk/SupEditDetails";
 import RemainingEditDetails from "./pages1/supervisorClerk/RemainingEditDetails"
 
@@ -52,17 +51,17 @@ React.useEffect(() => {
         {/* Routes for Warehouse Officer */}
         <Route element={<PrivateRoute allowedRoles={["Warehouse Officer"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboardClerk" element={<Dashboardclerk />} />
           <Route path="/details/:id" element={<Details />} />
           <Route path="/UploadBalance" element={<UploadBalance />} />
           <Route path="/UploadRequest" element={<UploadRequest />} />
+          <Route path="/UploadItemRequest" element={<UploadItemRequest />} />
         </Route>
 
         {/* Routes for SupervisorClerk */}
         <Route element={<PrivateRoute allowedRoles={["Supervisor Clerk"]} />}>
-          <Route path="/SupervisorClerkDashboard" element={<DashboardSupervisorClerk />}/>
           <Route path="/Approval" element={<Approval />}/>
           <Route path="/SupClerkDashboard" element={<DashboardSupClerk />}/>
-          <Route path="/edit-details/:upload_id" element={<EditDetails />} />
           <Route path="/Sup-Edit/:upload_id" element={<SupEditDetails />} />
           <Route path="/Edit-Remaining/:upload_id" element={<RemainingEditDetails />} />
         </Route>

@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Layout, Menu, Avatar, Dropdown, message, Space } from "antd";
+import {
+  Layout,
+  Menu,
+  Avatar,
+  Dropdown,
+  message,
+  Space,
+  Drawer,
+  Badge,
+} from "antd";
 import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { TbBuildingWarehouse } from "react-icons/tb";
+import { BiSolidBellRing } from "react-icons/bi";
 import config from "../configAPI";
+import { io } from "socket.io-client";
+import Swal from "sweetalert2";
 
 const { Header, Content, Footer } = Layout;
 
@@ -18,6 +30,56 @@ const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation(); // ใช้ useLocation เพื่อตรวจสอบ URL ปัจจุบัน
   const username = sessionStorage.getItem("username");
+  const [notifications, setNotifications] = useState([]);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
+  useEffect(() => {
+    const socket = io(`${config.API_URL}`, {
+      transports: ["polling", "websocket"], // ตั้งค่าให้ใช้ WebSocket เท่านั้น
+    });
+
+    // ฟังเหตุการณ์การแจ้งเตือนจาก Backend
+    socket.on("respondnotification", (data) => {
+      console.log("การแจ้งเตือนที่ได้รับ:", data);
+
+      // ปรับข้อความเพื่อแสดงข้อมูลที่ต้องการ
+      const titleMessage = `แจ้งเตือนจาก ${data.userName}`;
+      const message = `รายการเลขที่ ${data.inventoryId} : ${data.message} `;
+
+      // แสดงการแจ้งเตือนใหม่ด้วย SweetAlert2
+      Swal.fire({
+        title: titleMessage,
+        text: message,
+        icon: "info",
+        confirmButtonText: "ตกลง",
+        allowOutsideClick: false, // ป้องกันการคลิกนอกเพื่อปิด
+        allowEscapeKey: false, // ป้องกันการกด Escape เพื่อปิด
+        customClass: {
+          title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+          htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+          confirmButton: "sarabun-light",
+        },
+        willClose: () => {
+          // อัปเดต State เมื่อผู้ใช้กดตกลง
+          setNotifications((prevNotifications) => [
+            ...prevNotifications,
+            {
+              userName: data.userName,
+              inventoryId: data.inventoryId,
+              message: data.message,
+              type: data.type,
+              createdAt: data.createdAt,
+            },
+          ]);
+        },
+      });
+    });
+
+    // ทำความสะอาด Socket เมื่อ Component ถูกยกเลิก
+    return () => {
+      socket.disconnect();
+    };
+  }, [setNotifications, navigate]);
 
   useEffect(() => {
     setSelectedKey(location.pathname); // อัปเดต selectedKey ตาม URL ปัจจุบัน
@@ -25,6 +87,63 @@ const MainLayout = ({ children }) => {
 
   const handleMenuClick = (e) => {
     navigate(e.key);
+  };
+
+  useEffect(() => {
+    // ดึงข้อมูลการแจ้งเตือนจาก API
+    const fetchNotifications = async () => {
+      const token = sessionStorage.getItem("token"); // ดึง token จาก sessionStorage
+      if (!token) {
+        console.error("Token not found");
+        return; // ถ้าไม่มี token ให้หยุดการทำงาน
+      }
+      try {
+        const response = await axios.get(
+          `${config.API_URL}/alert/notifications`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setNotifications(response.data); // อัปเดตข้อมูลการแจ้งเตือน
+      } catch (error) {
+        console.error("ไม่สามารถดึงการแจ้งเตือน:", error);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  const handleNotificationClick = async (notification) => {
+    // อัพเดตสถานะการแจ้งเตือนในฐานข้อมูล
+    const token = sessionStorage.getItem("token");
+    if (!token) {
+      console.error("Token not found");
+      return;
+    }
+
+    try {
+      // เรียก API เพื่ออัพเดตสถานะเป็น "read"
+      await axios.post(
+        `${config.API_URL}/supClerkTasks/update-status/${notification.id}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // เปลี่ยนสถานะการแจ้งเตือนใน state ให้เป็น "read"
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notif) =>
+          notif.id === notification.id ? { ...notif, status: "read" } : notif
+        )
+      );
+
+      // นำทางไปยังหน้าที่เกี่ยวข้อง
+      navigate(`/Sup-Edit/${notification.upload_id}`, {
+        state: { record: notification },
+      });
+    } catch (error) {
+      console.error("ไม่สามารถอัพเดตสถานะการแจ้งเตือน:", error);
+    }
   };
 
   const handleLogout = async () => {
@@ -63,6 +182,16 @@ const MainLayout = ({ children }) => {
     </Menu>
   );
 
+  const toggleDrawer = () => {
+    setDrawerVisible(!drawerVisible);
+  };
+
+  // Filter unread notifications
+  const unreadNotifications = notifications.filter(
+    (notification) => notification.status === "unread"
+  );
+  console.log("Unread Notifications:", unreadNotifications);
+
   return (
     <Layout style={{ minHeight: "100vh", marginBottom: "15px" }}>
       <Header
@@ -100,8 +229,68 @@ const MainLayout = ({ children }) => {
               }}
             />
           </Dropdown>
+          {/* เพิ่มไอคอน Bell พร้อม Badge */}
+          <Badge count={unreadNotifications.length} offset={[0, 5]}>
+            <BiSolidBellRing
+              style={{
+                fontSize: "20px",
+                color: "white",
+                cursor: "pointer",
+                marginLeft: "15px", // เพิ่มระยะห่างจาก Avatar
+                verticalAlign: "middle",
+              }}
+              onClick={toggleDrawer}
+            />
+          </Badge>
         </Space>
       </Header>
+      {/* Drawer สำหรับแสดง Notifications */}
+      <Drawer
+        title={
+          <span className="sarabun-bold" style={{ fontSize: "16px" }}>
+            การแจ้งเตือน
+          </span>
+        }
+        placement="right"
+        onClose={toggleDrawer}
+        visible={drawerVisible}
+      >
+        {notifications.length > 0 ? (
+          notifications.map((notification) => (
+            <div
+              key={notification.id}
+              style={{
+                marginBottom: "10px",
+                padding: "10px",
+                borderBottom: "1px solid #f0f0f0",
+                backgroundColor:
+                  notification.status === "unread" ? "#e6f7ff" : "white", // ไฮไลต์พื้นหลังสำหรับ unread
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                handleNotificationClick(notification);
+              }}
+            >
+              <strong className="sarabun-bold" style={{ fontSize: "16px" }}>
+                {notification.sender_username}
+              </strong>
+              <p className="sarabun-light" style={{ fontSize: "14px" }}>
+                {`รายการเลขที่ ${notification.inventory_id}`}{" "}
+                {notification.message}
+              </p>
+              <p
+                className="sarabun-light"
+                style={{ fontSize: "12px", color: "gray" }}
+              >
+                {new Date(notification.created_at).toLocaleString()}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p className="sarabun-light">ไม่มีการแจ้งเตือน</p>
+        )}
+      </Drawer>
+
       <Content style={{ padding: "0 48px" }}>
         {children} {/* This will render the content passed from other pages */}
       </Content>

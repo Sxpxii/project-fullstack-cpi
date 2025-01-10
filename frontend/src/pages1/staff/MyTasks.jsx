@@ -386,16 +386,7 @@ const MyTasks = () => {
         </Col>
       </Row>
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 1000,
-        }}
-      >
-        <ChatApp />
-      </div>
+      
 
       <Modal
         title="ยืนยันการคืนงาน"

@@ -25,7 +25,7 @@ const getNotifications = async (req, res) => {
       [userId]
     );
     res.status(200).json(result.rows); // ส่งผลลัพธ์กลับ
-    console.log("Notifications", result.rows);
+    //console.log("Notifications", result.rows);
   } catch (err) {
     console.error("เกิดข้อผิดพลาดในการดึงแจ้งเตือน:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการดึงแจ้งเตือน" });

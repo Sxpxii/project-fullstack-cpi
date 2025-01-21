@@ -12,6 +12,8 @@ import {
   Breadcrumb,
   Radio,
   Input,
+  Row,
+  Col,
 } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
@@ -386,10 +388,7 @@ const TaskDetails = () => {
         console.log("Temporary Data :", newData);
 
         // ตรวจสอบเงื่อนไข actual_quantity และ used_quantity
-        if (
-          checked &&
-          newData[id]?.actual_quantity !== newData[id]?.quantity
-        ) {
+        if (checked && newData[id]?.actual_quantity !== newData[id]?.quantity) {
           setIsReasonModalVisible(true); // แสดงปุ่ม Reason
           setCurrentRecordId(id); // เก็บ ID ปัจจุบัน
         } else {
@@ -483,11 +482,10 @@ const TaskDetails = () => {
   };
 
   useEffect(() => {
-  // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
-  const formattedData = Array.isArray(data)
-    ? data.flatMap((m) =>
-        m.details
-          .map((d, index) => {
+    // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
+    const formattedData = Array.isArray(data)
+      ? data.flatMap((m) =>
+          m.details.map((d, index) => {
             const countedQuantity = countedQuantities[d.id];
             const actualQuantity = actualQuantities[d.id];
             return {
@@ -504,17 +502,14 @@ const TaskDetails = () => {
                   ? countedQuantity
                   : d.remaining_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
               actual_quantity:
-                actualQuantity !== undefined
-                  ? actualQuantity
-                  : d.quantity,
+                actualQuantity !== undefined ? actualQuantity : d.quantity,
             };
           })
-      )
+        )
       : [];
 
-      setFormattedData(formattedData); // อัปเดตข้อมูลใน formattedData
-  
-    }, [data, countedQuantities, actualQuantities, temporaryData]); // คำนวณใหม่เมื่อข้อมูลเหล่านี้เปลี่ยนแปลง
+    setFormattedData(formattedData); // อัปเดตข้อมูลใน formattedData
+  }, [data, countedQuantities, actualQuantities, temporaryData]); // คำนวณใหม่เมื่อข้อมูลเหล่านี้เปลี่ยนแปลง
 
   //console.log("Formatted Data:", formattedData);
 
@@ -567,7 +562,7 @@ const TaskDetails = () => {
       render: (text, record, index) => ({
         children: (
           <span
-            //onClick={() => handleRowClick(record)}
+          //onClick={() => handleRowClick(record)}
           >
             {text}
           </span>
@@ -821,231 +816,145 @@ const TaskDetails = () => {
     },
   ];
 
-  /*const modalColumns = [
-    {
-      title: "ลำดับ",
-      key: "index",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
-          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
-        },
-      }),
-      render: (text, record, index) => index + 1,
-    },
-    {
-      title: "รายการ",
-      dataIndex: "mat_name",
-      key: "mat_name",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-        },
-      }),
-    },
-    {
-      title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-        },
-      }),
-    },
-    {
-      title: "ตำแหน่ง",
-      dataIndex: "location",
-      key: "location",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-        },
-      }),
-    },
-    {
-      title: "จำนวนคงเหลือ",
-      dataIndex: "display_quantity",
-      key: "display_quantity",
-      align: "center",
-      onHeaderCell: () => ({
-        style: {
-          backgroundColor: "#DCDCDC",
-          fontWeight: "bold",
-          fontSize: "15px",
-          color: "#000000E0",
-          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
-          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
-        },
-      }),
-      render: (text) => formatNumber(text),
-    },
-  ];*/
-
   return (
     <MainLayout>
-      <div
-        style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <div style={{ margin: "10px" }}>
+      <div style={{ padding: "0 48px" }}>
+        <div style={{ marginTop:"20px", marginBottom:"20px"}}>
+          <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
+            <Breadcrumb.Item>
+              <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>
+              <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
+          </Breadcrumb>
+        </div>
+
+        <Card
+          style={{
+            borderRadius: "15px",
+          }}
+        >
           <div
             className="dashboard-title sarabun-bold"
             style={{
-              fontSize: "28px",
-              marginLeft: "20px",
+              fontSize: "20px",
               padding: "20px",
             }}
           >
-            รายละเอียดการเบิกวัตถุดิบ
+            รายละเอียดการเบิกจ่ายวัตถุดิบ :
           </div>
-        </div>
-      </div>
-
-      <div>
-        <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>
-            <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>
-            <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
-        </Breadcrumb>
-      </div>
-
-      <Card
-        style={{
-          borderRadius: "15px",
-        }}
-      >
-        <div className="table-container">
-          <Table
-            columns={columns}
-            dataSource={formattedData}
-            pagination={false}
-            rowKey={(record) => record.material_id}
-            rowClassName={rowClassName}
-            scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
-            className="custom-table"
-          />
-          <div
-            className="total-quantity sarabun-bold"
-            style={{
-              backgroundColor: " #DCDCDC",
-              marginBottom: "20px",
-              borderRadius: "8px",
-            }}
-          >
-            <p
-              style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
-            >
-              <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
-              {formatNumber(totalRequestedQuantity)}
-            </p>
-            <Modal
-              title="เลือกเหตุผล"
-              visible={isReasonModalVisible}
-              onOk={handleReasonOk}
-              onCancel={handleReasonCancel}
-            >
-              <div>
-                <Radio.Group
-                  onChange={(e) => setSelectedReason(e.target.value)}
-                  value={selectedReason}
-                  style={{ display: "flex", flexDirection: "column" }}
-                >
-                  <Radio value="วัตถุดิบหมด">วัตถุดิบหมด</Radio>
-                  <Radio value="จ่ายผิดพลาด">จ่ายผิดพลาด</Radio>
-                  <Radio value="อื่นๆ">อื่นๆ</Radio>
-                </Radio.Group>
-                {selectedReason === "อื่นๆ" && (
-                  <Input
-                    style={{ marginTop: 10 }}
-                    placeholder="กรุณากรอกเหตุผล"
-                    value={otherReason}
-                    onChange={(e) => setOtherReason(e.target.value)}
-                  />
-                )}
-              </div>
-            </Modal>
-          </div>
-          <div className="table-buttons">
-            <Button
-              className="back-button"
-              onClick={handleBack}
-              type="default"
+          <div className="table-container">
+            <Table
+              columns={columns}
+              dataSource={formattedData}
+              pagination={false}
+              rowKey={(record) => record.id}
+              rowClassName={rowClassName}
+              scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+              className="custom-table"
+            />
+            <Card
+              className="sarabun-bold"
               style={{
-                color: "#5755FE ",
-                backgroundColor: "#f0f0f0",
-                borderColor: "#5755FE",
+                backgroundColor: " #DCDCDC",
+                borderRadius: "12px",
+                fontSize: "18px",
+                marginTop:"30px",
+                marginBottom:"30px",
               }}
             >
-              ย้อนกลับ
-            </Button>
-          </div>
+              รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+              <Modal
+                title="เลือกเหตุผล"
+                visible={isReasonModalVisible}
+                onOk={handleReasonOk}
+                onCancel={handleReasonCancel}
+              >
+                <div>
+                  <Radio.Group
+                    onChange={(e) => setSelectedReason(e.target.value)}
+                    value={selectedReason}
+                    style={{ display: "flex", flexDirection: "column" }}
+                  >
+                    <Radio className="sarabun-light" value="วัตถุดิบหมด">
+                      วัตถุดิบหมด
+                    </Radio>
+                    <Radio className="sarabun-light" value="จ่ายผิดพลาด">
+                      จ่ายผิดพลาด
+                    </Radio>
+                    <Radio className="sarabun-light" value="อื่นๆ">
+                      อื่นๆ
+                    </Radio>
+                  </Radio.Group>
+                  {selectedReason === "อื่นๆ" && (
+                    <Input
+                      className="sarabun-light"
+                      style={{ marginTop: 10 }}
+                      placeholder="กรุณากรอกเหตุผล"
+                      value={otherReason}
+                      onChange={(e) => setOtherReason(e.target.value)}
+                    />
+                  )}
+                </div>
+              </Modal>
+            </Card>
+            <div className="table-buttons">
+              <Button
+                className="back-button"
+                onClick={handleBack}
+                type="default"
+                style={{
+                  color: "#5755FE ",
+                  backgroundColor: "#f0f0f0",
+                  borderColor: "#5755FE",
+                }}
+              >
+                ย้อนกลับ
+              </Button>
+            </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "10px",
-            }}
-          >
-            <Button
-              onClick={handleButtonClick}
+            <div
               style={{
-                backgroundColor:
-                  buttonType === "savePartial"
-                    ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
-                    : buttonType === "reportIssue"
-                    ? "#FFD700" // สีสำหรับรายงานปัญหา
-                    : buttonType === "complete"
-                    ? "green" // สีสำหรับเสร็จสิ้น
-                    : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
-                borderColor:
-                  buttonType === "savePartial"
-                    ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
-                    : buttonType === "reportIssue"
-                    ? "#FFD700" // สีสำหรับรายงานปัญหา
-                    : buttonType === "complete"
-                    ? "green" // สีสำหรับเสร็จสิ้น
-                    : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
-                color:
-                  buttonType === "reportIssue"
-                    ? "black" // ข้อความสีดำสำหรับรายงานปัญหา
-                    : "white", // ข้อความสีขาวสำหรับปุ่มอื่น ๆ
+                display: "flex",
+                justifyContent: "center",
+                marginTop: "10px",
               }}
             >
-              {buttonType === "savePartial" && "บันทึกชั่วคราว"}
-              {buttonType === "reportIssue" && "รายงานปัญหา"}
-              {buttonType === "complete" && "เสร็จสิ้น"}
-            </Button>
+              <Button
+                onClick={handleButtonClick}
+                style={{
+                  backgroundColor:
+                    buttonType === "savePartial"
+                      ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
+                      : buttonType === "reportIssue"
+                      ? "#FFD700" // สีสำหรับรายงานปัญหา
+                      : buttonType === "complete"
+                      ? "green" // สีสำหรับเสร็จสิ้น
+                      : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
+                  borderColor:
+                    buttonType === "savePartial"
+                      ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
+                      : buttonType === "reportIssue"
+                      ? "#FFD700" // สีสำหรับรายงานปัญหา
+                      : buttonType === "complete"
+                      ? "green" // สีสำหรับเสร็จสิ้น
+                      : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
+                  color:
+                    buttonType === "reportIssue"
+                      ? "black" // ข้อความสีดำสำหรับรายงานปัญหา
+                      : "white", // ข้อความสีขาวสำหรับปุ่มอื่น ๆ
+                }}
+              >
+                {buttonType === "savePartial" && "บันทึกชั่วคราว"}
+                {buttonType === "reportIssue" && "รายงานปัญหา"}
+                {buttonType === "complete" && "เสร็จสิ้น"}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </MainLayout>
   );
 };

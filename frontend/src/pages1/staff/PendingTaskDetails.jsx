@@ -23,9 +23,6 @@ const PendingTaskDetails = () => {
   const { upload_id } = useParams();
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [], status: "" });
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [checkDetails, setCheckDetails] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [isTaskCompleted, setIsTaskCompleted] = useState(false);
   const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
   const [formattedData, setFormattedData] = useState([]);
@@ -71,22 +68,6 @@ const PendingTaskDetails = () => {
       setTotalRequestedQuantity(response.data.totalRequestedQuantity || 0);
     } catch (err) {
       console.error("Failed to fetch total requested quantity:", err);
-    }
-  };
-
-  const fetchCheckDetails = async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      const response = await axios.get(
-        `${config.API_URL}/tasks/detail/${upload_id}/check`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      //console.log(response.data);
-      setCheckDetails(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error("Failed to fetch check details:", err);
     }
   };
 
@@ -139,7 +120,6 @@ const PendingTaskDetails = () => {
       setUsername(storedUsername);
     }
     fetchPendingDetails();
-    fetchCheckDetails();
     fetchTotalRequestedQuantity();
     fetchUploadStatus();
   }, [upload_id]);
@@ -341,30 +321,6 @@ const PendingTaskDetails = () => {
     setIsDataChanged(true);
   };
 
-  const handleRowClick = (record) => {
-    console.log("Clicked record:", record);
-    const filtered = checkDetails.filter(
-      (item) => item.mat_name === record.mat_name
-    );
-
-    if (filtered.length > 0 && filtered[0].details) {
-      console.log("Filtered details:", filtered[0].details);
-      setFilteredData(
-        filtered[0].details
-          .map((detail) => ({
-            ...detail,
-            matunit: record.matunit,
-            mat_name: record.mat_name,
-          }))
-          .sort((a, b) => a.matin.localeCompare(b.matin))
-      );
-    } else {
-      setFilteredData([]);
-    }
-
-    setIsModalVisible(true);
-  };
-
   const handleCheckboxChange = (id, checked) => {
     if (!isTaskCompleted) {
       const currentTime = new Date().toISOString(); // เก็บเวลาปัจจุบัน
@@ -418,10 +374,7 @@ const PendingTaskDetails = () => {
         console.log("Temporary Data :", newData);
 
         // ตรวจสอบเงื่อนไข actual_quantity และ quantity
-        if (
-          checked &&
-          newData[id]?.actual_quantity !== newData[id]?.quantity
-        ) {
+        if (checked && newData[id]?.actual_quantity !== newData[id]?.quantity) {
           setIsReasonModalVisible(true); // แสดงปุ่ม Reason
           setCurrentRecordId(id); // เก็บ ID ปัจจุบัน
         } else {
@@ -470,14 +423,6 @@ const PendingTaskDetails = () => {
     setOtherReason("");
   };
 
-  const handleModalOk = () => {
-    setIsModalVisible(false);
-  };
-
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
-  };
-
   // ฟังก์ชันสำหรับการนำทางกลับ
   const handleBack = () => {
     if (isDataChanged) {
@@ -513,20 +458,19 @@ const PendingTaskDetails = () => {
     // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
     const formattedData = Array.isArray(data)
       ? data.flatMap((m) =>
-          m.details
-            .map((d, index) => {
-              return {
-                ...d,
-                mat_unit: m.mat_unit,
-                mat_name: m.mat_name,
-                material_index: index + 1,
-                rowSpanMatunit: index === 0 ? m.details.length : 0,
-                rowSpanMatName: index === 0 ? m.details.length : 0,
-                rowSpanQuantity: index === 0 ? m.details.length : 0,
-                rowSpanMaterialId: index === 0 ? m.details.length : 0,
-                is_temporary: d.is_temporary,
-              };
-            })
+          m.details.map((d, index) => {
+            return {
+              ...d,
+              mat_unit: m.mat_unit,
+              mat_name: m.mat_name,
+              material_index: index + 1,
+              rowSpanMatunit: index === 0 ? m.details.length : 0,
+              rowSpanMatName: index === 0 ? m.details.length : 0,
+              rowSpanQuantity: index === 0 ? m.details.length : 0,
+              rowSpanMaterialId: index === 0 ? m.details.length : 0,
+              is_temporary: d.is_temporary,
+            };
+          })
         )
       : [];
     setFormattedData(formattedData);
@@ -536,40 +480,64 @@ const PendingTaskDetails = () => {
 
   const handleCompleteTask = async () => {
     try {
-      const token = sessionStorage.getItem("token");
+      // แสดงการยืนยันการปิดงาน
+      const result = await Swal.fire({
+        title: "ยืนยันการปิดงาน",
+        html: "คุณแน่ใจหรือไม่ว่าต้องการปิดงานนี้?<br>การปิดงานจะไม่สามารถแก้ไขได้ในภายหลัง",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#5755FE",
+        cancelButtonColor: "#f0f0f0",
+        confirmButtonText: '<span style="color: #f0f0f0;">ใช่, ปิดงาน</span>',
+        cancelButtonText: '<span style="color: #5755FE;">ยกเลิก</span>',
+        customClass: {
+          title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+          htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+          confirmButton: "sarabun-light",
+          cancelButton: "sarabun-light",
+        },
+      });
 
-      const payload = Object.entries(temporaryData).map(([id, details]) => ({
-        id: parseInt(id, 10),
-        counted_quantity: details.counted_quantity,
-        actual_quantity: details.actual_quantity,
-        selected_time: details.timestamp,
-        employee_reason: details.employee_reason || "",
-      }));
+      if (result.isConfirmed) {
+        // หากผู้ใช้ยืนยัน
+        const token = sessionStorage.getItem("token");
 
-      console.log("Payload being sent:", payload);
+        const payload = Object.entries(temporaryData).map(([id, details]) => ({
+          id: parseInt(id, 10),
+          counted_quantity: details.counted_quantity,
+          actual_quantity: details.actual_quantity,
+          selected_time: details.timestamp,
+          employee_reason: details.employee_reason || "",
+        }));
 
-      // ส่ง temporaryData ไปอัปเดตตาราง material_temporary
-      const updateResponse = await axios.post(
-        `${config.API_URL}/tasks/update-material-temporary/${upload_id}`,
-        { payload }, // ส่ง payload ในรูปแบบของ object
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      console.log("Update temporary data response:", updateResponse.data);
+        console.log("Payload being sent:", payload);
 
-      // บันทึกข้อมูลทั้งหมดจาก material_temporary ไปยัง material_usage
-      const saveResponse = await axios.post(
-        `${config.API_URL}/tasks/save-material-usage/${upload_id}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      console.log("Save material usage response:", saveResponse.data);
+        // ส่ง temporaryData ไปอัปเดตตาราง material_temporary
+        const updateResponse = await axios.post(
+          `${config.API_URL}/tasks/update-material-temporary/${upload_id}`,
+          { payload },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log("Update temporary data response:", updateResponse.data);
 
-      message.success("ปิดงานเรียบร้อย");
-      await completeTask();
-      navigate("/MyTasks");
+        // บันทึกข้อมูลทั้งหมดจาก material_temporary ไปยัง material_usage
+        const saveResponse = await axios.post(
+          `${config.API_URL}/tasks/save-material-usage/${upload_id}`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log("Save material usage response:", saveResponse.data);
 
-      setIsTaskCompleted(true);
-      setIsCompleteButtonClicked(true);
+        message.success("ปิดงานเรียบร้อย");
+        await completeTask();
+        navigate("/MyTasks");
+
+        setIsTaskCompleted(true);
+        setIsCompleteButtonClicked(true);
+      } else {
+        // หากผู้ใช้กดยกเลิก
+        message.info("การปิดงานถูกยกเลิก");
+      }
     } catch (error) {
       console.error("Error completing task:", error);
       message.error("ไม่สามารถปิดงานได้");
@@ -632,10 +600,7 @@ const PendingTaskDetails = () => {
   };
 
   const getRowClassName = (record) => {
-    if (
-      record.is_temporary &&
-      record.actual_quantity !== record.quantity
-    ) {
+    if (record.is_temporary && record.actual_quantity !== record.quantity) {
       return "highlight-row"; // เพิ่มคลาสไฮไลท์แถว
     }
     return "";
@@ -647,11 +612,7 @@ const PendingTaskDetails = () => {
       dataIndex: "mat_name",
       key: "mat_name",
       render: (text, record, index) => ({
-        children: (
-          <span>
-            {text}
-          </span>
-        ),
+        children: <span>{text}</span>,
         props: { rowSpan: record.rowSpanMatName },
       }),
       align: "left",
@@ -948,164 +909,139 @@ const PendingTaskDetails = () => {
 
   return (
     <MainLayout>
-      <div
-        style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <div style={{ margin: "10px" }}>
-          <div
-            className="dashboard-title sarabun-bold"
-            style={{
-              fontSize: "28px",
-              marginLeft: "20px",
-              padding: "20px",
-            }}
-          >
-            รายละเอียดการเบิกวัตถุดิบ Pending
-          </div>
+      <div style={{ padding: "0 48px" }}>
+        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+          <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
+            <Breadcrumb.Item>
+              <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>
+              <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
+          </Breadcrumb>
         </div>
-      </div>
 
-      <div>
-        <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>
-            <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>
-            <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
-        </Breadcrumb>
-      </div>
+        <Card
+          style={{
+            borderRadius: "15px",
+          }}
+        >
+          <div className="table-container">
+            <Table
+              columns={columns}
+              dataSource={formattedData}
+              pagination={false}
+              rowKey={(record) => record.material_id}
+              rowClassName={getRowClassName}
+              scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+              className="custom-table"
+            />
+            <Card
+              className="sarabun-bold"
+              style={{
+                backgroundColor: " #DCDCDC",
+                borderRadius: "12px",
+                fontSize: "18px",
+                marginTop: "30px",
+                marginBottom: "30px",
+              }}
+            >
+              รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+              <Modal
+                title="เลือกเหตุผล"
+                visible={isReasonModalVisible}
+                onOk={handleReasonOk}
+                onCancel={handleReasonCancel}
+              >
+                <div>
+                  <Radio.Group
+                    onChange={(e) => setSelectedReason(e.target.value)}
+                    value={selectedReason}
+                    style={{ display: "flex", flexDirection: "column" }}
+                  >
+                    <Radio value="วัตถุดิบหมด">วัตถุดิบหมด</Radio>
+                    <Radio value="จ่ายผิดพลาด">จ่ายผิดพลาด</Radio>
+                    <Radio value="อื่นๆ">อื่นๆ</Radio>
+                  </Radio.Group>
+                  {selectedReason === "อื่นๆ" && (
+                    <Input
+                      style={{ marginTop: 10 }}
+                      placeholder="กรุณากรอกเหตุผล"
+                      value={otherReason}
+                      onChange={(e) => setOtherReason(e.target.value)}
+                    />
+                  )}
+                </div>
+              </Modal>
+            </Card>
 
-      <Card
-        style={{
-          borderRadius: "15px",
-        }}
-      >
-        <div className="table-container">
-          <Table
-            columns={columns}
-            dataSource={formattedData}
-            pagination={false}
-            rowKey={(record) => record.material_id}
-            rowClassName={getRowClassName}
-            scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
-            className="custom-table"
-          />
-          <div
-            className="total-quantity sarabun-bold"
-            style={{
-              backgroundColor: " #DCDCDC",
-              marginBottom: "20px",
-              borderRadius: "8px",
-            }}
-          >
-            <p
-              style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between", // ทำให้ปุ่มอยู่ห่างกันและจัดตำแหน่งปุ่มแรกไปทางซ้ายและปุ่มที่สองไปทางขวา
+                marginTop: "60px",
+              }}
             >
-              <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
-              {formatNumber(totalRequestedQuantity)}
-            </p>
-            <Modal
-              title="เลือกเหตุผล"
-              visible={isReasonModalVisible}
-              onOk={handleReasonOk}
-              onCancel={handleReasonCancel}
-            >
-              <div>
-                <Radio.Group
-                  onChange={(e) => setSelectedReason(e.target.value)}
-                  value={selectedReason}
-                  style={{ display: "flex", flexDirection: "column" }}
-                >
-                  <Radio value="วัตถุดิบหมด">วัตถุดิบหมด</Radio>
-                  <Radio value="จ่ายผิดพลาด">จ่ายผิดพลาด</Radio>
-                  <Radio value="อื่นๆ">อื่นๆ</Radio>
-                </Radio.Group>
-                {selectedReason === "อื่นๆ" && (
-                  <Input
-                    style={{ marginTop: 10 }}
-                    placeholder="กรุณากรอกเหตุผล"
-                    value={otherReason}
-                    onChange={(e) => setOtherReason(e.target.value)}
-                  />
-                )}
-              </div>
-            </Modal>
+              <Button
+                className="back-button"
+                onClick={handleBack}
+                type="default"
+                style={{
+                  color: "#5755FE ",
+                  backgroundColor: "#f0f0f0",
+                  borderColor: "#5755FE",
+                }}
+              >
+                ย้อนกลับ
+              </Button>
+
+              <Button
+                onClick={handleButtonClick}
+                style={{
+                  backgroundColor:
+                    buttonType === "savePartial"
+                      ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
+                      : buttonType === "reportIssue"
+                      ? "#FFD700" // สีสำหรับรายงานปัญหา
+                      : buttonType === "complete"
+                      ? "green" // สีสำหรับเสร็จสิ้น
+                      : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
+                  borderColor:
+                    buttonType === "savePartial"
+                      ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
+                      : buttonType === "reportIssue"
+                      ? "#FFD700" // สีสำหรับรายงานปัญหา
+                      : buttonType === "complete"
+                      ? "green" // สีสำหรับเสร็จสิ้น
+                      : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
+                  color:
+                    buttonType === "reportIssue"
+                      ? "black" // ข้อความสีดำสำหรับรายงานปัญหา
+                      : "white", // ข้อความสีขาวสำหรับปุ่มอื่น ๆ
+                }}
+                disabled={isCompleteButtonClicked || isCompleteButtonEnabled()}
+              >
+                {buttonType === "savePartial" && "บันทึกชั่วคราว"}
+                {buttonType === "reportIssue" && "รายงานปัญหา"}
+                {buttonType === "complete" && "เสร็จสิ้น"}
+              </Button>
+
+              <Button
+                type="primary"
+                style={{
+                  backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
+                  borderColor: "green", // ขอบของปุ่มเป็นสีเขียว
+                }}
+                disabled={!isCompleteButtonEnabled}
+                onClick={handleCompleteTask}
+              >
+                ปิดงาน
+              </Button>
+            </div>
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between", // ทำให้ปุ่มอยู่ห่างกันและจัดตำแหน่งปุ่มแรกไปทางซ้ายและปุ่มที่สองไปทางขวา
-              marginTop: "60px",
-            }}
-          >
-            <Button
-              className="back-button"
-              onClick={handleBack}
-              type="default"
-              style={{
-                color: "#5755FE ",
-                backgroundColor: "#f0f0f0",
-                borderColor: "#5755FE",
-              }}
-            >
-              ย้อนกลับ
-            </Button>
-
-            <Button
-              onClick={handleButtonClick}
-              style={{
-                backgroundColor:
-                  buttonType === "savePartial"
-                    ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
-                    : buttonType === "reportIssue"
-                    ? "#FFD700" // สีสำหรับรายงานปัญหา
-                    : buttonType === "complete"
-                    ? "green" // สีสำหรับเสร็จสิ้น
-                    : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
-                borderColor:
-                  buttonType === "savePartial"
-                    ? "#5755FE" // สีสำหรับบันทึกชั่วคราว
-                    : buttonType === "reportIssue"
-                    ? "#FFD700" // สีสำหรับรายงานปัญหา
-                    : buttonType === "complete"
-                    ? "green" // สีสำหรับเสร็จสิ้น
-                    : "default", // กำหนดสีเริ่มต้นหากไม่มีประเภทปุ่ม
-                color:
-                  buttonType === "reportIssue"
-                    ? "black" // ข้อความสีดำสำหรับรายงานปัญหา
-                    : "white", // ข้อความสีขาวสำหรับปุ่มอื่น ๆ
-              }}
-              disabled={isCompleteButtonClicked || isCompleteButtonEnabled()}
-            >
-              {buttonType === "savePartial" && "บันทึกชั่วคราว"}
-              {buttonType === "reportIssue" && "รายงานปัญหา"}
-              {buttonType === "complete" && "เสร็จสิ้น"}
-            </Button>
-
-            <Button
-              type="primary"
-              style={{
-                backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
-                borderColor: "green", // ขอบของปุ่มเป็นสีเขียว
-              }}
-              disabled={!isCompleteButtonEnabled}
-              onClick={handleCompleteTask}
-            >
-              ปิดงาน
-            </Button>
-          </div>
-        </div>
-      </Card>
-
+        </Card>
+      </div>
     </MainLayout>
   );
 };

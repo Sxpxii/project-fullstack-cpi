@@ -171,6 +171,7 @@ export default class UpdateHelpers {
       color: s.color ? s.color : ser?.color,
       type: s.type ? s.type : ser?.type,
       group: s.group ? s.group : ser?.group,
+      hidden: typeof s.hidden !== 'undefined' ? s.hidden : ser?.hidden,
       data: s.data ? s.data : ser?.data,
       zIndex: typeof s.zIndex !== 'undefined' ? s.zIndex : i,
     }
@@ -182,15 +183,15 @@ export default class UpdateHelpers {
     const parent = `.apexcharts-series[data\\:realIndex='${seriesIndex}']`
 
     if (w.globals.axisCharts) {
-      elPath = w.globals.dom.Paper.select(
+      elPath = w.globals.dom.Paper.findOne(
         `${parent} path[j='${dataPointIndex}'], ${parent} circle[j='${dataPointIndex}'], ${parent} rect[j='${dataPointIndex}']`
-      ).members[0]
+      )
     } else {
       // dataPointIndex will be undefined here, hence using seriesIndex
       if (typeof dataPointIndex === 'undefined') {
-        elPath = w.globals.dom.Paper.select(
+        elPath = w.globals.dom.Paper.findOne(
           `${parent} path[j='${seriesIndex}']`
-        ).members[0]
+        )
 
         if (
           w.config.chart.type === 'pie' ||

@@ -10,7 +10,7 @@ import {
   Col,
   Card,
   message,
-  Modal
+  Modal,
 } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutClerk";
@@ -52,13 +52,13 @@ const Dashboardclerk = () => {
 
       if (Array.isArray(response.data)) {
         const sortedData = response.data.sort((a, b) => {
-            const dateComparison = new Date(b.date) - new Date(a.date);
-            if (dateComparison === 0) {
-              // ถ้าวันที่เท่ากัน ให้เรียงตาม Inventory ID จากมากไปน้อย
-              return b.inventory_id - a.inventory_id;
-            }
-            return dateComparison; // เรียงวันที่จากน้อยไปมาก
-          });
+          const dateComparison = new Date(b.date) - new Date(a.date);
+          if (dateComparison === 0) {
+            // ถ้าวันที่เท่ากัน ให้เรียงตาม Inventory ID จากมากไปน้อย
+            return b.inventory_id - a.inventory_id;
+          }
+          return dateComparison; // เรียงวันที่จากน้อยไปมาก
+        });
         setData(sortedData);
       } else {
         console.error("Invalid data format");
@@ -331,9 +331,7 @@ const Dashboardclerk = () => {
                 }}
                 icon={<FaTrashCan />}
                 onClick={() => handleDeleteClick(record.upload_id)}
-              >
-              </Button>
-
+              ></Button>
             </Space>
           );
         } else if (record.status === "กำลังดำเนินการ") {
@@ -349,9 +347,9 @@ const Dashboardclerk = () => {
             >
               <Button
                 style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
+                  color: "#000000",
+                  backgroundColor: "#D2B48C",
+                  borderColor: "#D2B48C",
                 }}
                 onClick={() => handleViewDetailsClick(record)}
               >
@@ -365,9 +363,9 @@ const Dashboardclerk = () => {
             <Space size="middle">
               <Button
                 style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
+                  color: "#000000",
+                  backgroundColor: "#D2B48C",
+                  borderColor: "#D2B48C",
                 }}
                 //icon={<FaEye />}
                 onClick={() => handleViewDetailsClick(record)}
@@ -381,9 +379,9 @@ const Dashboardclerk = () => {
             <Space size="middle">
               <Button
                 style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
+                  color: "#000000",
+                  backgroundColor: "#D2B48C",
+                  borderColor: "#D2B48C",
                 }}
                 //icon={<FaEye />}
                 onClick={() => handleViewDetailsClick(record)}
@@ -460,156 +458,148 @@ const Dashboardclerk = () => {
 
   return (
     <MainLayout>
-      <div
-        className="header"
-        style={{
-          backgroundColor: "#ffffff", // พื้นหลังสี #001529
-          padding: "10px", // เพิ่ม padding สำหรับ header
-          display: "block",
-        }}
-      >
-        <div
-          className="dashboard-title sarabun-bold"
-          style={{
-            fontSize: "20px",
-            marginLeft: "20px",
-            //padding: "10px",
-            color: "#000000E0",
-          }}
-        >
-          สถานะการเบิกจ่ายวัตถุดิบรายวัน
-        </div>
-        <div style={{ marginTop: "20px" }}>
-          <Row gutter={16}>
-            {dataStatus && dataStatus.length > 0 ? (
-              dataStatus.map((d, i) => (
-                <>
-                  <Col
-                    className="gutter-row"
-                    span={6}
-                    onClick={() => setIdStatus(d.id)}
-                  >
-                    <div
-                      style={{
-                        background: idStatus === d.id ? d.color : "#E8E8E8",
-                        //background: "#ffffff",
-                        padding: "8px 0",
-                        borderRadius: "15px",
-                        marginBottom: "15px",
-                        cursor: "pointer",
-                        //backgroundColor: d.color,
-                        boxShadow:
-                          idStatus === d.id
-                            ? "0px 4px 8px rgba(0, 0, 0, 0.5)" // เงาเมื่อถูกเลือก
-                            : "0px 4px 8px rgba(0, 0, 0, 0.1)", // เงาปกติ
-                      }}
-                    >
-                      <div className="sarabun-bold">
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            fontSize: "18px",
-                            color: idStatus === d.id ? "#000" : "#828282", // เปลี่ยนสีตัวอักษรเมื่อถูกเลือก
-                            fontWeight: idStatus === d.id ? "bold" : "normal", // เปลี่ยนเป็นตัวหนาเมื่อถูกเลือก
-                            opacity: idStatus === d.id ? 1 : 0.5,
-                          }}
-                        >
-                          {d.statusName}
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            fontSize: "28px",
-                            color: idStatus === d.id ? "#000" : "#828282", // เปลี่ยนสีตัวอักษรเมื่อถูกเลือก
-                            fontWeight: idStatus === d.id ? "bold" : "normal", // เปลี่ยนเป็นตัวหนาเมื่อถูกเลือก
-                            opacity: idStatus === d.id ? 1 : 0.5, // ทำให้สีจางลงถ้าไม่ได้เลือก
-                          }}
-                        >
-                          {d.total}
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                </>
-              ))
-            ) : (
-              <></>
-            )}
-          </Row>
-        </div>
-      </div>
-
-      <Card
-        style={{
-          borderRadius: "15px",
-          height: "calc(80vh - 100px)", // กำหนดความสูงของ Card ให้เต็มหน้าจอ ลบด้วย header (หรือ margin)
-        }}
-      >
-        <div
-          className="dashboard-title sarabun-bold"
-          style={{
-            fontSize: "20px",
-            padding: "10px",
-            color: "#000000E0",
-          }}
-        >
-          รายการเบิกจ่ายวัตถุดิบทั้งหมด
-        </div>
-
-        {/* ปุ่มอัปโหลดไฟล์ */}
-        <div style={{ padding: "10px", textAlign: "right" }}>
-          <Button
-            type="primary"
-            onClick={() => navigate("/UploadItemRequest")}
+      <div style={{ padding: "0 48px" }}>
+        <Row gutter={24}>
+          <div
+            className="dashboard-title sarabun-bold"
             style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
-              marginBottom: 16,
+              fontSize: "20px",
+              marginLeft: "20px",
+              marginBottom: "20px",
+              marginTop: "20px",
+              color: "#000000E0",
             }}
           >
-            อัปโหลดไฟล์
-          </Button>
-        </div>
+            สถานะการเบิกจ่ายวัตถุดิบรายวัน :
+          </div>
+        </Row>
 
-        {idStatus && idStatus === 1 ? (
-          <Table
-            columns={columns}
-            dataSource={data.filter((item) => item.status === "รอรับงาน")}
-            pagination={false}
-            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
-            className="custom-table"
-          />
-        ) : idStatus === 2 ? (
-          <Table
-            columns={columns}
-            dataSource={data.filter((item) => item.status === "กำลังดำเนินการ")}
-            pagination={false}
-            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
-            className="custom-table"
-          />
-        ) : idStatus === 3 ? (
-          <Table
-            columns={columns}
-            dataSource={data.filter((item) => item.status === "รอตรวจสอบ")}
-            pagination={false}
-            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
-            className="custom-table"
-          />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={data.filter(
-              (item) => item.status === "ดำเนินการเรียบร้อย"
+        <Row gutter={24} style={{ marginTop: 10 }}>
+          {dataStatus && dataStatus.length > 0 ? (
+            dataStatus.map((d) => (
+              <Col
+                className="gutter-row"
+                span={6}
+                key={d.id}
+                onClick={() => setIdStatus(d.id)}
+              >
+                <Card
+                  style={{
+                    background: idStatus === d.id ? d.color : "#E8E8E8",
+                    padding: "8px 0",
+                    borderRadius: "24px",
+                    marginBottom: "15px",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
+                  <div
+                    className="sarabun-bold"
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      fontSize: "22px",
+                      color: idStatus === d.id ? "#000" : "#828282",
+                      fontWeight: idStatus === d.id ? "bold" : "normal",
+                      opacity: idStatus === d.id ? 1 : 0.5,
+                    }}
+                  >
+                    {d.statusName}
+                  </div>
+                  <div
+                    className="sarabun-bold"
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      fontSize: "22px",
+                      color: idStatus === d.id ? "#000" : "#828282",
+                      fontWeight: idStatus === d.id ? "bold" : "normal",
+                      opacity: idStatus === d.id ? 1 : 0.5,
+                    }}
+                  >
+                    {d.total}
+                  </div>
+                </Card>
+              </Col>
+            ))
+          ) : (
+            <></>
+          )}
+        </Row>
+        <Row gutter={24} style={{ marginTop: 30 }}>
+          <Card
+            style={{
+              borderRadius: "15px",
+              height: "calc(80vh - 100px)", // กำหนดความสูงของ Card ให้เต็มหน้าจอ ลบด้วย header (หรือ margin)
+            }}
+          >
+            <div
+              className="dashboard-title sarabun-bold"
+              style={{
+                fontSize: "20px",
+                padding: "10px",
+                color: "#000000E0",
+              }}
+            >
+              รายการเบิกจ่ายวัตถุดิบทั้งหมด :
+            </div>
+
+            {/* ปุ่มอัปโหลดไฟล์ */}
+            <div style={{ padding: "10px", textAlign: "right" }}>
+              <Button
+                type="primary"
+                onClick={() => navigate("/UploadItemRequest")}
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "#5755FE",
+                  borderColor: "#5755FE",
+                  marginBottom: 16,
+                }}
+              >
+                อัปโหลดไฟล์
+              </Button>
+            </div>
+
+            {idStatus && idStatus === 1 ? (
+              <Table
+                columns={columns}
+                dataSource={data.filter((item) => item.status === "รอรับงาน")}
+                pagination={false}
+                scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+                className="custom-table"
+              />
+            ) : idStatus === 2 ? (
+              <Table
+                columns={columns}
+                dataSource={data.filter(
+                  (item) => item.status === "กำลังดำเนินการ"
+                )}
+                pagination={false}
+                scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+                className="custom-table"
+              />
+            ) : idStatus === 3 ? (
+              <Table
+                columns={columns}
+                dataSource={data.filter((item) => item.status === "รอตรวจสอบ")}
+                pagination={false}
+                scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+                className="custom-table"
+              />
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={data.filter(
+                  (item) => item.status === "ดำเนินการเรียบร้อย"
+                )}
+                pagination={false}
+                scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
+                className="custom-table"
+              />
             )}
-            pagination={false}
-            scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
-            className="custom-table"
-          />
-        )}
-      </Card>
+          </Card>
+        </Row>
+      </div>
     </MainLayout>
   );
 };

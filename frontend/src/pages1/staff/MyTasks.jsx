@@ -42,7 +42,9 @@ const MyTasks = () => {
         },
       });
       // จัดเรียงข้อมูลให้แสดงรายการล่าสุดก่อน
-      const sortedTasks = response.data.sort((a, b) => b.inventory_id - a.inventory_id);
+      const sortedTasks = response.data.sort(
+        (a, b) => b.inventory_id - a.inventory_id
+      );
       console.log("ข้อมูลรายการ", response.data);
       console.log("ข้อมูลรายการหลังเรียง", sortedTasks);
       setMyTasks(sortedTasks);
@@ -277,157 +279,139 @@ const MyTasks = () => {
 
   return (
     <MainLayout>
-      <div
-        style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <div style={{ margin: "10px" }}>
-          <div
-            className="dashboard-title sarabun-bold"
-            style={{
-              fontSize: "28px",
-              marginLeft: "10px",
-              padding: "20px",
-            }}
-          >
-            ภาระงานของฉัน
-          </div>
+      <div style={{ padding: "0 48px" }}>
+        <div>
+          <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
+            <Breadcrumb.Item>
+              <Link to="/OperationsDashboard">รายการเบิกจ่ายทั้งหมด</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>รายการเบิกจ่ายของฉัน</Breadcrumb.Item>
+          </Breadcrumb>
         </div>
-      </div>
 
-      <div>
-        <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>
-            <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>รายการเบิก-จ่ายของฉัน</Breadcrumb.Item>
-        </Breadcrumb>
-      </div>
-
-      <Row>
-        <Col span={24} style={{ marginBottom: "20px" }}>
-          <Button
-            onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-            style={{
-              display: "flex", // ใช้ flexbox เพื่อจัดเรียง
-              alignItems: "center", // จัดให้แนวกลางในแนวตั้ง
-              justifyContent: "center", // จัดให้แนวกลางในแนวนอน
-              fontSize: isTabletOrMobile ? "14px" : "15px",
-              backgroundColor: showCompletedTasks ? "#006400" : "#FFA500",
-              color: showCompletedTasks ? "#fff" : "#000",
-              borderRadius: "8px",
-              border: "none",
-              float: "right",
-            }}
-          >
-            {showCompletedTasks ? (
-              <>
-                ดูงานที่ดำเนินการเรียบร้อย{" "}
-                <IoMdArrowDropright
-                  style={{ fontSize: "20px", verticalAlign: "middle" }}
-                />
-              </>
-            ) : (
-              <>
-                <IoMdArrowDropleft
-                  style={{ fontSize: "20px", verticalAlign: "middle" }}
-                />{" "}
-                ดูงานที่ต้องดำเนินการ
-              </>
-            )}
-          </Button>
-        </Col>
-
-        <Col span={24}>
-          <Card
-            style={{ borderRadius: "15px", overflowX: "auto", height: "60vh" }}
-          >
-            {showCompletedTasks ? (
-              <div>
-                <div
-                  className="sarabun-bold"
-                  style={{ fontSize: "20px", marginBottom: "10px" }}
-                >
-                  งานที่ต้องดำเนินการ
-                </div>
-                <div style={{ maxHeight: "500px", overflowY: "auto" }}>
-                  <Table
-                    columns={columns}
-                    dataSource={ongoingTasks}
-                    pagination={false}
-                    className="custom-table"
+        <Row>
+          <Col span={24} style={{ marginBottom: "20px" }}>
+            <Button
+              onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+              style={{
+                display: "flex", // ใช้ flexbox เพื่อจัดเรียง
+                alignItems: "center", // จัดให้แนวกลางในแนวตั้ง
+                justifyContent: "center", // จัดให้แนวกลางในแนวนอน
+                fontSize: isTabletOrMobile ? "14px" : "15px",
+                backgroundColor: showCompletedTasks ? "#006400" : "#FFA500",
+                color: showCompletedTasks ? "#fff" : "#000",
+                borderRadius: "12px",
+                border: "none",
+                float: "right",
+                height:"50px"
+              }}
+            >
+              {showCompletedTasks ? (
+                <>
+                  ดูงานที่ดำเนินการเรียบร้อย{" "}
+                  <IoMdArrowDropright
+                    style={{ fontSize: "20px", verticalAlign: "middle" }}
                   />
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div
-                  className="sarabun-bold"
-                  style={{ fontSize: "20px", marginBottom: "10px" }}
-                >
-                  งานที่ดำเนินการเรียบร้อย
-                </div>
-                <div style={{ maxHeight: "450px", overflowY: "auto" }}>
-                  <Table
-                    columns={columns}
-                    dataSource={completedTasks}
-                    pagination={false}
-                    className="custom-table"
-                  />
-                </div>
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
+                </>
+              ) : (
+                <>
+                  <IoMdArrowDropleft
+                    style={{ fontSize: "20px", verticalAlign: "middle" }}
+                  />{" "}
+                  ดูงานที่ต้องดำเนินการ
+                </>
+              )}
+            </Button>
+          </Col>
 
-      
+          <Col span={24}>
+            <Card
+              style={{
+                borderRadius: "15px",
+                overflowX: "auto",
+                height: "60vh",
+              }}
+            >
+              {showCompletedTasks ? (
+                <div>
+                  <div
+                    className="sarabun-bold"
+                    style={{ fontSize: "20px", marginBottom: "10px" }}
+                  >
+                    งานที่ต้องดำเนินการ
+                  </div>
+                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                    <Table
+                      columns={columns}
+                      dataSource={ongoingTasks}
+                      pagination={false}
+                      className="custom-table"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div
+                    className="sarabun-bold"
+                    style={{ fontSize: "20px", marginBottom: "10px" }}
+                  >
+                    งานที่ดำเนินการเรียบร้อย
+                  </div>
+                  <div style={{ maxHeight: "450px", overflowY: "auto" }}>
+                    <Table
+                      columns={columns}
+                      dataSource={completedTasks}
+                      pagination={false}
+                      className="custom-table"
+                    />
+                  </div>
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
 
-      <Modal
-        title="ยืนยันการคืนงาน"
-        visible={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        width={isTabletOrMobile ? 300 : 600}
-        style={{
-          top: "50%", // ตั้งค่าตำแหน่งแนวดิ่ง
-          transform: "translateY(-50%)", // เลื่อนขึ้นครึ่งหนึ่งของความสูงของ modal
-        }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setIsModalVisible(false)}
-            style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
-              fontSize: isTabletOrMobile ? "10px" : "14px",
-            }}
-          >
-            ยกเลิก
-          </Button>,
-          <Button
-            key="confirm"
-            onClick={handleReturnTask}
-            style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
-              fontSize: isTabletOrMobile ? "10px" : "14px",
-            }}
-          >
-            ยืนยัน
-          </Button>,
-        ]}
-      >
-        <p style={{ fontSize: isTabletOrMobile ? "12px" : "16px" }}>
-          คุณแน่ใจหรือไม่ว่าต้องการคืนงานนี้?
-        </p>
-      </Modal>
+        <Modal
+          title="ยืนยันการคืนงาน"
+          visible={isModalVisible}
+          onCancel={() => setIsModalVisible(false)}
+          width={isTabletOrMobile ? 300 : 600}
+          style={{
+            top: "50%", // ตั้งค่าตำแหน่งแนวดิ่ง
+            transform: "translateY(-50%)", // เลื่อนขึ้นครึ่งหนึ่งของความสูงของ modal
+          }}
+          footer={[
+            <Button
+              key="cancel"
+              onClick={() => setIsModalVisible(false)}
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE",
+                fontSize: isTabletOrMobile ? "10px" : "14px",
+              }}
+            >
+              ยกเลิก
+            </Button>,
+            <Button
+              key="confirm"
+              onClick={handleReturnTask}
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE",
+                fontSize: isTabletOrMobile ? "10px" : "14px",
+              }}
+            >
+              ยืนยัน
+            </Button>,
+          ]}
+        >
+          <p style={{ fontSize: isTabletOrMobile ? "12px" : "16px" }}>
+            คุณแน่ใจหรือไม่ว่าต้องการคืนงานนี้?
+          </p>
+        </Modal>
+      </div>
     </MainLayout>
   );
 };

@@ -64,55 +64,52 @@ const getMaterialDetails = async (req, res) => {
 
 // ฟังก์ชันสำหรับดึงรายละเอียดของงาน
 const getDetails = async (req, res) => {
-    try {
-        const { upload_id } = req.params;
-    
-        const query = `
-          SELECT 
-            m.material_id,
-            m.mat_name,
-            m.matunit,
-            r.quantity,
-            JSON_AGG(
-              JSON_BUILD_OBJECT(
-                'id', b.id,
-                'lot', b.lot,
-                'matin', b.matin,
-                'location', b.location,
-                'used_quantity', b.used_quantity,
-                'remaining_quantity', b.remaining_quantity,
-                'reason', b.reason
-              )
-              ORDER BY b.matin
-            ) AS details
-          FROM materials m
-          JOIN materialrequests r ON m.material_id = r.material_id
-          LEFT JOIN material_usage b ON m.material_id = b.material_id AND b.upload_id = $1
-          WHERE r.upload_id = $1 
-          GROUP BY m.material_id, m.mat_name, m.matunit, r.quantity
-          ORDER BY m.material_id;
-        `;
-        
-    
-        const { rows } = await pool1.query(query, [upload_id]);
-        console.log(JSON.stringify(rows, null, 2));
-        res.json(rows);
-      } catch (err) {
-        console.error("Error fetching task details", err);
-        res.status(500).json({ error: "Failed to fetch task details" });
-      }
+  try {
+    const { upload_id } = req.params;
+    console.log("Received upload_id:", upload_id);
+
+    const query = `
+      SELECT 
+        m.id,
+        m.mat_name,
+        m.mat_unit,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', r.id,
+            'mat_unit_id', r.mat_unit_id,
+            'mat_lot', r.mat_lot,
+            'loc', r.loc,
+            'quantity', r.quantity,
+            'total_quantity', r.total_quantity
+          )
+          ORDER BY r.id
+        ) AS details
+      FROM material_matunits m
+      JOIN mat_requests r ON m.id = r.mat_unit_id
+      WHERE r.upload_id = $1
+      GROUP BY m.id, m.mat_name, m.mat_unit
+      ORDER BY m.id;
+    `;
+
+    const { rows } = await pool1.query(query, [upload_id]);
+    console.log("Query Result:", JSON.stringify(rows, null, 2));
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching task details", err);
+    res.status(500).json({ error: "Failed to fetch task details" });
+  }
   };
 
 const getTotalRequested = async (req, res) => {
     try {
         const { upload_id } = req.params;
         const query = `
-            SELECT SUM(r.quantity) AS total_requested_quantity
-            FROM materialrequests r
+            SELECT total_quantity
+            FROM uploads r
             WHERE r.upload_id = $1;
         `;
         const { rows } = await pool1.query(query, [upload_id]);
-        const totalRequested = rows[0]?.total_requested_quantity || 0;
+        const totalRequested = rows[0]?.total_quantity || 0;
         console.log("Total requested quantity:", totalRequested); // ตรวจสอบค่าที่ดึงมา
         res.json({ totalRequested });
     } catch (err) {

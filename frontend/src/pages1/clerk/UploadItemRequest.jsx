@@ -126,260 +126,248 @@ const UploadPage = () => {
 
   return (
     <MainLayout>
-      <div
-        style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <div style={{ margin: "10px" }}>
-          <div
-            className="dashboard-title sarabun-bold"
-            style={{
-              fontSize: "28px",
-              marginLeft: "20px",
-              padding: "10px",
-            }}
-          >
-            บันทึกข้อมูลการสั่งเบิกวัตถุดิบ
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>
-            <span onClick={() => navigate("/dashboard")}>
-              ติดตามสถานะการเบิก-จ่าย
-            </span>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>
-            <span onClick={() => navigate("/UploadBalance")}>
-              อัปโหลดยอดคงเหลือรายวัน
-            </span>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>อัปโหลดไฟล์สั่งเบิก</Breadcrumb.Item>
-        </Breadcrumb>
-      </div>
-
-      <Card>
-        <Steps
-          current={currentStep}
-          style={{ marginBottom: "20px" }}
-          className="sarabun-light"
-        >
-          <Step title="เลือกวัตถุดิบ" />
-          <Step title="เลือกวันที่สั่งจ่าย" />
-          <Step title="อัปโหลดไฟล์" />
-        </Steps>
-
-        {currentStep === 0 && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "300px", // กำหนดความสูงเพื่อให้อยู่ตรงกลาง
-            }}
-          >
-            <select
-              value={materialType}
-              onChange={handleMaterialTypeChange}
-              className="sarabun-light"
-              style={{
-                width: "300px",
-                height: "50px",
-                marginTop: "20px",
-                marginBottom: "20px",
-                fontSize: "16px",
-                borderRadius: "10px",
-                padding: "10px",
-                borderColor: "#5755FE",
-                backgroundColor: "#f0f0f0",
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-              }}
-            >
-              <option value="">เลือกวัตถุดิบ</option>
-              <option value="WD">กิ๊ฟล๊อค/แผ่นชิม</option>
-              <option value="PIN">สลัก/ตะขอ</option>
-              <option value="BP">แผ่นเหล็ก</option>
-              <option value="CHEMICAL">เคมี</option>
-            </select>
-            <Button
-              type="primary"
-              onClick={nextStep}
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "#5755FE",
-                borderColor: "#5755FE",
-                marginRight: "5px",
-              }}
-            >
-              ถัดไป
-            </Button>
-          </div>
-        )}
-
-        {currentStep === 1 && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "300px",
-            }}
-          >
-            <DatePicker
-              onChange={handleDateChange}
-              format="YYYY-MM-DD"
-              style={{
-                width: "300px",
-                height: "50px",
-                padding: "12px 20px",
-                marginTop: "20px",
-                marginBottom: "20px",
-                fontSize: "16px",
-                borderRadius: "10px",
-                borderColor: "#5755FE",
-                backgroundColor: "#f0f0f0",
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-              }}
-              placeholder="เลือกวันที่สั่งจ่าย"
-              className="sarabun-light"
-            />
-            <div>
-              <Button
-                onClick={prevStep}
-                style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#5755FE",
-                  marginRight: "20px",
-                }}
-              >
-                ย้อนกลับ
-              </Button>
-              <Button
-                type="primary"
-                onClick={nextStep}
-                style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
-                  marginRight: "5px",
-                }}
-              >
-                ถัดไป
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 2 && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "400px",
-            }}
-          >
+      <div style={{ padding: "0 48px" }}>
+        <Card style={{
+                marginTop:"40px"
+              }}>
             <div
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
+              className="dashboard-title sarabun-bold"
               style={{
-                border: isDragging ? "2px dashed #4caf50" : "2px dashed #ccc",
-                borderRadius: "10px",
-                padding: "20px",
-                textAlign: "center",
-                marginBottom: "20px",
-                position: "relative",
-                width: "500px",
-                minHeight: "200px",
-                display: "flex", // Make the container a flexbox
-                alignItems: "center", // Vertically center the content
-                justifyContent: "center",
+                fontSize: "25px",
+                padding: "10px",
+                marginBottom: "30px",
               }}
             >
-              <input
-                type="file"
-                onChange={handleFileChange}
-                ref={fileInputRef}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  opacity: 0,
-                  cursor: "pointer",
-                }}
-              />
-              <p className="sarabun-light" style={{ margin: 0 }}>
-                {file
-                  ? "ไฟล์ถูกเลือกแล้ว"
-                  : "ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์"}
-              </p>
+              บันทึกข้อมูลการสั่งเบิกวัตถุดิบ :
             </div>
-            {file && (
+          
+          <div>
+            <Steps
+              current={currentStep}
+              style={{ marginBottom: "20px" }}
+              className="sarabun-light"
+            >
+              <Step title="เลือกวัตถุดิบ" />
+              <Step title="เลือกวันที่สั่งจ่าย" />
+              <Step title="อัปโหลดไฟล์" />
+            </Steps>
+
+            {currentStep === 0 && (
               <div
                 style={{
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  marginBottom: "10px",
+                  justifyContent: "center",
+                  minHeight: "300px", // กำหนดความสูงเพื่อให้อยู่ตรงกลาง
                 }}
               >
-                <p style={{ margin: 0, marginRight: "10px" }}>{file.name}</p>
-                <button
-                  onClick={handleCancel}
+                <select
+                  value={materialType}
+                  onChange={handleMaterialTypeChange}
+                  className="sarabun-light"
                   style={{
-                    background: "none",
-                    border: "none",
-                    color: "#ff4d4f",
-                    cursor: "pointer",
+                    width: "300px",
+                    height: "50px",
+                    marginTop: "20px",
+                    marginBottom: "20px",
                     fontSize: "16px",
+                    borderRadius: "10px",
+                    padding: "10px",
+                    borderColor: "#5755FE",
+                    backgroundColor: "#f0f0f0",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
                   }}
                 >
-                  ✖
-                </button>
+                  <option value="">เลือกวัตถุดิบ</option>
+                  <option value="PK_DIS">กล่องดิส/ใบแนบ/สติ๊กเกอร์</option>
+                  <option value="PK_shoe">กล่องก้าม/ใบแนบ/สติ๊กเกอร์</option>
+                  <option value="WD">กิ๊ฟล๊อค/แผ่นชิม</option>
+                  <option value="PIN">สลัก/ตะขอ</option>
+                  <option value="BP">แผ่นเหล็ก</option>
+                  <option value="CHEMICAL">เคมี</option>
+                </select>
+                <Button
+                  type="primary"
+                  onClick={nextStep}
+                  style={{
+                    color: "#f0f0f0",
+                    backgroundColor: "#5755FE",
+                    borderColor: "#5755FE",
+                    marginTop:"60px"
+                  }}
+                >
+                  ถัดไป
+                </Button>
               </div>
             )}
-            <div>
-              <Button
-                onClick={prevStep}
+
+            {currentStep === 1 && (
+              <div
                 style={{
-                  color: "#5755FE",
-                  backgroundColor: "#f0f0f0",
-                  borderColor: "#5755FE",
-                  marginRight: "20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "300px",
                 }}
               >
-                ย้อนกลับ
-              </Button>
-              <Button
-                type="primary"
-                onClick={handleUpload}
-                disabled={!file}
+                <DatePicker
+                  onChange={handleDateChange}
+                  format="YYYY-MM-DD"
+                  style={{
+                    width: "300px",
+                    height: "50px",
+                    padding: "12px 20px",
+                    marginTop: "20px",
+                    marginBottom: "20px",
+                    fontSize: "16px",
+                    borderRadius: "10px",
+                    borderColor: "#5755FE",
+                    backgroundColor: "#f0f0f0",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+                  }}
+                  placeholder="เลือกวันที่สั่งจ่าย"
+                  className="sarabun-light"
+                />
+                <div>
+                  <Button
+                    onClick={prevStep}
+                    style={{
+                      color: "#5755FE",
+                      backgroundColor: "#f0f0f0",
+                      borderColor: "#5755FE",
+                      marginRight: "20px",
+                      marginTop:"60px"
+                    }}
+                  >
+                    ย้อนกลับ
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={nextStep}
+                    style={{
+                      color: "#f0f0f0",
+                      backgroundColor: "#5755FE",
+                      borderColor: "#5755FE",
+                      marginRight: "5px",
+                      marginTop:"60px"
+                    }}
+                  >
+                    ถัดไป
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 2 && (
+              <div
                 style={{
-                  color: "#f0f0f0",
-                  backgroundColor: "#5755FE",
-                  borderColor: "#5755FE",
-                  marginRight: "5px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "400px",
                 }}
               >
-                อัปโหลด
-              </Button>
-            </div>
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  style={{
+                    border: isDragging
+                      ? "2px dashed #4caf50"
+                      : "2px dashed #ccc",
+                    borderRadius: "10px",
+                    padding: "20px",
+                    textAlign: "center",
+                    marginBottom: "20px",
+                    position: "relative",
+                    width: "500px",
+                    minHeight: "200px",
+                    display: "flex", // Make the container a flexbox
+                    alignItems: "center", // Vertically center the content
+                    justifyContent: "center",
+                  }}
+                >
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    ref={fileInputRef}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      opacity: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                  <p className="sarabun-light" style={{ margin: 0 }}>
+                    {file
+                      ? "ไฟล์ถูกเลือกแล้ว"
+                      : "ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์"}
+                  </p>
+                </div>
+                {file && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <p style={{ margin: 0, marginRight: "10px" }}>
+                      {file.name}
+                    </p>
+                    <button
+                      onClick={handleCancel}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#ff4d4f",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                      }}
+                    >
+                      ✖
+                    </button>
+                  </div>
+                )}
+                <div>
+                  <Button
+                    onClick={prevStep}
+                    style={{
+                      color: "#5755FE",
+                      backgroundColor: "#f0f0f0",
+                      borderColor: "#5755FE",
+                      marginRight: "20px",
+                      marginTop:"60px"
+                    }}
+                  >
+                    ย้อนกลับ
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={handleUpload}
+                    disabled={!file}
+                    style={{
+                      color: "#f0f0f0",
+                      backgroundColor: "#5755FE",
+                      borderColor: "#5755FE",
+                      marginRight: "5px",
+                      marginTop:"60px"
+                    }}
+                  >
+                    อัปโหลด
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </Card>
+        </Card>
+      </div>
     </MainLayout>
   );
 };

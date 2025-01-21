@@ -51,7 +51,7 @@ const getRemainingDetails = async (req, res) => {
         SELECT 
           m.id,
           m.mat_name,
-          m.matunit,
+          m.mat_unit,
           JSON_AGG(
             JSON_BUILD_OBJECT(
               'id', b.id,
@@ -67,7 +67,7 @@ const getRemainingDetails = async (req, res) => {
                       ELSE false
                    END
             )
-            ORDER BY b.matin
+            ORDER BY b.id
           ) AS details
         FROM material_matunits m
         JOIN mat_requests b ON m.id = b.mat_unit_id AND b.upload_id = $1
@@ -173,22 +173,52 @@ const getTotalRequested = async (req, res) => {
       client.release();
     }
   };  
+  
+const saveMaterialUsage = async (upload_id) => {
+  try {
+    // บันทึกข้อมูลจาก material_temporary ไปยัง mat_requests
+    await pool1.query(
+      `UPDATE mat_requests mu
+       SET counted_quantity = mt.counted_quantity,
+           employee_reason = mt.employee_reason,
+           selected_time = mt.selected_time,
+           actual_quantity = mt.actual_quantity
+       FROM material_temporary mt
+       WHERE mu.id = mt.mat_requests_id
+         AND mt.upload_id = $1`,
+      [upload_id]
+    );
+
+    // ลบข้อมูลใน material_temporary หลังการย้าย
+    await pool1.query(`DELETE FROM material_temporary WHERE upload_id = $1`, [upload_id]);
+
+    console.log(`Saved material usage for upload_id: ${upload_id}`);
+  } catch (error) {
+    console.error("Error saving material usage:", error);
+    throw error; // โยน error เพื่อให้ approveUpload จัดการต่อ
+  }
+};
 
   const approveUpload = async (req, res) => {
-    console.log("uploadId received in notifyManager:", upload_id);
     const { userId } = req.user;
     const { data } = req.body;
+    const { upload_id } = req.params;
+    // ย้าย console.log มาหลังจากการประกาศ upload_id
+    console.log("uploadId received in notifyManager:", upload_id);
 
     try {
         // อัปเดตเหตุผลใน material_usage
         for (const record of data) {
           if (record.manager_reason) {
             await pool1.query(
-              'UPDATE material_usage SET manager_reason = $1 WHERE id = $2 AND upload_id = $3',
+              'UPDATE mat_requests SET manager_reason = $1 WHERE id = $2 AND upload_id = $3',
               [record.manager_reason, record.id, upload_id]
             );
           }
         }
+
+        // เรียกใช้ saveMaterialUsage
+        await saveMaterialUsage(upload_id); 
 
         // อัปเดตสถานะเป็น 'ดำเนินการเรียบร้อย'
         await pool1.query('UPDATE uploads SET current_status = $1 WHERE upload_id = $2', ['ดำเนินการเรียบร้อย', upload_id]);
@@ -202,11 +232,54 @@ const getTotalRequested = async (req, res) => {
         // บันทึกการกระทำของผู้ใช้
         await logUserAction(userId, 'อนุมัติรายการ_${upload_id}', upload_id);
 
+        console.log("Calling Notification with upload_id:", upload_id);
+        await sendNotificationToSenderApprove(upload_id, req); 
         res.status(200).json({ success: true });
     } catch (error) {
         console.error('Error updating status:', error);
         res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการอนุมัติ" });
     }
+};
+
+const approveRemaining = async (req, res) => {
+  const { userId } = req.user;
+  const { data } = req.body;
+  const { upload_id } = req.params;
+  // ย้าย console.log มาหลังจากการประกาศ upload_id
+  console.log("uploadId received in notifyManager:", upload_id);
+
+  try {
+      // อัปเดตเหตุผลใน mat_requests
+      for (const record of data) {
+        if (record.manager_reason_remaining) {
+          await pool1.query(
+            'UPDATE mat_requests SET manager_reason_remaining = $1 WHERE id = $2 AND upload_id = $3',
+            [record.manager_reason_remaining, record.id, upload_id]
+          );
+        }
+      }
+
+      // เรียกใช้ saveMaterialUsage
+      await saveMaterialUsage(upload_id); 
+
+      // อัปเดตสถานะเป็น 'ดำเนินการเรียบร้อย'
+      await pool1.query('UPDATE uploads SET current_status = $1 WHERE upload_id = $2', ['ดำเนินการเรียบร้อย', upload_id]);
+
+      // อัปเดต duration และ average_duration
+      await updateDurationAndAverage(upload_id, 'รอตรวจสอบ');
+
+      // บันทึกการเปลี่ยนแปลงสถานะในตาราง operationstatuses
+      await pool1.query('INSERT INTO operationstatuses (upload_id, status, timestamp) VALUES ($1, $2, NOW())', [upload_id, 'ดำเนินการเรียบร้อย']);
+      
+      // บันทึกการกระทำของผู้ใช้
+      await logUserAction(userId, 'อนุมัติรายการ_${upload_id}', upload_id);
+
+      console.log("Calling Notification with upload_id:", upload_id);
+      res.status(200).json({ success: true });
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดในการอนุมัติ" });
+  }
 };
 
 const updateStatusNotificationsByid = async (req, res) => {
@@ -337,7 +410,88 @@ const sendNotificationToSender = async (upload_id, req, res) => {
   }
 };
 
+const sendNotificationToSenderApprove = async (upload_id, req, res) => { 
+  if (!req.io || !req.user) {
+    console.error('Missing io or user data in request');
+    return;
+  }
+  
+  console.log("uploadId received in notifyManager:", upload_id);
+  const io = req.io;
+  const senderId = req.user.userId;
+  
+  try {
+    // 1. ตรวจสอบ sender_id จาก upload_id
+    const result = await pool1.query(
+      'SELECT sender_id FROM notifications WHERE upload_id = $1',
+      [upload_id]
+    );
+    if (result.rows.length === 0) {
+      console.error('No recipient found for this upload_id:', upload_id);
+      return res.status(404).json({ message: 'Recipient not found' });
+    }
 
+    const recipientId = result.rows[0].sender_id;
+    console.log("recipientId:", recipientId);  // ตรวจสอบ recipientId
+
+    // 2. ตรวจสอบ inventory_id จาก upload_id
+    const uploadResult = await pool1.query(
+      'SELECT inventory_id FROM uploads WHERE upload_id = $1',
+      [upload_id]
+    );
+    if (uploadResult.rows.length === 0) {
+      console.error('No inventory found for this upload_id:', upload_id);
+      return res.status(404).json({ message: 'Inventory not found' });
+    }
+
+    const inventoryId = uploadResult.rows[0].inventory_id;
+    console.log("inventoryId:", inventoryId);  // ตรวจสอบ inventoryId
+
+    const currentTime = new Date().toLocaleString();
+
+    // ดึงชื่อของ senderId
+    const senderResult = await pool1.query(
+      "SELECT username FROM users1 WHERE user_id = $1",
+      [senderId]
+    );
+    if (senderResult.rows.length === 0) {
+      console.error('No sender found for this userId:', senderId);
+      return res.status(404).json({ message: 'Sender not found' });
+    }
+
+    const sendername = senderResult.rows[0].username;
+    console.log("sendername:", sendername);  // ตรวจสอบ sendername
+
+    // 3. บันทึกการแจ้งเตือน
+    const message = 'ปิดงานรายการนี้เรียบร้อยแล้ว';
+    const type = 'Approve';
+    const status = 'unread';  // หรือ 'read' ตามสถานะ
+
+    const approvenotification = await pool1.query(
+      'INSERT INTO notifications (sender_id, recipient_id, message, type, status, inventory_id, upload_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [senderId, recipientId, message, type, status, inventoryId, upload_id]
+    );
+
+    console.log("Approve notification inserted:", approvenotification.rows[0]);
+
+    // ส่งการแจ้งเตือนแบบเรียลไทม์ผ่าน Socket.IO
+    if (io && io.emit) {
+      io.emit('approvenotification', {
+        userName: sendername,
+        inventoryId: inventoryId,
+        message: message,
+        type: type,
+        createdAt: currentTime
+      });
+    } else {
+      console.error('Socket.IO instance is not defined');
+    }
+
+  } catch (error) {
+    console.error('Error sending approvenotification:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 module.exports = {
@@ -347,5 +501,6 @@ module.exports = {
     confirmEdit,
     updateStatusNotificationsByid,
     updateStatusNotificationsByuploadId,
-    getRemainingDetails
+    getRemainingDetails,
+    approveRemaining
 };

@@ -2,20 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { useMediaQuery } from "react-responsive";
 import { useNavigate } from "react-router-dom";
-import {
-  Table,
-  Button,
-  Modal,
-  message,
-  Tag,
-  Card,
-  Checkbox,
-} from "antd";
+import { Table, Button, Modal, message, Tag, Card, Checkbox, Row, Col,} from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/OperationDashboard.css";
 import config from "../../configAPI";
-import ChatApp from "../../components/ChatApp";
 
 const OperationsDashboard = () => {
   const [username, setUsername] = useState("");
@@ -197,27 +188,6 @@ const OperationsDashboard = () => {
         },
       }),
     },
-    /*{
-      title: "สถานะ",
-      dataIndex: "current_status",
-      key: "current_status",
-      render: (status) => {
-        let color;
-        if (status === "ดำเนินการเรียบร้อย") {
-          color = "green";
-        } else if (status === "กำลังดำเนินการ") {
-          color = "orange";
-        } else if (status === "รอตรวจสอบ") {
-          color = "red";
-        }
-        return (
-          <Tag className="sarabun-light" color={color}>
-            {status}
-          </Tag>
-        );
-      },
-      align: "center",
-    },*/
     {
       title: "สถานะ",
       key: "overdue",
@@ -278,161 +248,143 @@ const OperationsDashboard = () => {
 
   return (
     <MainLayout>
-      <div
-        style={{
-          backgroundColor: " #DCDCDC",
-          padding: isTabletOrMobile ? "10px 20px" : "15px 30px",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <div style={{ margin: "10px" }}>
+      <div style={{ padding: "0 48px" }}>
+        <Row>
           <div
             className="dashboard-title sarabun-bold"
             style={{
-              fontSize: isTabletOrMobile ? "24px" : "28px",
+              fontSize: isTabletOrMobile ? "28px" : "30px",
               textAlign: isTabletOrMobile ? "center" : "left",
               marginLeft: isTabletOrMobile ? "0px" : "10px",
+              marginTop:"30px",
+              marginBottom:"30px",
             }}
           >
-            Operations Dashboard
+            รายการเบิกจ่ายวัตถุดิบ
           </div>
-        </div>
-      </div>
+        </Row>
 
-      {/* Checkbox สำหรับกรองประเภทวัตถุดิบ */}
-      <Checkbox.Group
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          padding: "15px",
-          backgroundColor: "#ffd591",
-          borderRadius: "10px",
-          border: "1px solid #ddd",
-          marginBottom: "20px",
-          fontSize: "18px",
-          width: "300px",
-          alignSelf: "flex-end",
-          boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)", // เพิ่มเงาให้ดูมีมิติ
-        }}
-        className="sarabun-light"
-        onChange={handleMaterialTypeChange}
-      >
-        {[
-          /*{ label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
-              { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },*/
-          { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
-          { label: "สลัก/ตะขอ", value: "PIN" },
-          { label: "แผ่นเหล็ก", value: "BP" },
-          { label: "เคมี", value: "CHEMICAL" },
-        ].map((option) => (
-          <div
-            key={option.value}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginBottom: "10px",
-            }}
-          >
-            <Checkbox
-              value={option.value}
-              style={{
-                width: "30px", // ขนาดของ Checkbox
-                height: "30px", // ขนาดของ Checkbox
-                transform: "scale(1.5)",
-                marginLeft: "15px",
-              }}
-            />
-            <span
-              style={{ marginLeft: "10px", fontSize: "16px", color: "black" }}
-            >
-              {option.label}
-            </span>{" "}
-            {/* ขนาดข้อความ */}
-          </div>
-        ))}
-      </Checkbox.Group>
-
-      <div>
+        {/* Checkbox สำหรับกรองประเภทวัตถุดิบ */}
         <Card
           style={{
-            borderRadius: "15px",
-            height: "60vh",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "#dbbc8c",
+            borderRadius: "24px",
+            border: "1px solid #ddd",
+            marginBottom: "30px",
+            fontSize: "18px",
+            width: "300px",
+            alignSelf: "flex-end",
+            boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)", // เพิ่มเงาให้ดูมีมิติ
           }}
+          className="sarabun-light"
+          onChange={handleMaterialTypeChange}
         >
-          <div
-            style={{
-              fontSize: "22px",
-              marginBottom: "10px",
-            }}
-            className="sarabun-bold"
-          >
-            <span>รายการงานทั้งหมด</span>
-            <span className="ms-2"> {tasks.length} </span>
-            <span className="ms-2">รายการ</span>
-          </div>
-
-          <div
-            style={{
-              height: "350px", // กำหนดความสูงของตาราง
-              overflowY: "auto", // ทำให้เลื่อนขึ้นลงได้
-            }}
-            className="table-responsive"
-          >
-            <Table
-              columns={columns}
-              dataSource={filteredTasks}
-              pagination={false}
-              className="custom-table"
-            />
-          </div>
+          {[
+            { label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
+            { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },
+            { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
+            { label: "สลัก/ตะขอ", value: "PIN" },
+            { label: "แผ่นเหล็ก", value: "BP" },
+            { label: "เคมี", value: "CHEMICAL" },
+          ].map((option) => (
+            <div
+              key={option.value}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "10px",
+              }}
+            >
+              <Checkbox
+                value={option.value}
+                style={{
+                  width: "30px", // ขนาดของ Checkbox
+                  height: "30px", // ขนาดของ Checkbox
+                  transform: "scale(1.5)",
+                  marginLeft: "15px",
+                }}
+              />
+              <span
+                style={{ marginLeft: "10px", fontSize: "15px", color: "black" }}
+              >
+                {option.label}
+              </span>{" "}
+              {/* ขนาดข้อความ */}
+            </div>
+          ))}
         </Card>
-      </div>
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-          zIndex: 1000,
-        }}
-      >
-        <ChatApp />
-      </div>
-
-      <Modal
-        title="ยืนยันการรับงาน"
-        className="sarabun-light"
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setModalVisible(false)}
+        <div>
+          <Card
             style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
+              borderRadius: "24px",
+              height: "60vh",
             }}
           >
-            ยกเลิก
-          </Button>,
-          <Button
-            key="confirm"
-            onClick={handleConfirmTask}
-            style={{
-              color: "#f0f0f0",
-              backgroundColor: "#5755FE",
-              borderColor: "#5755FE",
-            }}
-          >
-            ยืนยัน
-          </Button>,
-        ]}
-      >
-        <p className="sarabun-light">คุณต้องการรับงานนี้หรือไม่?</p>
-      </Modal>
+            <div
+              style={{
+                fontSize: "22px",
+                marginBottom: "10px",
+              }}
+              className="sarabun-bold"
+            >
+              <span>ทั้งหมด</span>
+              <span className="ms-2"> {tasks.length} </span>
+              <span className="ms-2">รายการ :</span>
+            </div>
+
+            <div
+              style={{
+                height: "350px", // กำหนดความสูงของตาราง
+                overflowY: "auto", // ทำให้เลื่อนขึ้นลงได้
+              }}
+              className="table-responsive"
+            >
+              <Table
+                columns={columns}
+                dataSource={filteredTasks}
+                pagination={false}
+                className="custom-table"
+              />
+            </div>
+          </Card>
+        </div>
+
+        <Modal
+          title="ยืนยันการรับงาน"
+          className="sarabun-light"
+          visible={modalVisible}
+          onCancel={() => setModalVisible(false)}
+          footer={[
+            <Button
+              key="cancel"
+              onClick={() => setModalVisible(false)}
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE",
+              }}
+            >
+              ยกเลิก
+            </Button>,
+            <Button
+              key="confirm"
+              onClick={handleConfirmTask}
+              style={{
+                color: "#f0f0f0",
+                backgroundColor: "#5755FE",
+                borderColor: "#5755FE",
+              }}
+            >
+              ยืนยัน
+            </Button>,
+          ]}
+        >
+          <p className="sarabun-light">คุณต้องการรับงานนี้หรือไม่?</p>
+        </Modal>
+      </div>
     </MainLayout>
   );
 };

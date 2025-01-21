@@ -55,9 +55,7 @@ const TaskDetailsFinished = () => {
       dataIndex: "mat_name",
       key: "mat_name",
       render: (text, record, index) => ({
-        children: (
-          <span>{text}</span>
-        ),
+        children: <span>{text}</span>,
         props: { rowSpan: record.rowSpanMatName },
       }),
       align: "left",
@@ -188,17 +186,16 @@ const TaskDetailsFinished = () => {
   // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
   const formattedData = Array.isArray(data)
     ? data.flatMap((m) =>
-        m.details
-          .map((d, index) => ({
-            ...d,
-            mat_unit: m.mat_unit,
-            mat_name: m.mat_name,
-            rowSpanMatunit: index === 0 ? m.details.length : 0,
-            rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
-            rowSpanQuantity: index === 0 ? m.details.length : 0,
-            counted_quantity: d.counted_quantity || d.remaining_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
-            actual_quantity: d.actual_quantity, // ใช้ข้อมูลจาก d (แต่ละแถวใน details)
-          }))
+        m.details.map((d, index) => ({
+          ...d,
+          mat_unit: m.mat_unit,
+          mat_name: m.mat_name,
+          rowSpanMatunit: index === 0 ? m.details.length : 0,
+          rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
+          rowSpanQuantity: index === 0 ? m.details.length : 0,
+          counted_quantity: d.counted_quantity || d.remaining_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
+          actual_quantity: d.actual_quantity, // ใช้ข้อมูลจาก d (แต่ละแถวใน details)
+        }))
       )
     : [];
 
@@ -206,89 +203,75 @@ const TaskDetailsFinished = () => {
   const formatNumber = (number) => {
     return new Intl.NumberFormat().format(number);
   };
-  
-  
+
   return (
     <MainLayout>
-      <div
-        style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-        }}
-      >
-        <div style={{ margin: "10px" }}>
+      <div style={{ padding: "0 48px" }}>
+        <div style={{ marginTop:"20px", marginBottom:"20px"}}>
+          <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
+            <Breadcrumb.Item>
+              <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>
+              <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
+          </Breadcrumb>
+        </div>
+
+        <Card
+          style={{
+            borderRadius: "15px",
+          }}
+        >
           <div
             className="dashboard-title sarabun-bold"
             style={{
-              fontSize: "28px",
-              marginLeft: "20px",
+              fontSize: "20px",
               padding: "20px",
             }}
           >
-            รายละเอียดการเบิก-จ่ายวัตถุดิบ
+            รายละเอียดการเบิกจ่ายวัตถุดิบ :
           </div>
-        </div>
+          <div className="table-container">
+            <Table
+              columns={columns}
+              dataSource={formattedData}
+              pagination={false}
+              rowKey={(record) => record.id}
+              scroll={{ x: "max-content" }}
+              className="custom-table"
+            />
+          </div>
+          <Card
+            className="sarabun-bold"
+            style={{
+              backgroundColor: " #DCDCDC",
+              borderRadius: "12px",
+              fontSize: "18px",
+              marginTop:"30px",
+              marginBottom:"30px",
+            }}
+          >
+            รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+          </Card>
+          <div className="button-container">
+            <Link to="/MyTasks">
+              <button
+                className="sarabun-light"
+                style={{
+                  color: "#5755FE ",
+                  backgroundColor: "#f0f0f0",
+                  borderColor: "#5755FE",
+                  marginRight: "5px",
+                }}
+              >
+                ย้อนกลับ
+              </button>
+            </Link>
+          </div>
+        </Card>
       </div>
-
-      <div>
-        <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
-          <Breadcrumb.Item>
-            <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>
-            <Link to="/MyTasks">รายการเบิก-จ่ายของฉัน</Link>
-          </Breadcrumb.Item>
-          <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
-        </Breadcrumb>
-      </div>
-
-      <Card
-        style={{
-          borderRadius: "15px",
-        }}
-      >
-        <div className="table-container">
-          <Table
-            columns={columns}
-            dataSource={formattedData}
-            pagination={false}
-            rowKey={(record) => record.id}
-            scroll={{ x: "max-content" }}
-            className="custom-table"
-          />
-        </div>
-        <div
-          className="total-quantity sarabun-bold"
-          style={{
-            backgroundColor: " #DCDCDC",
-            marginBottom: "20px",
-            borderRadius: "8px",
-          }}
-        >
-          <p style={{ fontSize: "18px", marginLeft: "20px", padding: "10px" }}>
-            <strong>รวมจำนวนที่สั่งเบิก:</strong>{" "}
-            {formatNumber(totalRequestedQuantity)}
-          </p>
-        </div>
-        <div className="button-container">
-          <Link to="/MyTasks">
-            <button
-              className="sarabun-light"
-              style={{
-                color: "#5755FE ",
-                backgroundColor: "#f0f0f0",
-                borderColor: "#5755FE",
-                marginRight: "5px",
-              }}
-            >
-              ย้อนกลับ
-            </button>
-          </Link>
-        </div>
-      </Card>
     </MainLayout>
   );
 };

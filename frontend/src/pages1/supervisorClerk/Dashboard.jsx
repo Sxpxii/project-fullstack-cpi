@@ -7,78 +7,43 @@ import MainLayout from "../../components/LayoutSupervisorClerk";
 import ReactApexChart from "react-apexcharts";
 import config from "../../configAPI";
 import moment from "moment";
-import { io } from "socket.io-client";
-import Swal from "sweetalert2";
+import { IoCalendarOutline } from "react-icons/io5";
+import { LuAlarmClock } from "react-icons/lu";
 
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
+  const [state, setState] = React.useState({
+    series: [0], // กำหนดค่าเริ่มต้นให้เป็น 0
+    options: {
+      chart: {
+        height: 350,
+        type: "radialBar",
+      },
+      plotOptions: {
+        radialBar: {
+          hollow: {
+            size: "70%",
+          },
+          borderRadius: 12,
+        },
+      },
+      labels: ["Completed"],
+      colors: ["#7cb342"], // สีสำหรับแต่ละสถานะ
+    },
+  });
   const [dailyOverview, setDailyOverview] = useState({
     total: 0,
     in_progress: 0,
     pending_review: 0,
     completed: 0,
   });
-  const [chartData, setChartData] = useState({ categories: [], series: [] });
-  const [donutChartData, setDonutChartData] = useState({
+  const [stackedChartData, setStackedChartData] = useState({
     series: [],
-    labels: [],
+    categories: [],
   });
   const [uploadDetails, setUploadDetails] = useState([]);
-  const [filterDate, setFilterDate] = useState(null);
-  const [searchID, setSearchID] = useState("");
-  const [filteredData, setFilteredData] = useState([]);
-  //const [notifications, setNotifications] = useState([]);
-
-  /*useEffect(() => {
-    const socket = io(`${config.API_URL}`, {
-      transports: ["polling", "websocket"], // ตั้งค่าให้ใช้ WebSocket เท่านั้น
-    });
-
-    // ฟังเหตุการณ์การแจ้งเตือนจาก Backend
-    socket.on("notification", (data) => {
-      console.log("การแจ้งเตือนที่ได้รับ:", data);
-
-      // ปรับข้อความเพื่อแสดงข้อมูลที่ต้องการ
-      const titleMessage = `แจ้งเตือนจาก ${data.userName}`;
-      const message = `รายการเลขที่ ${data.inventoryId} : ${data.message}`;
-
-      // แสดงการแจ้งเตือนใหม่ด้วย SweetAlert2
-      Swal.fire({
-        title: titleMessage,
-        text: message,
-        icon: "info",
-        confirmButtonText: "ตกลง",
-        allowOutsideClick: false, // ป้องกันการคลิกนอกเพื่อปิด
-        allowEscapeKey: false, // ป้องกันการกด Escape เพื่อปิด
-        customClass: {
-          title: "sarabun-bold", // เพิ่มคลาสให้กับ title
-          htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
-          confirmButton: "sarabun-light",
-        },
-        willClose: () => {
-          // อัปเดต State เมื่อผู้ใช้กดตกลง
-          setNotifications((prevNotifications) => [
-            ...prevNotifications,
-            {
-              userName: data.userName,
-              inventoryId: data.inventoryId,
-              message: data.message,
-              type: data.type,
-              status: data.status,
-              createdAt: data.createdAt,
-            },
-          ]);
-          // นำทางไปยังหน้า /Approval
-          navigate("/Approval");
-        },
-      });
-    });
-
-    // ทำความสะอาด Socket เมื่อ Component ถูกยกเลิก
-    return () => {
-      socket.disconnect();
-    };
-  }, [setNotifications, navigate]);*/
+  const [isUserActive, setIsUserActive] = useState(true);
+  const [uploadOverdue, setUploadOverdue] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,7 +53,6 @@ const SupervisorDashboard = () => {
           dailyOverviewResponse,
           dailyIssuesResponse,
           uploadDetailsResponse,
-          averageStatusTimesResponse,
         ] = await Promise.all([
           axios.get(`${config.API_URL}/supClerkdashboard/daily-overview`, {
             params: { date: today },
@@ -100,103 +64,180 @@ const SupervisorDashboard = () => {
             // ดึงข้อมูล upload details
             params: { date: today },
           }),
-          axios.get(`${config.API_URL}/supClerkdashboard/average-times`),
         ]);
 
         setDailyOverview(dailyOverviewResponse.data);
+        console.log("Daily Overview:", dailyOverviewResponse.data);
 
-        // Update Donut Chart Data
-        const formattedIssues = dailyIssuesResponse.data.map((issue) => ({
-          ...issue,
-          displayReason:
-            issue.reason === null ? "No reason provided" : issue.reason,
-        }));
+        // คำนวณเปอร์เซ็นต์งานที่เสร็จสมบูรณ์
+        if (
+          dailyOverviewResponse.data.total &&
+          dailyOverviewResponse.data.completed
+        ) {
+          const completedPercentage =
+            (dailyOverviewResponse.data.completed /
+              dailyOverviewResponse.data.total) *
+            100;
 
-        setDonutChartData({
-          series: formattedIssues.map((issue) =>
-            parseInt(issue.issue_count, 10)
-          ),
-          labels: formattedIssues.map((issue) => issue.displayReason),
-        });
+          const completedPercentageFixed = completedPercentage.toFixed(3);
+          setState((prevState) => ({
+            ...prevState,
+            series: [parseFloat(completedPercentageFixed)],
+          }));
+          console.log("Daily completedPercentage:", completedPercentageFixed);
+        } else {
+          console.error("ข้อมูล dailyOverview ไม่ถูกต้อง");
+        }
 
-        // ตรวจสอบข้อมูลดิบที่ได้รับ
-        //console.log("Raw Upload Details:", uploadDetailsResponse.data);
+        // แปลงข้อมูล daily issues เป็นรูปแบบที่ใช้กับ Stacked Columns
+        const formattedData = dailyIssuesResponse.data.reduce(
+          (acc, issue) => {
+            const totalRequests = parseInt(issue.total_requests, 10) || 0;
+            const managerReasonCount =
+              parseInt(issue.manager_reason_count, 10) || 0;
+            const managerReasonRemainingCount =
+              parseInt(issue.manager_reason_remaining_count, 10) || 0;
+            const noIssueCount =
+              totalRequests - managerReasonCount - managerReasonRemainingCount;
 
-        // จัดเรียงข้อมูลตามวันที่ล่าสุด
-        const sortedUploadDetails = uploadDetailsResponse.data.sort((a, b) => {
-          // ใช้ moment.js เพื่อแปลงวันที่ให้เป็น Date object ก่อนการเปรียบเทียบ
-          const dateA = moment(a.approved_date, "DD/MM/YYYY").toDate();
-          const dateB = moment(b.approved_date, "DD/MM/YYYY").toDate();
-          return dateB - dateA; // จัดเรียงจากใหม่ไปเก่า
-        });
+            acc.categories.push(`Inventory ID: ${issue.inventory_id}`); // ใช้ inventory_id เป็นแกน X
+            acc.series[0].data.push(noIssueCount); // จำนวนรายการที่ไม่มีปัญหา
+            acc.series[1].data.push(managerReasonCount); // จำนวนรายการที่มีปัญหา manager_reason_count
+            acc.series[2].data.push(managerReasonRemainingCount); // จำนวนรายการที่มีปัญหา manager_reason_remaining_count
 
-        // ตรวจสอบข้อมูลหลังจัดเรียง
-        //console.log("Sorted Upload Details:", sortedUploadDetails);
+            return acc;
+          },
+          {
+            categories: [], // แกน X
+            series: [
+              { name: "รายการที่ไม่มีปัญหา", data: [] }, // จำนวนรายการที่ไม่มีปัญหา
+              { name: "รายการที่มีปัญหาการจ่าย", data: [] }, // จำนวนรายการที่มีปัญหา manager_reason_count
+              { name: "รายการที่มีปัญหายอดคงเหลือ", data: [] }, // จำนวนรายการที่มีปัญหา manager_reason_remaining_count
+            ],
+          }
+        );
+
+        setStackedChartData(formattedData);
+
+        const filteredUploadDetails = uploadDetailsResponse.data
+          .filter((detail) => {
+            const detailDate = moment(
+              detail.approved_date,
+              "DD/MM/YYYY"
+            ).format("YYYY-MM-DD");
+            return detailDate === today;
+          })
+          .sort((a, b) => {
+            // ตรวจสอบว่า inventory_id เป็นตัวเลขก่อนทำการเปรียบเทียบ
+            return b.inventory_id - a.inventory_id; // เรียงจากมากไปน้อย
+          });
+
+        console.log("filtered Daily :", filteredUploadDetails);
 
         // Set Upload Details Data
-        setUploadDetails(sortedUploadDetails);
+        setUploadDetails(filteredUploadDetails);
 
-        // ตั้งค่า Chart Data สำหรับ Average Status Times
-        const averageStatusData = averageStatusTimesResponse.data;
-        // การตรวจสอบค่าก่อนการใช้งาน
-        //console.log("Average Status Times Data:", averageStatusData);
+        // กรองข้อมูลและนับจำนวน is_overdue เป็น true
+        const overdueCount = uploadDetailsResponse.data.filter(
+          (item) => item.is_overdue === true
+        ).length;
 
-        // แปลงเวลาจาก seconds เป็น HH:mm:ss
-        const formatTime = (hours = 0, minutes = 0, seconds = 0) => {
-          const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-          const formattedHours = Math.floor(totalSeconds / 3600);
-          const formattedMinutes = Math.floor((totalSeconds % 3600) / 60);
-          const formattedSeconds = totalSeconds % 60;
-          return `${String(formattedHours).padStart(2, "0")}:${String(
-            formattedMinutes
-          ).padStart(2, "0")}:${String(formattedSeconds).padStart(2, "0")}`;
-        };
-
-        setChartData({
-          categories: averageStatusData.map((item) => item.status),
-          series: [
-            {
-              name: "Average Duration",
-              data: averageStatusData.map((item) =>
-                formatTime(
-                  item.avg_duration_seconds.hours,
-                  item.avg_duration_seconds.minutes,
-                  item.avg_duration_seconds.seconds
-                )
-              ),
-            },
-          ],
-        });
+        // อัปเดต state
+        setUploadOverdue((prev) => ({
+          ...prev,
+          overdue: overdueCount, // เพิ่มข้อมูล overdue ใน dailyOverview
+        }));
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
 
     fetchData();
-  }, []);
 
-  //console.log("Categories:", chartData.categories);
-  //console.log("Series:", chartData.series);
+    // Set up activity listener
+    const handleUserActivity = () => setIsUserActive(true);
+    window.addEventListener("mousemove", handleUserActivity);
+    window.addEventListener("keydown", handleUserActivity);
 
-  // ข้อมูลและตัวเลือกของกราฟ Donut
-  const donutChartOptions = {
+    // Auto-refresh if user is inactive
+    const interval = setInterval(() => {
+      if (!isUserActive) {
+        fetchTasks();
+        fetchMyTasks();
+      }
+      setIsUserActive(false); // Reset user activity status
+    }, 60000); // 1 minute interval
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("mousemove", handleUserActivity);
+      window.removeEventListener("keydown", handleUserActivity);
+    };
+  }, [isUserActive]);
+
+  // การตั้งค่า options สำหรับกราฟ Stacked Columns
+  const stackedChartOptions = {
     chart: {
-      type: "donut",
+      type: "bar",
+      height: 350,
+      stacked: true,
+      toolbar: { show: true },
+      zoom: { enabled: true },
     },
-    labels: donutChartData.labels,
     responsive: [
       {
         breakpoint: 480,
         options: {
-          chart: {
-            width: 200,
-          },
-          legend: {
-            position: "bottom",
-          },
+          legend: { position: "bottom", offsetX: -10, offsetY: 0 },
         },
       },
     ],
+
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        borderRadius: 10, // ปรับค่าขอบมน
+        borderRadiusApplication: "end", // 'around', 'end'
+        borderRadiusWhenStacked: "last", // 'all', 'last'
+        dataLabels: {
+          total: {
+            enabled: true,
+            style: { fontSize: "13px", fontWeight: 900 },
+          },
+        },
+      },
+    },
+    xaxis: {
+      categories: stackedChartData.categories,
+      labels: {
+        style: {
+          fontFamily: "Sarabun", // ใช้ฟอนต์ Sarabun
+          fontWeight: "bold", // กำหนดให้ข้อความในแกน X หนักขึ้น
+        },
+      },
+    },
+    legend: {
+      position: "right",
+      offsetY: 40,
+      labels: {
+        style: {
+          fontFamily: "Sarabun", // ใช้ฟอนต์ Sarabun
+          fontWeight: "light", // ใช้ฟอนต์แบบธรรมดาสำหรับชื่อใน legend
+        },
+      },
+    },
+    fill: {
+      opacity: 1,
+    },
+    colors: ["#4fc3f7", "#ffd54f", "#ff8a65"], // สีสำหรับแต่ละสถานะ
+    dataLabels: {
+      enabled: true, // เปิดการแสดงข้อมูลบนแท่งกราฟ
+      style: {
+        colors: ["#000"], // กำหนดสีของข้อความเป็นสีดำ
+        fontFamily: "Sarabun, sans-serif",
+        fontWeight: "bold",
+      },
+    },
   };
 
   const columns = [
@@ -376,45 +417,43 @@ const SupervisorDashboard = () => {
     },
   ];
 
-  // ฟังก์ชันสำหรับการกรองข้อมูล
-  useEffect(() => {
-    let data = [...uploadDetails]; // คัดลอกข้อมูลก่อนการกรอง
+  // สร้างตัวแปรวันที่และเวลา
+  const currentDate = new Date();
+  // จัดรูปแบบวันที่เป็น "14 Jan 2025"
+  const formattedDate = currentDate.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short", // ใช้ 'short' เพื่อให้แสดงชื่อเดือนในรูปแบบย่อ (Jan, Feb, Mar, ...)
+    year: "numeric",
+  });
 
-    if (filterDate) {
-      const selectedDate = moment(filterDate).format("DD/MM/YYYY");
-      data = data.filter((item) => item.approved_date === selectedDate);
-    }
-    if (searchID) {
-      data = data.filter((item) =>
-        item.inventory_id.toString().includes(searchID)
-      );
-    }
-
-    setFilteredData(data); // อัปเดตข้อมูลที่กรองแล้ว
-  }, [filterDate, searchID, uploadDetails]); // เพิ่ม dependency ให้ถูกต้อง
+  // จัดรูปแบบเวลาให้เป็น "4.38 PM"
+  const formattedTime = currentDate.toLocaleTimeString("en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 
   return (
     <MainLayout>
-      <div className="header-content">
+      <div style={{ padding: "0 48px" }}>
         <div
-          className="dashboard-title sarabun-bold"
+          className="sarabun-bold"
           style={{
-            fontSize: "28px",
+            fontSize: "35px",
             marginLeft: "20px",
-            padding: "10px",
+            marginTop: "30px",
             color: "#000000E0",
           }}
         >
-          Daily Overview
+          Dashboard Daily
         </div>
-      </div>
-      <div style={{ padding: "0 48px" }}>
-        <div
+
+        <Card
           style={{
-            background: "#fff",
-            minHeight: 280,
-            padding: 24,
-            borderRadius: 8,
+            backgroundColor: "#ffffff",
+            borderRadius: "24px",
+            marginTop: "20px",
+            marginBottom: "20px",
           }}
         >
           <Row>
@@ -427,9 +466,10 @@ const SupervisorDashboard = () => {
                 color: "#000000E0",
               }}
             >
-              จำนวนงานทั้งหมด {dailyOverview.total || 0} รายการ
+              จำนวนงานทั้งหมด {dailyOverview.total || 0} รายการ :
             </div>
           </Row>
+
           <Row gutter={16}>
             <Col className="gutter-row" span={6}>
               <Card
@@ -491,6 +531,7 @@ const SupervisorDashboard = () => {
                 </div>
               </Card>
             </Col>
+
             <Col className="gutter-row" span={6}>
               <Card
                 style={{
@@ -521,6 +562,7 @@ const SupervisorDashboard = () => {
                 </div>
               </Card>
             </Col>
+
             <Col className="gutter-row" span={6}>
               <Card
                 style={{
@@ -552,160 +594,203 @@ const SupervisorDashboard = () => {
               </Card>
             </Col>
           </Row>
-
-          <Row style={{ marginTop: 30 }}>
-            <Col span={12}>
-              <Card className="sarabun-light" title="Problem">
-                <ReactApexChart
-                  options={donutChartOptions}
-                  series={donutChartData.series}
-                  type="donut"
-                  height={350}
-                />
-              </Card>
-            </Col>
-
-            <Col span={10}>
-              <Card style={{ height: "100%" }}>
-                <ReactApexChart
-                  options={{
-                    chart: {
-                      type: "line",
-                      height: 400,
-                    },
-                    xaxis: {
-                      categories: chartData?.categories || [], // สถานะ (เช่น In Progress, Pending Review)
-                      title: {
-                        text: "สถานะ",
-                        style: {
-                          fontFamily: "Sarabun, sans-serif",
-                          fontWeight: "bold",
-                          fontSize: "14px",
-                          color: "#333333",
-                        },
-                      },
-                    },
-                    yaxis: {
-                      title: {
-                        text: "เวลาเฉลี่ย (ชั่วโมง)",
-                        style: {
-                          fontFamily: "Sarabun, sans-serif",
-                          fontWeight: "bold",
-                          fontSize: "14px",
-                          color: "#333333",
-                        },
-                      },
-                      labels: {
-                        formatter: (value) => {
-                          const hours = (value / 3600).toFixed(0);
-                          return `${hours} ชม.`;
-                        },
-                      },
-                    },
-                    stroke: {
-                      curve: "smooth", // ใช้เส้นโค้งนุ่มนวล
-                    },
-                    title: {
-                      text: "เวลาเฉลี่ยที่ใช้ในแต่ละสถานะ",
-                      align: "center",
-                      style: {
-                        fontFamily: "Sarabun, sans-serif",
-                        fontWeight: "bold",
-                        fontSize: "16px",
-                        color: "#333333",
-                      },
-                    },
-                    legend: {
-                      show: true,
-                      position: "top", // แสดง legend ด้านบน
-                    },
-                    tooltip: {
-                      y: {
-                        formatter: (value) => {
-                          const hours = Math.floor(value / 3600);
-                          const minutes = Math.floor((value % 3600) / 60);
-                          const seconds = value % 60;
-                          return `${String(hours).padStart(2, "0")}:${String(
-                            minutes
-                          ).padStart(2, "0")}:${String(seconds).padStart(
-                            2,
-                            "0"
-                          )}`;
-                        },
-                      },
-                    },
-                  }}
-                  series={
-                    chartData?.series && chartData.series.length > 0
-                      ? [
-                          {
-                            name: "Average Duration",
-                            data: chartData.series[0].data.map((timeString) => {
-                              const [hours, minutes, seconds] = timeString
-                                .split(":")
-                                .map(Number);
-                              return hours * 3600 + minutes * 60 + seconds;
-                            }),
-                          },
-                        ]
-                      : []
-                  } // ตรวจสอบว่า chartData.series มีข้อมูลก่อนใช้งาน
-                />
-              </Card>
-            </Col>
+          <Row>
+            <div
+              className="sarabun-bold"
+              style={{
+                fontSize: "20px",
+                marginTop: "20px",
+                marginLeft: "20px",
+                marginBottom: "20px",
+                color: "#000000E0",
+              }}
+            >
+              จำนวนงานที่เกินกำหนด :
+            </div>
           </Row>
-
-          <Row gutter={20} style={{ marginTop: 30, alignItems: "stretch" }}>
-            <Col span={24}>
+          <Row>
+            <Col className="gutter-row" span={6}>
               <Card
-                className="sarabun-light"
-                title="ผู้รับผิดชอบ"
-                style={{ height: "100%" }}
+                style={{
+                  color: "#b0120a",
+                  fontSize: "16px",
+                  backgroundColor: "white",
+                  textAlign: "center",
+                  borderRadius: "24px",
+                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                  border: "4px solid #b0120a", // ขอบสีแดง
+                }}
               >
-                <Row gutter={16} style={{ marginBottom: "20px" }}>
-                  <Col span={6}>
-                    <DatePicker
-                      style={{ width: "100%" }}
-                      placeholder="เลือกวันที่..."
-                      onChange={(date) => setFilterDate(date)}
-                    />
-                  </Col>
-                  <Col span={8}>
-                    <Input
-                      placeholder="ค้นหา"
-                      value={searchID}
-                      onChange={(e) => setSearchID(e.target.value)}
-                    />
-                  </Col>
-                  <Col span={2}>
-                    <Button
-                      type="primary"
-                      style={{
-                        width: "100%",
-                        color: "#f0f0f0",
-                        backgroundColor: "#00152a",
-                        borderColor: "#00152a",
-                      }}
-                      onClick={() => {
-                        setFilterDate(null);
-                        setSearchID("");
-                      }}
-                    >
-                      รีเซ็ต
-                    </Button>
-                  </Col>
-                </Row>
-
-                <Table
-                  dataSource={filteredData}
-                  columns={columns}
-                  rowKey="inventory_id"
-                  pagination={false}
-                />
+                <div
+                  className="sarabun-bold"
+                  style={{
+                    marginBottom: "8px",
+                    fontSize: "18px",
+                  }}
+                >
+                  เกินกำหนด
+                </div>
+                <div
+                  className="sarabun-bold"
+                  style={{
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {uploadOverdue.overdue || 0}
+                </div>
               </Card>
             </Col>
           </Row>
-        </div>
+        </Card>
+
+        <Row gutter={24} style={{ marginTop: 30 }}>
+          <Col span={6}>
+            <Card
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+                boxShadow: "0 6px 12px rgba(0, 0, 0, 0.15)",
+              }}
+            >
+              {/* แสดงวันที่และเวลาในแนวนอน */}
+              <div
+                style={{
+                  marginTop: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between", // จัดให้เว้นระยะห่างระหว่างไอเท็ม
+                  flexWrap: "wrap", // ป้องกันการล้นในหน้าจอขนาดเล็ก
+                  gap: 20, // ระยะห่างระหว่างวันที่และเวลา
+                }}
+              >
+                {/* วันที่ */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      backgroundColor: "#F5EFDF",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 10,
+                    }}
+                  >
+                    <IoCalendarOutline size={20} color="#25A3BF" />
+                  </div>
+                  <div className="sarabun-bold">{formattedDate} </div>
+                </div>
+
+                {/* เวลา */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      backgroundColor: "#F5EFDF",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 10,
+                    }}
+                  >
+                    <LuAlarmClock size={20} color="#DC7C24" />
+                  </div>
+                  <div className="sarabun-bold">{formattedTime}</div>
+                </div>
+
+                <div
+                  className="sarabun-bold"
+                  style={{
+                    marginTop: "10px",
+                    marginBottom: "5px",
+                    fontSize: "16px",
+                  }}
+                >
+                  Daily Progress:
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ReactApexChart
+                    options={state.options}
+                    series={state.series}
+                    type="radialBar"
+                    height={350}
+                  />
+                </div>
+              </div>
+            </Card>
+          </Col>
+          <Col span={18}>
+            <Card
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "18px",
+                }}
+              >
+                ปัญหา :
+              </div>
+              <ReactApexChart
+                options={stackedChartOptions}
+                series={stackedChartData.series}
+                type="bar"
+                height={350}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={20} style={{ marginTop: 30, alignItems: "stretch" }}>
+          <Col span={24}>
+            <Card
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "18px",
+                }}
+              >
+                รายละเอียด :
+              </div>
+              <Table
+                dataSource={uploadDetails}
+                columns={columns}
+                rowKey="inventory_id"
+                pagination={false}
+              />
+            </Card>
+          </Col>
+        </Row>
       </div>
     </MainLayout>
   );

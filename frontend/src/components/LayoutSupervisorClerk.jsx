@@ -21,8 +21,8 @@ import Swal from "sweetalert2";
 const { Header, Content, Footer } = Layout;
 
 const items = [
-  { key: "/SupClerkDashboard", label: "แดชบอร์ด" },
-  //{ key: "/SupervisorClerkDashboard", label: "ติดตามสถานะการเบิกจ่าย" },
+  { key: "/SupClerkDashboard", label: "แดชบอร์ดรายวัน" },
+  { key: "/SupClerkDashboardAnalysis", label: "วิเคราะห์" },
   { key: "/Approval", label: "ตรวจสอบอนุมัติ" },
 ];
 
@@ -84,6 +84,58 @@ const MainLayout = ({ children }) => {
       socket.disconnect();
     };
   }, [setNotifications, navigate]);
+
+  useEffect(() => {
+    const socket = io(`${config.API_URL}`, {
+      transports: ["polling", "websocket"], // ตั้งค่าให้ใช้ WebSocket เท่านั้น
+    });
+
+    // ฟังเหตุการณ์การแจ้งเตือนจาก Backend
+    socket.on("notificationbalance", (data) => {
+      console.log("การแจ้งเตือนที่ได้รับ:", data);
+
+      // ปรับข้อความเพื่อแสดงข้อมูลที่ต้องการ
+      const titleMessage = `แจ้งเตือนจาก ${data.userName}`;
+      const message = `รายการเลขที่ ${data.inventoryId} : ${data.message}`;
+
+      // แสดงการแจ้งเตือนใหม่ด้วย SweetAlert2
+      Swal.fire({
+        title: titleMessage,
+        text: message,
+        icon: "info",
+        confirmButtonText: "ตกลง",
+        allowOutsideClick: false, // ป้องกันการคลิกนอกเพื่อปิด
+        allowEscapeKey: false, // ป้องกันการกด Escape เพื่อปิด
+        customClass: {
+          title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+          htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+          confirmButton: "sarabun-light",
+        },
+        willClose: () => {
+          // อัปเดต State เมื่อผู้ใช้กดตกลง
+          setNotifications((prevNotifications) => [
+            ...prevNotifications,
+            {
+              userName: data.userName,
+              inventoryId: data.inventoryId,
+              message: data.message,
+              type: data.type,
+              status: data.status,
+              createdAt: data.createdAt,
+            },
+          ]);
+          // นำทางไปยังหน้า /Approval
+          navigate("/Approval");
+        },
+      });
+    });
+
+    // ทำความสะอาด Socket เมื่อ Component ถูกยกเลิก
+    return () => {
+      socket.disconnect();
+    };
+  }, [setNotifications, navigate]);
+
 
   useEffect(() => {
     setSelectedKey(location.pathname); // อัปเดต selectedKey เมื่อ URL เปลี่ยน
@@ -169,9 +221,12 @@ const MainLayout = ({ children }) => {
       );
   
       // นำทางไปยังหน้าที่เกี่ยวข้อง
-      navigate(`/Sup-Edit/${notification.upload_id}`, {
+      navigate("/Approval", {
         state: { record: notification },
       });
+      /*navigate(`/Sup-Edit/${notification.upload_id}`, {
+        state: { record: notification },
+      });*/
     } catch (error) {
       console.error("ไม่สามารถอัพเดตสถานะการแจ้งเตือน:", error);
     }
@@ -196,7 +251,7 @@ const MainLayout = ({ children }) => {
   const unreadNotifications = notifications.filter(
     (notification) => notification.status === "unread"
   );
-  console.log("Unread Notifications:", unreadNotifications);
+  //console.log("Unread Notifications:", unreadNotifications);
 
   return (
     <Layout style={{ minHeight: "100vh", marginBottom: "15px" }}>

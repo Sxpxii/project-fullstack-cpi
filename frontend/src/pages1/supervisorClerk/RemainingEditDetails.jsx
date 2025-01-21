@@ -132,51 +132,79 @@ const RemainingEditDetails = () => {
     }
   };
 
-  const handleApprove = async () => {
-    Modal.confirm({
+  const handleApproveRemaining = async () => {
+    const result = await Swal.fire({
       title: "ยืนยันการอนุมัติ",
-      content: "คุณต้องการอนุมัติรายการนี้หรือไม่?",
-      okText: "อนุมัติ",
-      cancelText: "ยกเลิก",
-      onOk: async () => {
-        try {
-          console.log("Approving data:", tempData);
-          const token = sessionStorage.getItem("token");
-          const response = await axios.post(
-            `${config.API_URL}/supClerkTasks/approve/${upload_id}`,
-            { data: tempData },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (response.data.success) {
-            // แสดง SweetAlert2 เมื่ออนุมัติสำเร็จ
-            Swal.fire({
-              icon: "success",
-              title: "อนุมัติรายการสำเร็จ",
-              text: "รายการของคุณได้รับการอนุมัติเรียบร้อยแล้ว!",
-              confirmButtonText: "ตกลง",
-            }).then(() => {
-              // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
-              navigate("/Approval");
-            });
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "การอนุมัติไม่สำเร็จ",
-              text: "เกิดข้อผิดพลาดในการอนุมัติรายการนี้!",
-              confirmButtonText: "ตกลง",
-            });
-          }
-        } catch (error) {
-          message.error("เกิดข้อผิดพลาดในการอนุมัติ");
-          console.error(error);
-        }
+      html: "คุณต้องการอนุมัติรายการนี้หรือไม่?<br>หากยืนยันการอนุมัติจะไม่สามารถแก้ไขได้ในภายหลัง",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#5755FE",
+      cancelButtonColor: "#f0f0f0",
+      confirmButtonText: '<span style="color: #f0f0f0;">ใช่, อนุมัติ</span>',
+      cancelButtonText: '<span style="color: #5755FE;">ยกเลิก</span>',
+      customClass: {
+        title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+        htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+        confirmButton: "sarabun-light",
+        cancelButton: "sarabun-light",
       },
     });
+    if (result.isConfirmed) {
+      try {
+        console.log("Approving data:", tempData);
+        const token = sessionStorage.getItem("token");
+        const response = await axios.post(
+          `${config.API_URL}/supClerkTasks/approveRemaining/${upload_id}`,
+          { data: tempData },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.data.success) {
+          // แสดง SweetAlert2 เมื่ออนุมัติสำเร็จ
+          Swal.fire({
+            icon: "success",
+            title: "อนุมัติรายการสำเร็จ",
+            text: "รายการของคุณได้รับการอนุมัติเรียบร้อยแล้ว!",
+            confirmButtonText: "ตกลง",
+            customClass: {
+              title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+              htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+              confirmButton: "sarabun-light",
+              cancelButton: "sarabun-light",
+            },
+          }).then(() => {
+            // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
+            navigate("/Approval");
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "การอนุมัติไม่สำเร็จ",
+            text: "เกิดข้อผิดพลาดในการอนุมัติรายการนี้!",
+            confirmButtonText: "ตกลง",
+            customClass: {
+              title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+              htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+              confirmButton: "sarabun-light",
+              cancelButton: "sarabun-light",
+            },
+          });
+        }
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title:
+            '<span style="font-family: Sarabun-Bold;">เกิดข้อผิดพลาด</span>',
+          html: '<span style="font-family: Sarabun-Light;">เกิดข้อผิดพลาดในการอนุมัติ!</span>',
+          confirmButtonText: "ตกลง",
+        });
+        console.error(error);
+      }
+    }
   };
 
   const columns = [
@@ -204,10 +232,7 @@ const RemainingEditDetails = () => {
       title: "จำนวนที่สั่งเบิก",
       dataIndex: "quantity",
       key: "quantity",
-      render: (text, record, index) => ({
-        children: formatNumber(text), // แสดงค่าเฉพาะในแถวแรกที่มีค่าเท่านั้น
-        props: { rowSpan: record.rowSpanQuantity },
-      }),
+      render: (text, record) => <span>{formatNumber(text)}</span>,
       align: "center",
       onHeaderCell: () => ({
         style: {
@@ -220,8 +245,8 @@ const RemainingEditDetails = () => {
     },
     {
       title: "ล็อต",
-      dataIndex: "lot",
-      key: "lot",
+      dataIndex: "mat_lot",
+      key: "mat_lot",
       align: "left",
       onHeaderCell: () => ({
         style: {
@@ -283,11 +308,11 @@ const RemainingEditDetails = () => {
               record.manager_reason_remaining
             ) : (
               <Button
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "red",
-                borderColor: "red",
-              }}
+                style={{
+                  color: "#f0f0f0",
+                  backgroundColor: "red",
+                  borderColor: "red",
+                }}
                 type="primary"
                 onClick={() => handleEditRow(record)}
               >
@@ -323,25 +348,22 @@ const RemainingEditDetails = () => {
     // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
     const formattedData = Array.isArray(data)
       ? data.flatMap((m) =>
-          m.details
-            .sort((a, b) => a.matin.localeCompare(b.matin))
-            .map((d, index) => {
-              const reason =
-                d.manager_reason_remaining ||
-                tempData[d.id]?.manager_reason_remaining ||
-                "-";
-              return {
-                ...d,
-                matunit: m.matunit,
-                mat_name: m.mat_name,
-                quantity: m.quantity,
-                rowSpanMatunit: index === 0 ? m.details.length : 0,
-                rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
-                rowSpanQuantity: index === 0 ? m.details.length : 0,
-                counted_quantity: d.counted_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
-                reason: reason,
-              };
-            })
+          m.details.map((d, index) => {
+            const reason =
+              d.manager_reason_remaining ||
+              tempData[d.id]?.manager_reason_remaining ||
+              "-";
+            return {
+              ...d,
+              mat_unit: m.mat_unit,
+              mat_name: m.mat_name,
+              rowSpanMatunit: index === 0 ? m.details.length : 0,
+              rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
+              rowSpanQuantity: index === 0 ? m.details.length : 0,
+              counted_quantity: d.counted_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
+              reason: reason,
+            };
+          })
         )
       : [];
     setFormattedData(formattedData); // อัปเดตข้อมูลใน formattedData
@@ -467,7 +489,7 @@ const RemainingEditDetails = () => {
                 backgroundColor: isConfirmEditEnabled() ? "green" : "gray", // เปลี่ยนสีปุ่มตามสถานะ
                 borderColor: isConfirmEditEnabled() ? "green" : "gray", // เปลี่ยนสีกรอบปุ่มตามสถานะ
               }}
-              onClick={() => handleApprove(upload_id)}
+              onClick={() => handleApproveRemaining(upload_id)}
               disabled={!isConfirmEditEnabled()}
             >
               อนุมัติ
@@ -510,10 +532,10 @@ const RemainingEditDetails = () => {
             จ่ายไม่ครบ
           </Radio>
           <Radio className="sarabun-light" value="เกินมาจาก Supplier">
-          เกินมาจาก Supplier
+            เกินมาจาก Supplier
           </Radio>
           <Radio className="sarabun-light" value="ขาดมาจาก Supplier">
-          ขาดมาจาก Supplier
+            ขาดมาจาก Supplier
           </Radio>
           <Radio className="sarabun-light" value="อื่นๆ">
             อื่นๆ

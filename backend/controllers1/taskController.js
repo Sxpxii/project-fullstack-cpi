@@ -55,30 +55,57 @@ const getTasks = async (req, res) => {
 
 // ฟังก์ชันสำหรับรับงาน
 const acceptTask = async (req, res) => {
-    const { upload_id } = req.params;
-    const { userId } = req.user;
+  const { upload_id } = req.params;
+  const { userId } = req.user;
 
-    try {
-        // อัปเดตสถานะงานและผู้รับงาน
-        await pool1.query('UPDATE uploads SET assigned_to = $1, current_status = $2, last_status_update = NOW() WHERE upload_id = $3', [userId, 'กำลังดำเนินการ', upload_id]);
+  try {
+      // อัปเดตสถานะงานและผู้รับงาน
+      await pool1.query(
+          'UPDATE uploads SET assigned_to = $1, current_status = $2, last_status_update = NOW() WHERE upload_id = $3',
+          [userId, 'กำลังดำเนินการ', upload_id]
+      );
 
-        await updateDurationAndAverage(upload_id, 'รอรับงาน');
+      await updateDurationAndAverage(upload_id, 'รอรับงาน');
 
-        // บันทึกการเปลี่ยนแปลงสถานะในตาราง operationstatuses
-        await pool1.query(
+      // บันทึกการเปลี่ยนแปลงสถานะในตาราง operationstatuses
+      await pool1.query(
           'INSERT INTO operationstatuses (upload_id, status, timestamp) VALUES ($1, $2, NOW())',
           [upload_id, 'กำลังดำเนินการ']
-        );
+      );
 
-        // บันทึกการกระทำของผู้ใช้
-        await logUserAction(userId, 'กดรับงาน', upload_id);
+      // ดึงข้อมูล `approved_date` และ `last_status_update` หลังจากอัปเดต
+      const result = await pool1.query(
+          'SELECT approved_date, last_status_update FROM uploads WHERE upload_id = $1',
+          [upload_id]
+      );
 
-        // ส่ง response ไปยัง client
-        res.status(200).json({ message: 'Task accepted' });
-    } catch (error) {
-        console.error('Error accepting task:', error);
-        res.status(500).json({ error: 'Failed to accept task' });
-    }
+      const { approved_date, last_status_update } = result.rows[0] || {};
+
+      // ตรวจสอบสถานะเกินกำหนด
+      let isOverdue = false;
+      if (approved_date && last_status_update) {
+        const approvedDateOnly = new Date(approved_date).setHours(0, 0, 0, 0);
+        const lastStatusUpdateOnly = new Date(last_status_update).setHours(0, 0, 0, 0);
+    
+        if (lastStatusUpdateOnly > approvedDateOnly) {
+            isOverdue = true;
+        }
+    }    
+      // อัปเดตสถานะเกินกำหนดในตาราง uploads
+      await pool1.query(
+          'UPDATE uploads SET is_overdue = $1 WHERE upload_id = $2',
+          [isOverdue, upload_id]
+      );
+
+      // บันทึกการกระทำของผู้ใช้
+      await logUserAction(userId, 'กดรับงาน', upload_id);
+
+      // ส่ง response ไปยัง client
+      res.status(200).json({ message: 'Task accepted', isOverdue });
+  } catch (error) {
+      console.error('Error accepting task:', error);
+      res.status(500).json({ error: 'Failed to accept task' });
+  }
 };
 
 // ฟังก์ชันสำหรับดึงงานของผู้ใช้
@@ -101,7 +128,7 @@ const returnTask = async (req, res) => {
   
     try {
       // ลบค่าจากคอลัมน์ assigned_to
-      await pool1.query('UPDATE uploads SET assigned_to = NULL, current_status = $2, last_status_update = NOW() WHERE upload_id = $2 AND assigned_to = $3', ['รอรับงาน', upload_id, userId]);
+      await pool1.query('UPDATE uploads SET assigned_to = NULL, current_status = $1, last_status_update = NOW() WHERE upload_id = $2 AND assigned_to = $3', ['รอรับงาน', upload_id, userId]);
 
       // อัปเดต duration และ average_duration สำหรับสถานะ "กำลังดำเนินการ"
       await updateDurationAndAverage(upload_id, 'กำลังดำเนินการ');
@@ -230,7 +257,7 @@ const getTotalRequestedQuantity = async (req, res) => {
 };
 
 
-// ฟังก์ชันสำหรับตรวจสอบสถานะการตัด
+/*// ฟังก์ชันสำหรับตรวจสอบสถานะการตัด
 const getcheckTask = async (req, res) => {
     const { upload_id } = req.params;
 
@@ -269,7 +296,7 @@ const getcheckTask = async (req, res) => {
         console.error('Error fetching check details:', err);
         res.status(500).send('Error fetching check details');
     }
-};
+};*/
 
 
 // ฟังก์ชันสำหรับบันทึกจำนวนการนับจริง (counted_quantity)
@@ -321,7 +348,6 @@ const saveCountedQuantities = async (req, res) => {
 const completeTask = async (req, res) => {
     const { upload_id } = req.params;
     const { userId } = req.user;
-
     try {
         // ดึงข้อมูล mat_requests ทั้งหมดที่เกี่ยวข้องกับ upload_id
         const result = await pool1.query('SELECT remaining_quantity, counted_quantity FROM mat_requests WHERE upload_id = $1', [upload_id]);
@@ -343,12 +369,85 @@ const completeTask = async (req, res) => {
 
         // บันทึกการกระทำของผู้ใช้
         await logUserAction(userId, 'บันทึกการเบิกจ่าย', upload_id);
+
+        // หากสถานะเป็น 'รอตรวจสอบ' ให้แจ้งเตือนหัวหน้า
+        if (newStatus === 'รอตรวจสอบ') {
+          await notifyManagerBalance(upload_id, req);
+        }
         
         res.status(200).send(`Task marked as ${newStatus}`);
     } catch (err) {
         console.error('Error marking task as completed:', err);
         res.status(500).send('Error marking task as completed');
     }
+};
+
+// เพิ่ม socket.io ใน notifyManager
+const notifyManagerBalance = async (upload_id, req) => {
+  console.log("uploadId received in notifyManager:", upload_id);
+  const io = req.io; 
+  const senderId = req.user.userId;
+
+  try {
+      const uploadResult = await pool1.query(
+          "SELECT inventory_id FROM uploads WHERE upload_id = $1",
+          [upload_id]
+      );
+
+      if (uploadResult.rows.length === 0) {
+          console.log(`ไม่พบข้อมูล upload_id: ${upload_id}`);
+          return;
+      }
+
+      const inventoryId = uploadResult.rows[0].inventory_id;
+      const currentTime = new Date().toLocaleString();
+
+      // ดึงชื่อของ senderId
+      const senderResult = await pool1.query(
+          "SELECT username FROM users1 WHERE user_id = $1",
+          [senderId]
+      );
+
+      const sendername = senderResult.rows[0].username;
+
+      const supervisors = await pool1.query(
+          "SELECT user_id, username FROM users1 WHERE role = $1",
+          ["Supervisor Clerk"]
+      );
+
+      if (supervisors.rows.length > 0) {
+          const message = `มียอดวัตถุดิบคงเหลือไม่ถูกต้อง`; 
+          const type = "The raw material balance is incorrect.";
+          const status = "unread";
+
+          const notificationbalance = supervisors.rows.map(async (supervisor) => {
+              // บันทึกในฐานข้อมูล
+              await pool1.query(
+                  `INSERT INTO notifications (sender_id, recipient_id, message, type, status, inventory_id, upload_id) 
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                  [senderId, supervisor.user_id, message, type, status, inventoryId, upload_id]
+              );
+
+              // ส่งการแจ้งเตือนแบบเรียลไทม์ผ่าน Socket.IO
+              if (io && io.emit) {
+                  io.emit('notificationbalance', {
+                      userName: sendername,
+                      inventoryId: inventoryId,
+                      message: message,
+                      type: type,
+                      createdAt: currentTime
+                  });
+              }
+          });
+
+          await Promise.all(notificationbalance);
+          console.log("การแจ้งเตือนถูกส่งไปยัง Supervisor เรียบร้อยแล้ว");
+      } else {
+          console.log("ไม่พบผู้ใช้ที่มีบทบาทเป็น Supervisor");
+      }
+  } catch (err) {
+      console.error("เกิดข้อผิดพลาดในการส่งการแจ้งเตือน:", err);
+  }
 };
 
 const getStatus = async (req, res) => {
@@ -679,7 +778,26 @@ const saveMaterialUsage = async (req, res) => {
   }
 };
 
+const updateStatusNotifications = async (req, res) => {
+  const { id } = req.params;
 
+  try {
+    // อัพเดตสถานะการแจ้งเตือนเป็น "read"
+    const result = await pool1.query(
+      'UPDATE notifications SET status = $1 WHERE id = $2 RETURNING *',
+      ['read', id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating notification status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 module.exports = {
@@ -691,7 +809,6 @@ module.exports = {
     getPendingTaskDetails,
     getTotalRequestedQuantity,
     completeTask,
-    getcheckTask,
     saveCountedQuantities,
     getStatus,
     savePartialCountedQuantities,
@@ -699,5 +816,6 @@ module.exports = {
     updateStatus,
     savePartialQuantities,
     updateMaterialTemporary,
-    saveMaterialUsage
+    saveMaterialUsage,
+    updateStatusNotifications
 };

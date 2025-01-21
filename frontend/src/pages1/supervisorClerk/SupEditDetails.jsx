@@ -187,12 +187,23 @@ const SupEditDetails = () => {
   };
 
   const handleApprove = async () => {
-    Modal.confirm({
+    const result = await Swal.fire({
       title: "ยืนยันการอนุมัติ",
-      content: "คุณต้องการอนุมัติรายการนี้หรือไม่?",
-      okText: "อนุมัติ",
-      cancelText: "ยกเลิก",
-      onOk: async () => {
+      html: "คุณต้องการอนุมัติรายการนี้หรือไม่?<br>หากยืนยันการอนุมัติจะไม่สามารถแก้ไขได้ในภายหลัง",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#5755FE",
+      cancelButtonColor: "#f0f0f0",
+      confirmButtonText: '<span style="color: #f0f0f0;">ใช่, อนุมัติ</span>',
+        cancelButtonText: '<span style="color: #5755FE;">ยกเลิก</span>',
+        customClass: {
+          title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+          htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+          confirmButton: "sarabun-light",
+          cancelButton: "sarabun-light",
+        }
+    });
+    if (result.isConfirmed) {
         try {
           console.log("Approving data:", tempData);
           const token = sessionStorage.getItem("token");
@@ -232,12 +243,16 @@ const SupEditDetails = () => {
             });
           }
         } catch (error) {
-          message.error("เกิดข้อผิดพลาดในการอนุมัติ");
+          Swal.fire({
+            icon: "error",
+            title: '<span style="font-family: Sarabun-Bold;">เกิดข้อผิดพลาด</span>',
+            html: '<span style="font-family: Sarabun-Light;">เกิดข้อผิดพลาดในการอนุมัติ!</span>',
+            confirmButtonText: "ตกลง",
+          });
           console.error(error);
         }
-      },
-    });
-  };
+      }
+    };
 
   const columns = [
     {

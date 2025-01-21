@@ -92,8 +92,24 @@ const uploadFileAndConvert = (req, res) => {
                 for (let col = range.s.c; col <= range.e.c; col++) {
                     const cellAddress = { r: row, c: col };
                     const cell = worksheet[XLSX.utils.encode_cell(cellAddress)];
-                    rowData[XLSX.utils.encode_col(col)] = cell ? cell.v : '';
+                    //rowData[XLSX.utils.encode_col(col)] = cell ? cell.v : '';
+                    if (cell) {
+                        if (cell.t === 'n' && cell.v > 30000) {
+                            // ถ้าค่าคือวันที่ในรูปแบบตัวเลข (Excel stores dates as numbers)
+                            const date = new Date((cell.v - (25567 + 2)) * 86400 * 1000); // แปลงวันที่
+                            const day = String(date.getUTCDate()).padStart(2, '0');
+                            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                            const year = String(date.getUTCFullYear()).slice(-2); // ปี 2 หลัก
+                            const formattedDate = `${day}-${month}-${year}`; // รูปแบบ DD-MM-YY
+                            rowData[XLSX.utils.encode_col(col)] = formattedDate;
+                        } else {
+                            rowData[XLSX.utils.encode_col(col)] = cell.v; // เก็บค่าปกติ
+                        }
+                    } else {
+                        rowData[XLSX.utils.encode_col(col)] = ''; // ค่าว่างถ้าไม่มีข้อมูล
+                    }
                 }
+                console.log(`Row ${row}:`, rowData);
 
                 // ตรวจสอบว่าข้อมูลในคอลัมน์ B เป็น MatUnit หรือ matLot
                 const columnB = rowData.B || '';
@@ -116,6 +132,20 @@ const uploadFileAndConvert = (req, res) => {
                         totalQuantity: parseFloat(rowData.F || 0),
                     };
                     currentMatUnit.matLots.push(matLot);
+                } else if (/^\d{2}-\d{2}-\d{2,4}/.test(columnB) && currentMatUnit) {
+                    // เป็น matLot ในรูปแบบ dd-mm-yy หรือ dd/mm/yyyy
+                    const matLot = columnB.trim();
+                    const date = matLot.split(' ')[0]; // แยกวันที่ออกจากข้อมูล
+                    const lotInfo = matLot.split(' ')[1] || ''; // ข้อมูล Lot ที่เหลือ
+
+                    const matLotData = {
+                        matLot: `${date} ${lotInfo}`,
+                        loc: rowData.C || '',
+                        quantity: parseFloat(rowData.D || 0),
+                        remainingQuantity: parseFloat(rowData.E || 0),
+                        totalQuantity: parseFloat(rowData.F || 0),
+                    };
+                    currentMatUnit.matLots.push(matLotData);
                 }
             }
 

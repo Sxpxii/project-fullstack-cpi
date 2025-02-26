@@ -8,10 +8,10 @@ WORKDIR /app
 COPY backend/package*.json ./
 
 # ติดตั้ง dependencies
-RUN npm install
+RUN npm ci
 
 # คัดลอกโค้ดของ backend ไปยัง container
-COPY backend/ .
+COPY ..
 
 # พอร์ตที่แอปฟัง
 EXPOSE 3002

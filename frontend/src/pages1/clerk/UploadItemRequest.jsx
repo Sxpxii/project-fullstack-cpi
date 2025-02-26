@@ -351,6 +351,21 @@ const UploadPage = () => {
       align: "center",
     },
     {
+      title: "คงเหลือ",
+      dataIndex: "remainingQuantity",
+      key: "remainingQuantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => (text === 0 ? "0" : formatNumber(text)),
+      align: "center",
+    },
+    {
       title: "คงเหลือรวม",
       dataIndex: "total_quantity",
       key: "total_quantity",
@@ -433,6 +448,12 @@ const UploadPage = () => {
                   <option value="PIN">สลัก/ตะขอ</option>
                   <option value="BP">แผ่นเหล็ก</option>
                   <option value="CHEMICAL">เคมี</option>
+                  <option value="MRO">MRO</option>
+                  <option value="rimweb">rimweb</option>
+                  <option value="shoe">ก้ามเปล่า</option>
+                  <option value="DIS">ดิสกึ่ง</option>
+                  <option value="BRAKES">ผ้าเบรก</option>
+                  <option value="pallet">พาเลท</option>
                 </select>
                 <Button
                   type="primary"
@@ -632,7 +653,7 @@ const UploadPage = () => {
                           textAlign: "right",
                         }}
                       >
-                        <strong>ยอดรวมทั้งหมด : </strong>{formatNumber(totalQuantity)}
+                        <strong>ยอดรวมเบิกทั้งหมด : </strong>{formatNumber(totalQuantity)}
                       </div>
                     )}
                     <div

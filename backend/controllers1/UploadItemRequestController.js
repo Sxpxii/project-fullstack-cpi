@@ -79,10 +79,7 @@ const uploadFileAndConvert = (req, res) => {
 
         const { file } = req.files;
         const fileName = file.name;
-        // ตรวจสอบรูปแบบไฟล์
-        /*if (path.extname(fileName).toLowerCase() !== '.xlsx') {
-            return res.status(300).json({ message: 'ไฟล์ไม่ถูกต้อง กรุณาอัปโหลดไฟล์ .xlsx' });
-        }*/
+        
         const filePath = path.join(__dirname, '..', 'temp', fileName);
 
         file.mv(filePath, async (err) => {
@@ -145,8 +142,11 @@ const uploadFileAndConvert = (req, res) => {
                 // ตรวจสอบรูปแบบของ MatUnit
                 const matUnitRegex1 = /^R\d{6}-\d{5}-\d{4}/;  // เดิม
                 const matUnitRegex2 = /^P\d{6}-\d{5} \(.*?\)/; // ใหม่ (แบบ "P210201-05220 (ใบ)")
+                const matUnitRegex3 = /^R\d{6}-\d{5}-\d{4} \(.*?\)/;
+                const matUnitRegex4 = /^R\d{6}-\d{5}-\d{4} \(.*?\) \(.*?\)/;
+                const matUnitRegex5 = /^[-\w/()]+(?:-\w+)? \([\wก-๙]+\):/;
 
-                if (matUnitRegex1.test(columnB) || matUnitRegex2.test(columnB)) {
+                if (matUnitRegex1.test(columnB) || matUnitRegex2.test(columnB) || matUnitRegex3.test(columnB) || matUnitRegex4.test(columnB)|| matUnitRegex5.test(columnB)) {
                     // เป็น MatUnit
                     const [matUnit, mat_name] = columnB.split(':').map((s) => s.trim());
                     currentMatUnit = {
@@ -155,14 +155,14 @@ const uploadFileAndConvert = (req, res) => {
                         matLots: [],
                     };
                     groupedData.push(currentMatUnit);
-                } else if (/^\d{2}\/\d{2}\/\d{4}/.test(columnB) && currentMatUnit) {
+                } else if (/^\d{2}\/\d{2}\/\d{2,4}/.test(columnB) && currentMatUnit) {
                     // เป็น matLot (อ่านข้อมูลแบบเต็ม ไม่แยก date และ lotInfo)
                     const matLot = {
                         matLot: columnB.trim(),
                         loc: rowData.C || '',
-                        quantity: parseFloat(rowData.D || 0),
-                        remainingQuantity: parseFloat(rowData.E || 0),
-                        totalQuantity: parseFloat(rowData.F || 0),
+                        quantity: parseFloat((rowData.D || 0).toString().replace(/,/g, '')),
+                        remainingQuantity: parseFloat((rowData.E || 0).toString().replace(/,/g, '')),
+                        totalQuantity: parseFloat((rowData.F || 0).toString().replace(/,/g, '')),
                     };
                     currentMatUnit.matLots.push(matLot);
                 } else if (/^\d{2}-\d{2}-\d{2,4}/.test(columnB) && currentMatUnit) {
@@ -174,9 +174,35 @@ const uploadFileAndConvert = (req, res) => {
                     const matLotData = {
                         matLot: `${date} ${lotInfo}`,
                         loc: rowData.C || '',
-                        quantity: parseFloat(rowData.D || 0),
-                        remainingQuantity: parseFloat(rowData.E || 0),
-                        totalQuantity: parseFloat(rowData.F || 0),
+                        quantity: parseFloat((rowData.D || 0).toString().replace(/,/g, '')),
+                        remainingQuantity: parseFloat((rowData.E || 0).toString().replace(/,/g, '')),
+                        totalQuantity: parseFloat((rowData.F || 0).toString().replace(/,/g, '')),
+                    };
+                    currentMatUnit.matLots.push(matLotData);
+                } else if (/^\d{4}PRC\d{6}$/.test(columnB) && currentMatUnit) {
+                    // เป็น matLot ในรูปแบบ dd-mm-yy หรือ dd/mm/yyyy
+                    const matLot = columnB.trim();
+                    const date = matLot.split(' ')[0]; // แยกวันที่ออกจากข้อมูล
+                    const lotInfo = matLot.split(' ')[1] || ''; // ข้อมูล Lot ที่เหลือ
+
+                    const matLotData = {
+                        matLot: `${date} ${lotInfo}`,
+                        loc: rowData.C || '',
+                        quantity: parseFloat((rowData.D || 0).toString().replace(/,/g, '')),
+                        remainingQuantity: parseFloat((rowData.E || 0).toString().replace(/,/g, '')),
+                        totalQuantity: parseFloat((rowData.F || 0).toString().replace(/,/g, '')),
+                    };
+                    currentMatUnit.matLots.push(matLotData);
+                } else if (/^C\d{6}-\d{4};\d{2}\/\d{2}\/\d{4}-[A-Z]$/.test(columnB) && currentMatUnit) {
+                    // รูปแบบใหม่ C240828-0922;29/08/2024-F
+                    const [lotId, dateCode] = columnB.split(';');
+                    
+                    const matLotData = {
+                        matLot: `${lotId.trim()} ${dateCode.trim()}`,
+                        loc: rowData.C || '',
+                        quantity: parseFloat((rowData.D || 0).toString().replace(/,/g, '')),
+                        remainingQuantity: parseFloat((rowData.E || 0).toString().replace(/,/g, '')),
+                        totalQuantity: parseFloat((rowData.F || 0).toString().replace(/,/g, '')),
                     };
                     currentMatUnit.matLots.push(matLotData);
                 }
@@ -221,6 +247,7 @@ const getUploadedData = async (uploadId) => {
                         'mat_lot', r.mat_lot,
                         'loc', r.loc,
                         'quantity', r.quantity,
+                        'remainingQuantity',r.remaining_quantity,
                         'total_quantity', r.total_quantity
                     )
                     ORDER BY r.id

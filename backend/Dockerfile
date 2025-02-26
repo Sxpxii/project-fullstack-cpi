@@ -5,7 +5,7 @@ FROM node:16
 WORKDIR /app
 
 # คัดลอกไฟล์ package.json และ package-lock.json ไปที่ container
-COPY backend/package*.json ./
+COPY package*.json ./
 
 # ติดตั้ง dependencies
 RUN npm ci

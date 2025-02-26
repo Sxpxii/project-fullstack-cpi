@@ -1,19 +1,29 @@
 // src/pages1/staff/Dashboard.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useMediaQuery } from "react-responsive";
 import { useNavigate } from "react-router-dom";
-import { Table, Button, Modal, message, Tag, Card, Checkbox, Row, Col,} from "antd";
+import {
+  Table,
+  Button,
+  Modal,
+  message,
+  Tag,
+  Card,
+  Checkbox,
+  Row,
+  Col,
+} from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/OperationDashboard.css";
 import config from "../../configAPI";
+import Swal from "sweetalert2";
 
 const OperationsDashboard = () => {
   const [username, setUsername] = useState("");
   const [tasks, setTasks] = useState([]);
   const [mytasks, setMyTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
   const [selectedMaterialTypes, setSelectedMaterialTypes] = useState([]);
   const navigate = useNavigate();
   const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1024px)" });
@@ -27,6 +37,7 @@ const OperationsDashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+      console.log("data:", response.data);
       setTasks(response.data);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
@@ -48,21 +59,41 @@ const OperationsDashboard = () => {
   };
 
   const handleMaterialTypeChange = (checkedValues) => {
-    setSelectedMaterialTypes(checkedValues); // อัปเดตประเภทวัตถุดิบที่เลือก
+    console.log("Selected Material Types (Before):", checkedValues);
+
+    if (!Array.isArray(checkedValues)) {
+      console.error("Expected an array but got:", checkedValues);
+      return;
+    }
+
+    setSelectedMaterialTypes(checkedValues);
+    console.log("Updated Selected Material Types:", checkedValues);
   };
 
   // กรองข้อมูลก่อนแสดงผลตามประเภทวัตถุดิบที่เลือก
-  const filteredTasks = tasks
-    .filter((task) =>
-      selectedMaterialTypes.length > 0
-        ? selectedMaterialTypes.includes(task.material_type)
-        : true
-    )
-    .sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
+  const filteredTasks = useMemo(() => {
+    console.log("All Tasks before filter:", tasks);
+    console.log("Selected Material Types:", selectedMaterialTypes);
+
+    const result = tasks
+      .filter((task) =>
+        selectedMaterialTypes.length > 0
+          ? selectedMaterialTypes.includes(task.material_type)
+          : true
+      )
+      .sort((a, b) => new Date(b.upload_date) - new Date(a.upload_date));
+
+    console.log("Filtered Tasks:", result);
+    return result;
+  }, [tasks, selectedMaterialTypes]);
 
   const getCurrentDate = () => {
     return new Date().toISOString().split("T")[0]; // คืนค่าปัจจุบันในรูปแบบ YYYY-MM-DD
   };
+
+  useEffect(() => {
+    console.log("Updated Selected Material Types:", selectedMaterialTypes);
+  }, [selectedMaterialTypes]);
 
   useEffect(() => {
     const storedUsername = sessionStorage.getItem("username");
@@ -93,20 +124,47 @@ const OperationsDashboard = () => {
   }, [isUserActive]);
 
   const handleSelectTask = (record) => {
+    console.log("Record Selected:", record);
     setSelectedTask(record);
-    setModalVisible(true);
+    Swal.fire({
+      title: "ยืนยันการรับงาน",
+      html: '<span class="sarabun-light">คุณต้องการรับงานนี้หรือไม่?</span>',
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#5755FE",
+      confirmButtonText: "รับงาน",
+      cancelButtonText: "ยกเลิก",
+      customClass: {
+        title: "sarabun-bold", // ใส่คลาสให้กับ title
+        confirmButton: "sarabun-light", // ใส่คลาสให้กับปุ่ม confirm
+        cancelButton: "sarabun-light", // ใส่คลาสให้กับปุ่ม cancel
+      },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        handleConfirmTask(record);
+      }
+    });
   };
 
-  const handleConfirmTask = async () => {
-    if (!selectedTask) {
-      message.error("กรุณาเลือกงานที่ต้องการรับ");
+  const handleConfirmTask = async (record) => {
+    console.log("Selected Task:", record);
+    if (!record) {
+      Swal.fire({
+        title: "เกิดข้อผิดพลาด",
+        text: "กรุณาเลือกงานที่ต้องการรับ",
+        html: '<span class="sarabun-light">กรุณาเลือกงานที่ต้องการรับ!!</span>',
+        icon: "error",
+        customClass: {
+          title: "sarabun-bold",
+        },
+      });
       return;
     }
 
     try {
       const token = sessionStorage.getItem("token");
       await axios.post(
-        `${config.API_URL}/tasks/accept/${selectedTask.upload_id}`,
+        `${config.API_URL}/tasks/accept/${record.upload_id}`,
         { username },
         {
           headers: {
@@ -114,13 +172,28 @@ const OperationsDashboard = () => {
           },
         }
       );
-      message.success("รับงานเรียบร้อยแล้ว");
-      setModalVisible(false);
+      Swal.fire({
+        title: "สำเร็จ",
+        text: "รับงานเรียบร้อยแล้ว",
+        html: '<span class="sarabun-light">รับงานเรียบร้อยแล้ว</span>',
+        icon: "success",
+        customClass: {
+          title: "sarabun-bold",
+        },
+      });
       fetchTasks(); // อัปเดตรายการงานทั้งหมด
       fetchMyTasks(); // อัปเดตรายการงานของฉัน
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการรับงาน:", error);
-      message.error("เกิดข้อผิดพลาดในการรับงาน");
+      Swal.fire({
+        title: "เกิดข้อผิดพลาด",
+        text: "ไม่สามารถรับงานได้ในขณะนี้",
+        icon: "error",
+        customClass: {
+          title: "sarabun-bold",
+          content: "sarabun-light",
+        },
+      });
     }
   };
 
@@ -175,8 +248,8 @@ const OperationsDashboard = () => {
     },
     {
       title: "วันที่",
-      dataIndex: "upload_date",
-      key: "upload_date",
+      dataIndex: "approved_date",
+      key: "approved_date",
       render: (date) => new Date(date).toLocaleDateString(),
       align: "center",
       onHeaderCell: () => ({
@@ -237,7 +310,10 @@ const OperationsDashboard = () => {
             backgroundColor: "#5755FE",
             borderColor: "#5755FE",
           }}
-          onClick={() => handleSelectTask(record)}
+          onClick={() => {
+            console.log("Button Clicked:", record);
+            handleSelectTask(record);
+          }}
           disabled={record.assigned_to}
         >
           รับงาน
@@ -256,8 +332,8 @@ const OperationsDashboard = () => {
               fontSize: isTabletOrMobile ? "28px" : "30px",
               textAlign: isTabletOrMobile ? "center" : "left",
               marginLeft: isTabletOrMobile ? "0px" : "10px",
-              marginTop:"30px",
-              marginBottom:"30px",
+              marginTop: "30px",
+              marginBottom: "30px",
             }}
           >
             รายการเบิกจ่ายวัตถุดิบ
@@ -277,43 +353,42 @@ const OperationsDashboard = () => {
             width: "300px",
             alignSelf: "flex-end",
             boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)", // เพิ่มเงาให้ดูมีมิติ
+           
           }}
           className="sarabun-light"
-          onChange={handleMaterialTypeChange}
         >
-          {[
-            { label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
-            { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },
-            { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
-            { label: "สลัก/ตะขอ", value: "PIN" },
-            { label: "แผ่นเหล็ก", value: "BP" },
-            { label: "เคมี", value: "CHEMICAL" },
-          ].map((option) => (
-            <div
-              key={option.value}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-              }}
-            >
+          <Checkbox.Group
+            value={selectedMaterialTypes}
+            onChange={handleMaterialTypeChange}
+            style={{
+              display: "flex",
+              flexDirection: "column",  // ใช้ flex-direction: column เพื่อแสดงแนวตั้ง
+            }}
+          >
+            {[
+              { label: "กล่องดิส/ใบแนบ/สติ๊กเกอร์", value: "PK_DIS" },
+              { label: "กล่องก้าม/ใบแนบ/สติ๊กเกอร์", value: "PK_shoe" },
+              { label: "กิ๊ฟล๊อค/แผ่นชิม", value: "WD" },
+              { label: "สลัก/ตะขอ", value: "PIN" },
+              { label: "แผ่นเหล็ก", value: "BP" },
+              { label: "เคมี", value: "CHEMICAL" },
+            ].map((item) => (
               <Checkbox
-                value={option.value}
+                key={item.value}
+                value={item.value}
+                className="sarabun-light"
                 style={{
-                  width: "30px", // ขนาดของ Checkbox
-                  height: "30px", // ขนาดของ Checkbox
-                  transform: "scale(1.5)",
-                  marginLeft: "15px",
+                  fontSize: "13px", // ปรับขนาดตัวอักษรให้ใหญ่ขึ้น
+                  marginBottom: "10px", // เพิ่มระยะห่างระหว่างตัวเลือก
+                  transform: "scale(1.5)", // ขยายขนาด checkbox
+                  padding: "5px",
+                  marginLeft:"40px"
                 }}
-              />
-              <span
-                style={{ marginLeft: "10px", fontSize: "15px", color: "black" }}
               >
-                {option.label}
-              </span>{" "}
-              {/* ขนาดข้อความ */}
-            </div>
-          ))}
+                {item.label}
+              </Checkbox>
+            ))}
+          </Checkbox.Group>
         </Card>
 
         <div>
@@ -326,7 +401,8 @@ const OperationsDashboard = () => {
             <div
               style={{
                 fontSize: "22px",
-                marginBottom: "10px",
+                marginTop: "10px",
+                marginBottom: "30px",
               }}
               className="sarabun-bold"
             >
@@ -351,39 +427,6 @@ const OperationsDashboard = () => {
             </div>
           </Card>
         </div>
-
-        <Modal
-          title="ยืนยันการรับงาน"
-          className="sarabun-light"
-          visible={modalVisible}
-          onCancel={() => setModalVisible(false)}
-          footer={[
-            <Button
-              key="cancel"
-              onClick={() => setModalVisible(false)}
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "#5755FE",
-                borderColor: "#5755FE",
-              }}
-            >
-              ยกเลิก
-            </Button>,
-            <Button
-              key="confirm"
-              onClick={handleConfirmTask}
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "#5755FE",
-                borderColor: "#5755FE",
-              }}
-            >
-              ยืนยัน
-            </Button>,
-          ]}
-        >
-          <p className="sarabun-light">คุณต้องการรับงานนี้หรือไม่?</p>
-        </Modal>
       </div>
     </MainLayout>
   );

@@ -19,7 +19,6 @@ import moment from "moment";
 
 const DashboardAnalysis = () => {
   const navigate = useNavigate();
-  //const [chartData, setChartData] = useState({ categories: [], series: [] });
   const [uploadDetails, setUploadDetails] = useState([]);
   const [filterDate, setFilterDate] = useState(null);
   const [searchID, setSearchID] = useState("");
@@ -35,12 +34,32 @@ const DashboardAnalysis = () => {
     labels: [],
   });
   const [totalUploads, setTotalUploads] = useState(0);
+  const [grandTotalRequests, setgrandTotalRequests] = useState(0);
+  const [userIdgrandTotalData, setUserIdgrandToData] = useState({
+    series: [],
+    labels: [],
+  });
+  const [assignedTograndToData, setAssignedTograndToData] = useState({
+    series: [],
+    labels: [],
+  });
+  const [TotalTaskItem, setTotalTaskItem] = useState(0);
+  const [userIdTaskItemData, setuserIdTaskItemData] = useState({
+    series: [],
+    labels: [],
+  });
+  const [assignedToTaskItemData, setassignedToTaskItemData] = useState({
+    series: [],
+    labels: [],
+  });
   const [averageStatusTimesData, setAverageStatusTimesData] = useState({
     categories: [],
     series: [],
   });
-  const [chartOptions, setChartOptions] = useState({});
-  const [chartSeries, setChartSeries] = useState([]);
+  const [averageStatusTimesbyMaterialsData,setAverageStatusTimesbyMaterialsData,] = useState({
+    categories: [],
+    series: [],
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -50,6 +69,8 @@ const DashboardAnalysis = () => {
           uploadDetailsResponse,
           averageStatusTimesResponse,
           workloadDetailsResponse,
+          workloadTasksResponse,
+          workloadTaskItemsResponse,
           averageTimesByMaterialsResponse,
         ] = await Promise.all([
           axios.get(`${config.API_URL}/supClerkdashboard/daily-details`, {
@@ -58,6 +79,8 @@ const DashboardAnalysis = () => {
           }),
           axios.get(`${config.API_URL}/supClerkdashboard/average-times`),
           axios.get(`${config.API_URL}/supClerkdashboard/workload-details`),
+          axios.get(`${config.API_URL}/supClerkdashboard/workload-tasks`),
+          axios.get(`${config.API_URL}/supClerkdashboard/workload-tasks-item`),
           axios.get(
             `${config.API_URL}/supClerkdashboard/average-times-materials`
           ),
@@ -77,10 +100,12 @@ const DashboardAnalysis = () => {
         // Set Upload Details Data
         setUploadDetails(sortedUploadDetails);
 
-        //console.log("Workload Details Response:", workloadDetailsResponse.data);
+        console.log("Workload Details Response:", workloadDetailsResponse.data);
         setTotalUploads(workloadDetailsResponse.data.totalUploads);
-        const { userIdCounts, assignedToCounts } = workloadDetailsResponse.data;
+        setgrandTotalRequests(workloadTasksResponse.data.grandTotalRequests);
+        setTotalTaskItem(workloadTaskItemsResponse.data.TotalTaskItem);
 
+        const { userIdCounts, assignedToCounts } = workloadDetailsResponse.data;
         setUserIdChartData({
           series: Object.values(userIdCounts), // ใช้ค่าเป็นจำนวนตัวเลข
           labels: Object.keys(userIdCounts),
@@ -91,37 +116,30 @@ const DashboardAnalysis = () => {
           labels: Object.keys(assignedToCounts),
         });
 
-        /*// ตั้งค่า Chart Data สำหรับ Average Status Times
-        const averageStatusData = averageStatusTimesResponse.data;
-        // การตรวจสอบค่าก่อนการใช้งาน
-        //console.log("Average Status Times Data:", averageStatusData);
+        console.log("workload-tasks:", workloadTasksResponse.data);
+        const { userId, assignedTo } = workloadTasksResponse.data;
+        setUserIdgrandToData({
+          series: Object.values(userId), // ใช้ค่าเป็นจำนวนตัวเลข
+          labels: Object.keys(userId),
+        });
 
-        // แปลงเวลาจาก seconds เป็น HH:mm:ss
-        const formatTime = (hours = 0, minutes = 0, seconds = 0) => {
-          const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-          const formattedHours = Math.floor(totalSeconds / 3600);
-          const formattedMinutes = Math.floor((totalSeconds % 3600) / 60);
-          const formattedSeconds = totalSeconds % 60;
-          return `${String(formattedHours).padStart(2, "0")}:${String(
-            formattedMinutes
-          ).padStart(2, "0")}:${String(formattedSeconds).padStart(2, "0")}`;
-        };
+        setAssignedTograndToData({
+          series: Object.values(assignedTo), // ใช้ค่าเป็นจำนวนตัวเลข
+          labels: Object.keys(assignedTo),
+        });
 
-        setChartData({
-          categories: averageStatusData.map((item) => item.status),
-          series: [
-            {
-              name: "Average Duration",
-              data: averageStatusData.map((item) =>
-                formatTime(
-                  item.avg_duration_seconds.hours,
-                  item.avg_duration_seconds.minutes,
-                  item.avg_duration_seconds.seconds
-                )
-              ),
-            },
-          ],
-        });*/
+        console.log("workload-tasks-item:", workloadTaskItemsResponse.data);
+        const { userIdTaskItem, assignedToTaskItem } =
+          workloadTaskItemsResponse.data;
+        setuserIdTaskItemData({
+          series: Object.values(userIdTaskItem), // ใช้ค่าเป็นจำนวนตัวเลข
+          labels: Object.keys(userIdTaskItem),
+        });
+
+        setassignedToTaskItemData({
+          series: Object.values(assignedToTaskItem), // ใช้ค่าเป็นจำนวนตัวเลข
+          labels: Object.keys(assignedToTaskItem),
+        });
 
         // จัดการข้อมูล averageStatusTimesResponse
         //console.log("average Status Times:", averageStatusTimesResponse.data);
@@ -134,7 +152,8 @@ const DashboardAnalysis = () => {
             minutes = 0,
             seconds = 0,
           } = item.avg_duration_seconds;
-          return (hours * 60 + minutes + seconds / 60).toFixed(2); // แปลงเป็นนาที
+          const totalMinutes = hours * 60 + minutes + seconds / 60;
+          return Math.round(totalMinutes); // ใช้ Math.round() เพื่อปัดเศษให้เป็นจำนวนเต็ม
         });
 
         setAverageStatusTimesData({
@@ -148,22 +167,19 @@ const DashboardAnalysis = () => {
         });
 
         // แปลงข้อมูลเวลาเป็นนาที
-        console.log(
-          "average Status Times:",
-          averageTimesByMaterialsResponse.data
-        );
+        /*console.log("average Status Times:",averageTimesByMaterialsResponse.data);*/
         const transformedData = averageTimesByMaterialsResponse.data.map(
           (item) => {
             const {
               material_type,
               status,
-              avg_duration: { hours = 0, minutes = 0, seconds = 0 } = {}, // กำหนด default ให้เป็นวัตถุเปล่า
+              avg_duration: { hours = 0, minutes = 0, seconds = 0 } = {},
             } = item;
-            const avgMinutes = (hours * 60 + minutes + seconds / 60).toFixed(2);
+            const totalMinutes = hours * 60 + minutes + seconds / 60;
             return {
               material_type,
               status,
-              avgMinutes: parseFloat(avgMinutes),
+              avgMinutes: Math.round(totalMinutes),
             };
           }
         );
@@ -187,57 +203,10 @@ const DashboardAnalysis = () => {
           }),
         }));
 
-        setChartOptions({
-          chart: {
-            type: "bar",
-            stacked: true,
-          },
-          plotOptions: {
-            bar: {
-              borderRadius: 18, // กำหนดขอบมนของแท่งกราฟ
-              horizontal: false, // กำหนดแนวกราฟ (true = แนวนอน, false = แนวตั้ง)
-            },
-          },
-          xaxis: {
-            categories,
-            title: {
-              text: "วัตถุดิบ",
-              style: {
-                fontFamily: "Sarabun, sans-serif",
-                fontWeight: "bold",
-              },
-            },
-          },
-          yaxis: {
-            title: {
-              text: "เวลาเฉลี่ย (นาที)",
-              style: {
-                fontFamily: "Sarabun, sans-serif",
-                fontWeight: "bold",
-              },
-            },
-          },
-          colors: ["#4fc3f7", "#ffd54f", "#ab47bc", "#ff8a65"], // สีสำหรับแต่ละสถานะ
-          tooltip: {
-            y: {
-              formatter: (value) => `${value} นาที`,
-            },
-          },
-          dataLabels: {
-            enabled: true, // เปิดการแสดงข้อมูลบนแท่งกราฟ
-            style: {
-              colors: ["#000"], // กำหนดสีของข้อความเป็นสีดำ
-              fontFamily: "Sarabun, sans-serif",
-              fontWeight: "bold",
-            },
-          },
+        setAverageStatusTimesbyMaterialsData({
+          categories,
+          series: seriesData,
         });
-
-        console.log("Transformed Data:", transformedData);
-        console.log("Chart Series Data:", seriesData);
-        console.log("Chart Options:", chartOptions);
-
-        setChartSeries(seriesData);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -441,14 +410,15 @@ const DashboardAnalysis = () => {
     },
   ];
 
+  // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number);
+  };
+
   // ฟังก์ชันสำหรับการกรองข้อมูล
   useEffect(() => {
     let data = [...uploadDetails]; // คัดลอกข้อมูลก่อนการกรอง
 
-    if (filterDate) {
-      const selectedDate = moment(filterDate).format("DD/MM/YYYY");
-      data = data.filter((item) => item.approved_date === selectedDate);
-    }
     if (searchID) {
       data = data.filter((item) =>
         item.inventory_id.toString().includes(searchID)
@@ -459,7 +429,7 @@ const DashboardAnalysis = () => {
     }
 
     setFilteredData(data); // อัปเดตข้อมูลที่กรองแล้ว
-  }, [filterDate, searchID, filterMaterialType, uploadDetails]); // เพิ่ม dependency ให้ถูกต้อง
+  }, [searchID, filterMaterialType, uploadDetails]); // เพิ่ม dependency ให้ถูกต้อง
 
   return (
     <MainLayout>
@@ -475,6 +445,438 @@ const DashboardAnalysis = () => {
         >
           Dashboard Analysis
         </div>
+        <Row gutter={16}>
+          <Col className="gutter-row" span={8}>
+            <Card
+              style={{
+                fontSize: "16px",
+                backgroundColor: "#e0f2f1",
+                textAlign: "center",
+                borderRadius: "24px",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                marginTop: "20px",
+                marginBottom: "20px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "18px",
+                }}
+              >
+                ใบสั่งเบิกทั้งหมด (ใบ)
+              </div>
+              <div
+                className="sarabun-bold"
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                }}
+              >
+                {formatNumber(totalUploads)}
+              </div>
+            </Card>
+          </Col>
+          <Col className="gutter-row" span={8}>
+            <Card
+              style={{
+                fontSize: "16px",
+                backgroundColor: "#e8eaf6",
+                textAlign: "center",
+                borderRadius: "24px",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                marginTop: "20px",
+                marginBottom: "20px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "18px",
+                }}
+              >
+                รายการย่อยสั่งเบิกทั้งหมด (รายการ)
+              </div>
+              <div
+                className="sarabun-bold"
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                }}
+              >
+                {formatNumber(grandTotalRequests)}
+              </div>
+            </Card>
+          </Col>
+          <Col className="gutter-row" span={8}>
+            <Card
+              style={{
+                fontSize: "16px",
+                backgroundColor: "#fffde7",
+                textAlign: "center",
+                borderRadius: "24px",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                marginTop: "20px",
+                marginBottom: "20px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "18px",
+                }}
+              >
+                จำนวนวัตถุดิบสั่งเบิกทั้งหมด
+              </div>
+              <div
+                className="sarabun-bold"
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                }}
+              >
+                {formatNumber(TotalTaskItem)}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row gutter={24} style={{ marginTop: 30 }}>
+          <Col span={8}>
+            <Card
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+                height: "700px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "30px",
+                  fontSize: "20px",
+                  textAlign: "center",
+                }}
+              >
+                กราฟแสดงจำนวนใบสั่งเบิก/คน
+              </div>
+
+              <ReactApexChart
+                options={{
+                  chart: {
+                    type: "donut",
+                  },
+                  labels: userIdChartData.labels,
+                  title: {
+                    text: "ธุรการคลังวัตถุดิบ :",
+                    align: "left",
+                    style: {
+                      fontFamily: "Sarabun, sans-serif",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    },
+                  },
+                  legend: {
+                    position: "right",
+                  },
+                  colors: ["#004d40", "#b2dfdb", "#00695c", "#80cbc4"],
+                  tooltip: {
+                    y: {
+                      formatter: function (value) {
+                        return value.toLocaleString(); // ใส่ , คั่นหลักพัน
+                      },
+                    },
+                  },
+                  dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                      return value.toFixed(1) + "%"; // แสดงค่าเป็น %
+                    },
+                  },
+                }}
+                series={userIdChartData.series}
+                type="donut"
+                height={350}
+                style={{ marginBottom: "20px" }}
+              />
+
+              <ReactApexChart
+                options={{
+                  chart: {
+                    type: "donut",
+                  },
+                  labels: assignedToChartData.labels,
+                  title: {
+                    text: "เจ้าหน้าที่คลังวัตถุดิบ :",
+                    align: "left",
+                    style: {
+                      fontFamily: "Sarabun, sans-serif",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    },
+                  },
+                  legend: {
+                    position: "right",
+                    labels: {
+                      colors: "#000",
+                      useSeriesColors: false,
+                    },
+                  },
+                  colors: [
+                    "#311b92",
+                    "#b39ddb",
+                    "#512da8",
+                    "#9575cd",
+                    "#4a148c",
+                    "#ab47bc",
+                    "#6a1b9a",
+                    "#8e24aa",
+                    "#ba68c8",
+                  ],
+                  tooltip: {
+                    y: {
+                      formatter: function (value) {
+                        return value.toLocaleString(); // ใส่ , คั่นหลักพัน
+                      },
+                    },
+                  },
+                  dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                      return value.toFixed(1) + "%"; // แสดงค่าเป็น %
+                    },
+                  },
+                }}
+                series={assignedToChartData.series}
+                type="donut"
+                height={350}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+                height: "700px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "30px",
+                  fontSize: "20px",
+                  textAlign: "center",
+                }}
+              >
+                กราฟแสดงจำนวนรายการย่อย/คน
+              </div>
+
+              <ReactApexChart
+                options={{
+                  chart: {
+                    type: "donut",
+                  },
+                  labels: userIdgrandTotalData.labels,
+                  title: {
+                    text: "ธุรการคลังวัตถุดิบ :",
+                    align: "left",
+                    style: {
+                      fontFamily: "Sarabun, sans-serif",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    },
+                  },
+                  legend: {
+                    position: "right",
+                  },
+                  colors: ["#004d40", "#b2dfdb", "#00695c", "#80cbc4"],
+                  tooltip: {
+                    y: {
+                      formatter: function (value) {
+                        return value.toLocaleString(); // ใส่ , คั่นหลักพัน
+                      },
+                    },
+                  },
+                  dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                      return value.toFixed(1) + "%"; // แสดงค่าเป็น %
+                    },
+                  },
+                }}
+                series={userIdgrandTotalData.series}
+                type="donut"
+                height={350}
+                style={{ marginBottom: "20px" }}
+              />
+              <ReactApexChart
+                options={{
+                  chart: {
+                    type: "donut",
+                  },
+                  labels: assignedTograndToData.labels,
+                  title: {
+                    text: "เจ้าหน้าที่คลังวัตถุดิบ :",
+                    align: "left",
+                    style: {
+                      fontFamily: "Sarabun, sans-serif",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    },
+                  },
+                  legend: {
+                    position: "right",
+                    labels: {
+                      colors: "#000",
+                      useSeriesColors: false,
+                    },
+                  },
+                  colors: [
+                    "#311b92",
+                    "#b39ddb",
+                    "#512da8",
+                    "#9575cd",
+                    "#4a148c",
+                    "#ab47bc",
+                    "#6a1b9a",
+                    "#8e24aa",
+                    "#ba68c8",
+                  ],
+                  tooltip: {
+                    y: {
+                      formatter: function (value) {
+                        return value.toLocaleString(); // ใส่ , คั่นหลักพัน
+                      },
+                    },
+                  },
+                  dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                      return value.toFixed(1) + "%"; // แสดงค่าเป็น %
+                    },
+                  },
+                }}
+                series={assignedTograndToData.series}
+                type="donut"
+                height={350}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "24px",
+                height: "700px",
+              }}
+            >
+              <div
+                className="sarabun-bold"
+                style={{
+                  marginBottom: "30px",
+                  fontSize: "20px",
+                  textAlign: "center",
+                }}
+              >
+                กราฟแสดงจำนวนวัตถุดิบสั่งเบิก/คน
+              </div>
+              <ReactApexChart
+                options={{
+                  chart: {
+                    type: "donut",
+                  },
+                  labels: userIdTaskItemData.labels,
+                  title: {
+                    text: "ธุรการคลังวัตถุดิบ :",
+                    align: "left",
+                    style: {
+                      fontFamily: "Sarabun, sans-serif",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    },
+                  },
+                  legend: {
+                    position: "right",
+                  },
+                  colors: ["#004d40", "#b2dfdb", "#00695c", "#80cbc4"],
+                  tooltip: {
+                    y: {
+                      formatter: function (value) {
+                        return value.toLocaleString(); // ใส่ , คั่นหลักพัน
+                      },
+                    },
+                  },
+                  dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                      return value.toFixed(1) + "%"; // แสดงค่าเป็น %
+                    },
+                  },
+                }}
+                series={userIdTaskItemData.series}
+                type="donut"
+                height={350}
+                style={{ marginBottom: "20px" }}
+              />
+              <ReactApexChart
+                options={{
+                  chart: {
+                    type: "donut",
+                  },
+                  labels: assignedToTaskItemData.labels,
+                  title: {
+                    text: "เจ้าหน้าที่คลังวัตถุดิบ :",
+                    align: "left",
+                    style: {
+                      fontFamily: "Sarabun, sans-serif",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                    },
+                  },
+                  legend: {
+                    position: "right",
+                    labels: {
+                      colors: "#000",
+                      useSeriesColors: false,
+                    },
+                  },
+                  colors: [
+                    "#311b92",
+                    "#b39ddb",
+                    "#512da8",
+                    "#9575cd",
+                    "#4a148c",
+                    "#ab47bc",
+                    "#6a1b9a",
+                    "#8e24aa",
+                    "#ba68c8",
+                  ],
+                  tooltip: {
+                    y: {
+                      formatter: function (value) {
+                        return value.toLocaleString(); // ใส่ , คั่นหลักพัน
+                      },
+                    },
+                  },
+                  dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                      return value.toFixed(1) + "%"; // แสดงค่าเป็น %
+                    },
+                  },
+                }}
+                series={assignedToTaskItemData.series}
+                type="donut"
+                height={350}
+              />
+            </Card>
+          </Col>
+        </Row>
+
         <Row gutter={24}>
           <Col span={12}>
             <Card
@@ -491,12 +893,13 @@ const DashboardAnalysis = () => {
                   fontSize: "18px",
                 }}
               >
-                เวลาจัดการวัตถุดิบเฉลี่ย (รวม) :
+                กราฟเวลาเฉลี่ยแต่ละสถานะในการเบิกจ่ายวัตถุดิบ (รวม) :
               </div>
               <ReactApexChart
                 options={{
                   chart: {
                     type: "bar",
+                    stacked: true,
                     toolbar: {
                       show: true,
                     },
@@ -543,16 +946,22 @@ const DashboardAnalysis = () => {
                   },
                   dataLabels: {
                     enabled: true, // เปิดการแสดงข้อมูลบนแท่งกราฟ
+                    formatter: (value) => value.toLocaleString(),
                     style: {
                       colors: ["#000"], // กำหนดสีของข้อความเป็นสีดำ
                       fontFamily: "Sarabun, sans-serif",
                       fontWeight: "bold",
                     },
                   },
+                  tooltip: {
+                    y: {
+                      formatter: (value) => value.toLocaleString() + " นาที", // ใส่ , และหน่วย นาที
+                    },
+                  },
                 }}
                 series={[
                   {
-                    name: "เวลาเฉลี่ย (นาที)",
+                    name: "เวลาเฉลี่ย",
                     data:
                       averageStatusTimesData.series.length > 0
                         ? averageStatusTimesData.series[0].data
@@ -581,135 +990,60 @@ const DashboardAnalysis = () => {
                     fontSize: "18px",
                   }}
                 >
-                  เวลาจัดการวัตถุดิบเฉลี่ย (ต่อวัตถุดิบ) :
+                  กราฟเวลาเฉลี่ยแต่ละสถานะ/วัตถุดิบ ในการเบิกจ่ายวัตถุดิบ :
                 </div>
-                {chartSeries.length > 0 && (
-                  <ReactApexChart
-                    options={chartOptions}
-                    series={chartSeries}
-                    type="bar"
-                    height={350}
-                  />
-                )}
+                <ReactApexChart
+                  options={{
+                    chart: { type: "bar", stacked: true },
+                    plotOptions: {
+                      bar: { borderRadius: 18, horizontal: false },
+                    },
+                    xaxis: {
+                      categories: averageStatusTimesbyMaterialsData.categories,
+                      title: {
+                        text: "วัตถุดิบ",
+                        style: {
+                          fontFamily: "Sarabun, sans-serif",
+                          fontWeight: "bold",
+                        },
+                      },
+                    },
+                    yaxis: {
+                      title: {
+                        text: "เวลาเฉลี่ย (นาที)",
+                        style: {
+                          fontFamily: "Sarabun, sans-serif",
+                          fontWeight: "bold",
+                        },
+                      },
+                    },
+                    colors: ["#4fc3f7", "#ffd54f", "#ff8a65", "#ab47bc"],
+                    tooltip: {
+                      y: {
+                        formatter: (value) => value.toLocaleString() + " นาที", // ใส่ , และหน่วย นาที
+                      },
+                    },
+                    dataLabels: {
+                      enabled: true,
+                      formatter: (value) => value.toLocaleString(),
+                      style: {
+                        colors: ["#000"],
+                        fontFamily: "Sarabun, sans-serif",
+                        fontWeight: "bold",
+                      },
+                    },
+                  }}
+                  series={averageStatusTimesbyMaterialsData.series}
+                  type="bar"
+                  height={350}
+                />
               </div>
             </Card>
           </Col>
         </Row>
 
         <Row gutter={24} style={{ marginTop: 30 }}>
-          <Col span={8}>
-            <Card
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "24px",
-                height: "800px",
-              }}
-            >
-              <div
-                className="sarabun-bold"
-                style={{
-                  marginBottom: "8px",
-                  fontSize: "18px",
-                }}
-              >
-                ภาระงาน :
-              </div>
-              <Card
-                style={{
-                  fontSize: "16px",
-                  backgroundColor: "#e0f2f1",
-                  textAlign: "center",
-                  borderRadius: "24px",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                  marginTop: "20px",
-                  marginBottom: "20px",
-                }}
-              >
-                <div
-                  className="sarabun-bold"
-                  style={{
-                    marginBottom: "8px",
-                    fontSize: "18px",
-                  }}
-                >
-                  ทั้งหมด
-                </div>
-                <div
-                  className="sarabun-bold"
-                  style={{
-                    fontSize: "24px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {totalUploads}
-                </div>
-              </Card>
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "donut",
-                  },
-                  labels: userIdChartData.labels,
-                  title: {
-                    text: "ธุรการคลังวัตถุดิบ :",
-                    align: "left",
-                    style: {
-                      fontFamily: "Sarabun, sans-serif",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                    },
-                  },
-                  legend: {
-                    position: "right",
-                  },
-                  colors: ["#004d40", "#b2dfdb", "#00695c", "#80cbc4"],
-                }}
-                series={userIdChartData.series}
-                type="donut"
-                height={350}
-                style={{ marginBottom: "20px" }}
-              />
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "donut",
-                  },
-                  labels: assignedToChartData.labels,
-                  title: {
-                    text: "เจ้าหน้าที่คลังวัตถุดิบ :",
-                    align: "left",
-                    style: {
-                      fontFamily: "Sarabun, sans-serif",
-                      fontWeight: "bold",
-                      fontSize: "14px",
-                    },
-                  },
-                  legend: {
-                    position: "right",
-                    labels: {
-                      colors: "#000",
-                      useSeriesColors: false,
-                    },
-                  },
-                  colors: [
-                    "#311b92",
-                    "#b39ddb",
-                    "#512da8",
-                    "#9575cd",
-                    "#4a148c",
-                    "#ab47bc",
-                    "#6a1b9a",
-                    "#8e24aa",
-                    "#ba68c8",
-                  ],
-                }}
-                series={assignedToChartData.series}
-                type="donut"
-                height={350}
-              />
-            </Card>
-          </Col>
-          <Col span={16}>
+          <Col span={24}>
             <Card
               style={{
                 backgroundColor: "#ffffff",
@@ -741,14 +1075,6 @@ const DashboardAnalysis = () => {
                     placeholder="ค้นหา Inventory ID"
                     value={searchID}
                     onChange={(e) => setSearchID(e.target.value)}
-                  />
-                </Col>
-                <Col span={4}>
-                  <DatePicker
-                    className="sarabun-light"
-                    style={{ width: "100%" }}
-                    placeholder="เลือกวันที่..."
-                    onChange={(date) => setFilterDate(date)}
                   />
                 </Col>
                 <Col span={4}>
@@ -808,8 +1134,8 @@ const DashboardAnalysis = () => {
                 rowKey="inventory_id"
                 pagination={false}
                 scroll={{
-                  x: 1000, // ความกว้างของตารางที่เลื่อนในแนวนอน
-                  y: "calc(100% - 160px)", // ปรับความสูงของตารางให้พอดีกับ Card
+                  x: "max-content", // เปิดการเลื่อนในแนวนอนตามขนาดของคอลัมน์
+                  y: 600, // เปิดการเลื่อนในแนวตั้งตามความสูงที่กำหนด
                 }}
                 style={{
                   overflow: "auto", // แสดงแถบเลื่อนเฉพาะเมื่อมีเนื้อหาเกิน
@@ -819,104 +1145,6 @@ const DashboardAnalysis = () => {
             </Card>
           </Col>
         </Row>
-
-        {/*
-        <Row style={{ marginTop: 20 }}>
-          <Col span={12}>
-            <Card
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "24px",
-              }}
-            >
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "line",
-                    height: 400,
-                  },
-                  xaxis: {
-                    categories: chartData?.categories || [], // สถานะ (เช่น In Progress, Pending Review)
-                    title: {
-                      text: "สถานะ",
-                      style: {
-                        fontFamily: "Sarabun, sans-serif",
-                        fontWeight: "bold",
-                        fontSize: "14px",
-                        color: "#333333",
-                      },
-                    },
-                  },
-                  yaxis: {
-                    title: {
-                      text: "เวลาเฉลี่ย (ชั่วโมง)",
-                      style: {
-                        fontFamily: "Sarabun, sans-serif",
-                        fontWeight: "bold",
-                        fontSize: "14px",
-                        color: "#333333",
-                      },
-                    },
-                    labels: {
-                      formatter: (value) => {
-                        const hours = (value / 3600).toFixed(0);
-                        return `${hours} ชม.`;
-                      },
-                    },
-                  },
-                  stroke: {
-                    curve: "smooth", // ใช้เส้นโค้งนุ่มนวล
-                  },
-                  title: {
-                    text: "เวลาเฉลี่ยที่ใช้ในแต่ละสถานะ",
-                    align: "center",
-                    style: {
-                      fontFamily: "Sarabun, sans-serif",
-                      fontWeight: "bold",
-                      fontSize: "16px",
-                      color: "#333333",
-                    },
-                  },
-                  legend: {
-                    show: true,
-                    position: "top", // แสดง legend ด้านบน
-                  },
-                  tooltip: {
-                    y: {
-                      formatter: (value) => {
-                        const hours = Math.floor(value / 3600);
-                        const minutes = Math.floor((value % 3600) / 60);
-                        const seconds = value % 60;
-                        return `${String(hours).padStart(2, "0")}:${String(
-                          minutes
-                        ).padStart(2, "0")}:${String(seconds).padStart(
-                          2,
-                          "0"
-                        )}`;
-                      },
-                    },
-                  },
-                }}
-                series={
-                  chartData?.series && chartData.series.length > 0
-                    ? [
-                        {
-                          name: "Average Duration",
-                          data: chartData.series[0].data.map((timeString) => {
-                            const [hours, minutes, seconds] = timeString
-                              .split(":")
-                              .map(Number);
-                            return hours * 3600 + minutes * 60 + seconds;
-                          }),
-                        },
-                      ]
-                    : []
-                } // ตรวจสอบว่า chartData.series มีข้อมูลก่อนใช้งาน
-              />
-            </Card>
-          </Col>
-        </Row>
-*/}
       </div>
     </MainLayout>
   );

@@ -106,7 +106,14 @@ const SupEditDetails = () => {
       if (managerReason === "รอวัตถุดิบเข้า") {
         // ตรวจสอบว่า inputReason ไม่ว่างเปล่า
         if (!inputReason) {
-          message.warning("กรุณากรอกหตุผล");
+          Swal.fire({
+            icon: 'warning',
+            title: 'กรุณากรอกเหตุผล',
+            html: '<span class="sarabun-light">กรุณากรอกเหตุผลในการรอวัตถุดิบ</span>',
+            customClass: {
+              title: "sarabun-bold", // ใส่คลาสให้กับ title
+            },
+          });
           return; // หยุดการบันทึกข้อมูล
         }
       }
@@ -128,7 +135,15 @@ const SupEditDetails = () => {
       setManagerReason("");
       setInputReason("");
     } else {
-      message.warning("กรุณาเลือกเหตุผลก่อนบันทึก");
+      Swal.fire({
+        icon: 'warning',
+        title: 'กรุณาเลือกเหตุผลก่อนบันทึก',
+        text: 'กรุณาเลือกเหตุผลเพื่อดำเนินการบันทึก',
+        html: '<span class="sarabun-light">กรุณาเลือกเหตุผลเพื่อดำเนินการบันทึก</span>',
+            customClass: {
+              title: "sarabun-bold", // ใส่คลาสให้กับ title
+            },
+      });
     }
   };
 
@@ -583,7 +598,7 @@ const SupEditDetails = () => {
             จ่ายวัตถุดิบเท่าที่เหลือ
           </Radio>
           <Radio className="sarabun-light" value="รอวัตถุดิบเข้า">
-            รอวัตถุดิบเข้า
+            รอวัตถุดิบเข้า (ระบุ lot เช่น 16/11/2024  TPPM : 4 ชิ้น))
           </Radio>
         </Radio.Group>
         {isOtherReason && (

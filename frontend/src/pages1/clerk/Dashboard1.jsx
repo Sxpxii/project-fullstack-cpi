@@ -9,8 +9,7 @@ import {
   Row,
   Col,
   Card,
-  message,
-  Modal,
+  Select,
 } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutClerk";
@@ -18,6 +17,7 @@ import "../../styles1/Dashboard.css";
 import { FaCheck, FaTrashCan } from "react-icons/fa6";
 import config from "../../configAPI";
 import { debounce } from "lodash";
+import Swal from 'sweetalert2';
 
 const materialTypeMap = {
   PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
@@ -27,17 +27,20 @@ const materialTypeMap = {
   BP: "แผ่นเหล็ก",
   CHEMICAL: "เคมี",
 };
+const { Option } = Select;
 
 const Dashboardclerk = () => {
   const [username, setUsername] = useState("");
   const [data, setData] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
   const [selectedUploadId, setSelectedUploadId] = useState(null);
   const [idStatus, setIdStatus] = useState(1);
   const [inputValues, setInputValues] = useState({});
   const [isInputHidden, setIsInputHidden] = useState({});
   const [isButtonHidden, setIsButtonHidden] = useState({});
   const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
+  const [filterDate, setFilterDate] = useState(""); // State for date filter
+  const [filterMaterial, setFilterMaterial] = useState(""); // State for material filter
+  const [filterInventoryId, setFilterInventoryId] = useState("");
 
   const navigate = useNavigate();
 
@@ -126,26 +129,48 @@ const Dashboardclerk = () => {
           },
         }
       );
-      message.success("ลบรายการสำเร็จ");
+      Swal.fire({
+        icon: 'success',
+        title: 'ลบรายการสำเร็จ',
+        showConfirmButton: false,
+        timer: 1500,
+        customClass: {
+          title: "sarabun-bold", // ใส่คลาสให้กับ title
+        },
+      });
       fetchData();
-      setModalVisible(false);
     } catch (err) {
-      console.error("Failed to return task:", error);
-      message.error("ลบรายการไม่สำเร็จ กรุณาลองใหม่!!");
+      console.error("Failed to return task:", err);
+      Swal.fire({
+        icon: 'error',
+        title: 'ลบรายการไม่สำเร็จ',
+        html: '<span class="sarabun-light">กรุณาลองใหม่!!</span>',
+        customClass: {
+          title: "sarabun-bold", // ใส่คลาสให้กับ title
+        },
+      });
     }
   };
 
   const handleDeleteClick = (uploadId) => {
     console.log("Attempting to delete upload with ID:", uploadId);
     if (uploadId) {
-      Modal.confirm({
-        title: "ยืนยันการลบ",
-        content: "คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?",
-        okText: "ยืนยัน",
-        cancelText: "ยกเลิก",
-        onOk: () => {
-          confirmDelete(uploadId);
+      Swal.fire({
+        title: 'ยืนยันการลบ',
+        html: '<span class="sarabun-light">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้?</span>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        customClass: {
+          title: "sarabun-bold", // ใส่คลาสให้กับ title
+          confirmButton: "sarabun-light",
+          cancelButton: "sarabun-light",
         },
+      }).then((result) => {
+        if (result.isConfirmed) {
+          confirmDelete(uploadId);
+        }
       });
     } else {
       console.error("Invalid uploadId:", uploadId);
@@ -176,7 +201,15 @@ const Dashboardclerk = () => {
           },
         }
       );
-      message.success("บันทึก Inventory ID สำเร็จ");
+      Swal.fire({
+        icon: 'success',
+        title: 'บันทึก Inventory ID สำเร็จ',
+        showConfirmButton: false,
+        timer: 1500,
+        customClass: {
+          title: "sarabun-bold", // ใส่คลาสให้กับ title
+        },
+      });
 
       // ซ่อนช่องกรอกและปุ่มบันทึกหลังจากบันทึกสำเร็จ
       setIsInputHidden((prev) => ({ ...prev, [uploadId]: true }));
@@ -185,9 +218,36 @@ const Dashboardclerk = () => {
       fetchData();
     } catch (err) {
       console.error("Failed to save inventory ID:", err);
-      message.error("บันทึก Inventory ID ล้มเหลว");
+      Swal.fire({
+        icon: 'error',
+        title: 'บันทึก Inventory ID ล้มเหลว',
+        html: '<span class="sarabun-light">กรุณาลองใหม่!!</span>',
+        customClass: {
+          title: "sarabun-bold", // ใส่คลาสให้กับ title
+        },
+      });
     }
   };
+
+  const handleResetFilters = () => {
+    setFilterDate(null);
+    setFilterMaterial("");
+    setFilterInventoryId("");
+  };
+
+  // Filter function for the table
+  const filteredData = data.filter((item) => {
+    const matchesMaterial = filterMaterial
+      ? item.material_type.includes(filterMaterial)
+      : true;
+
+    const matchesInventoryId = filterInventoryId
+      ? item.inventory_id.includes(filterInventoryId)
+      : true;
+    console.log("Filter Dates:", filterDate);
+
+    return matchesMaterial && matchesInventoryId;
+  });
 
   const columns = [
     {
@@ -253,8 +313,8 @@ const Dashboardclerk = () => {
     },
     {
       title: "วันที่",
-      dataIndex: "date",
-      key: "date",
+      dataIndex: "approved_date",
+      key: "approved_date",
       align: "center",
       onHeaderCell: () => ({
         style: {
@@ -526,24 +586,15 @@ const Dashboardclerk = () => {
             <></>
           )}
         </Row>
+
         <Row gutter={24} style={{ marginTop: 30 }}>
           <Card
             style={{
               borderRadius: "15px",
-              height: "calc(80vh - 100px)", // กำหนดความสูงของ Card ให้เต็มหน้าจอ ลบด้วย header (หรือ margin)
+              height: "calc(90vh - 100px)", // กำหนดความสูงของ Card ให้เต็มหน้าจอ ลบด้วย header (หรือ margin)
+              overflow: "hidden",
             }}
           >
-            <div
-              className="dashboard-title sarabun-bold"
-              style={{
-                fontSize: "20px",
-                padding: "10px",
-                color: "#000000E0",
-              }}
-            >
-              รายการเบิกจ่ายวัตถุดิบทั้งหมด :
-            </div>
-
             {/* ปุ่มอัปโหลดไฟล์ */}
             <div style={{ padding: "10px", textAlign: "right" }}>
               <Button
@@ -554,16 +605,93 @@ const Dashboardclerk = () => {
                   backgroundColor: "#5755FE",
                   borderColor: "#5755FE",
                   marginBottom: 16,
+                  height:60,
+                  borderRadius:12,
+                  width:150
                 }}
               >
                 อัปโหลดไฟล์
               </Button>
             </div>
+            <div
+              className="dashboard-title sarabun-bold"
+              style={{
+                fontSize: "20px",
+                marginBottom: "20px",
+                color: "#000000E0",
+              }}
+            >
+              รายการเบิกจ่ายวัตถุดิบทั้งหมด :
+            </div>
+
+            <Row
+              gutter={16}
+              style={{
+                marginBottom: "20px",
+                display: "flex",
+              }}
+            >
+              <Col span={6}>
+                <Select
+                  className="sarabun-light"
+                  placeholder="กรองวัตถุดิบ"
+                  value={filterMaterial}
+                  onChange={setFilterMaterial}
+                  style={{ width: "100%" }}
+                >
+                  <Option className="sarabun-bold" value="">
+                    กรองวัตถุดิบ
+                  </Option>
+                  {/* Add options dynamically here */}
+                  <Option className="sarabun-light" value="PK_DIS">
+                    กล่องดิส/ใบแนบ/สติ๊กเกอร์
+                  </Option>
+                  <Option className="sarabun-light" value="PK_shoe">
+                    กล่องก้าม/ใบแนบ/สติ๊กเกอร์
+                  </Option>
+                  <Option className="sarabun-light" value="WD">
+                    กิ๊ฟล๊อค/แผ่นชิม
+                  </Option>
+                  <Option className="sarabun-light" value="PIN">
+                    สลัก/ตะขอ
+                  </Option>
+                  <Option className="sarabun-light" value="BP">
+                    แผ่นเหล็ก
+                  </Option>
+                  <Option className="sarabun-light" value="CHEMICAL">
+                    เคมี
+                  </Option>
+                </Select>
+              </Col>
+              <Col span={6}>
+                <Input
+                  className="sarabun-light"
+                  placeholder="กรอง Inventory ID"
+                  value={filterInventoryId}
+                  onChange={(e) => setFilterInventoryId(e.target.value)}
+                />
+              </Col>
+              <Col span={8}>
+                <Button
+                  onClick={handleResetFilters}
+                  style={{
+                    marginRight: 8,
+                    color: "#f0f0f0",
+                    backgroundColor: "#00152a",
+                    borderColor: "#00152a",
+                  }}
+                >
+                  รีเซ็ต
+                </Button>
+              </Col>
+            </Row>
 
             {idStatus && idStatus === 1 ? (
               <Table
                 columns={columns}
-                dataSource={data.filter((item) => item.status === "รอรับงาน")}
+                dataSource={filteredData.filter(
+                  (item) => item.status === "รอรับงาน"
+                )}
                 pagination={false}
                 scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
                 className="custom-table"
@@ -571,7 +699,7 @@ const Dashboardclerk = () => {
             ) : idStatus === 2 ? (
               <Table
                 columns={columns}
-                dataSource={data.filter(
+                dataSource={filteredData.filter(
                   (item) => item.status === "กำลังดำเนินการ"
                 )}
                 pagination={false}
@@ -581,7 +709,9 @@ const Dashboardclerk = () => {
             ) : idStatus === 3 ? (
               <Table
                 columns={columns}
-                dataSource={data.filter((item) => item.status === "รอตรวจสอบ")}
+                dataSource={filteredData.filter(
+                  (item) => item.status === "รอตรวจสอบ"
+                )}
                 pagination={false}
                 scroll={{ y: "calc(70vh - 250px)" }} // กำหนดการเลื่อนภายในตาราง
                 className="custom-table"
@@ -589,7 +719,7 @@ const Dashboardclerk = () => {
             ) : (
               <Table
                 columns={columns}
-                dataSource={data.filter(
+                dataSource={filteredData.filter(
                   (item) => item.status === "ดำเนินการเรียบร้อย"
                 )}
                 pagination={false}

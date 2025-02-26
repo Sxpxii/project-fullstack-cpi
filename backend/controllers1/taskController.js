@@ -37,20 +37,33 @@ console.log(todayDate); // แสดงวันที่ในรูปแบ�
 
 // ฟังก์ชันสำหรับดึงรายการงานทั้งหมด
 const getTasks = async (req, res) => {
-    try {
-        
-        const tasks = await pool1.query(
-            'SELECT * FROM uploads WHERE current_status = $1 AND assigned_to IS NULL' ,
-            ['รอรับงาน']
-        );
-        console.log('Query Parameters:', ['รอรับงาน']);
+  try {
+      const query = `
+          SELECT 
+              upload_id,
+              filename,
+              upload_date,
+              user_id,
+              current_status,
+              material_type,
+              assigned_to,
+              TO_CHAR(approved_date, 'YYYY-MM-DD') AS approved_date,
+              inventory_id,
+              last_status_update,
+              is_editing
+          FROM uploads
+          WHERE current_status = $1 AND assigned_to IS NULL AND approved_date <= CURRENT_DATE
+      `;
+      
+      const tasks = await pool1.query(query, ['รอรับงาน']);
+      console.log('Query Parameters:', ['รอรับงาน']);
+      console.log('Tasks fetched:', tasks.rows);
 
-        console.log('Tasks fetched:', tasks.rows);
-        res.json(tasks.rows);
-    } catch (error) {
-        console.error('Error fetching tasks:', error);
-        res.status(500).json({ error: 'Failed to fetch tasks' });
-    }
+      res.json(tasks.rows);
+  } catch (error) {
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
 };
 
 // ฟังก์ชันสำหรับรับงาน
@@ -123,32 +136,61 @@ const getMyTasks = async (req, res) => {
 
 // ฟังก์ชันสำหรับคืนงาน
 const returnTask = async (req, res) => {
-    const { upload_id } = req.params;
-    const { userId } = req.user;
-  
-    try {
-      // ลบค่าจากคอลัมน์ assigned_to
-      await pool1.query('UPDATE uploads SET assigned_to = NULL, current_status = $1, last_status_update = NOW() WHERE upload_id = $2 AND assigned_to = $3', ['รอรับงาน', upload_id, userId]);
+  const { upload_id } = req.params;
+  const { userId } = req.user;
 
-      // อัปเดต duration และ average_duration สำหรับสถานะ "กำลังดำเนินการ"
-      await updateDurationAndAverage(upload_id, 'กำลังดำเนินการ');
+  const client = await pool1.connect();
 
-       // บันทึกการเปลี่ยนแปลงสถานะในตาราง operationstatuses
-       await pool1.query(
-        'INSERT INTO operationstatuses (upload_id, status, timestamp) VALUES ($1, $2, NOW())',
-        [upload_id, 'รอรับงาน']
+  try {
+      await client.query('BEGIN'); // เริ่ม transaction
+
+      // ลบรายการ "กำลังดำเนินการ" ออกจาก operationstatuses
+      await client.query(
+          'DELETE FROM operationstatuses WHERE upload_id = $1 AND status = $2',
+          [upload_id, 'กำลังดำเนินการ']
+      );
+
+      // อัปเดตตาราง uploads เพื่อคืนงาน
+      await client.query(
+          'UPDATE uploads SET assigned_to = NULL, current_status = $1, last_status_update = NOW() WHERE upload_id = $2 AND assigned_to = $3',
+          ['รอรับงาน', upload_id, userId]
+      );
+
+      // ตั้งค่า duration และ average_duration ของ upload_id ที่คืนงานให้เป็น NULL
+      await client.query(
+          'UPDATE operationstatuses SET duration = NULL, average_duration = NULL WHERE upload_id = $1',
+          [upload_id]
+      );
+
+      // คำนวณค่าเฉลี่ยใหม่ของ status "รอรับงาน"
+      const avgDurationResult = await client.query(
+          'SELECT AVG(duration) as avg_duration FROM operationstatuses WHERE status = $1',
+          ['รอรับงาน']
+      );
+
+      const newAvgDuration = avgDurationResult.rows[0]?.avg_duration || 0;
+
+      // อัปเดตค่าเฉลี่ย duration สำหรับ status "รอรับงาน"
+      await client.query(
+          'UPDATE operationstatuses SET average_duration = $1 WHERE status = $2',
+          [newAvgDuration, 'รอรับงาน']
       );
 
       // บันทึกการกระทำของผู้ใช้
       await logUserAction(userId, 'คืนงาน', upload_id);
-  
+
+      await client.query('COMMIT'); // ทำการ commit transaction
+      client.release();
+
       res.status(200).json({ message: 'Task returned successfully' });
-    } catch (error) {
+
+  } catch (error) {
+      await client.query('ROLLBACK'); // rollback ถ้าเกิด error
+      client.release();
       console.error('Error returning task:', error);
       res.status(500).json({ error: 'Failed to return task' });
-    }
-  };
-  
+  }
+};
 
 // ฟังก์ชันสำหรับดึงรายละเอียดของงาน
 const getTaskDetails = async (req, res) => {
@@ -185,8 +227,13 @@ const getTaskDetails = async (req, res) => {
     `;
 
     const { rows } = await pool1.query(query, [upload_id]);
-    console.log("Query Result:", JSON.stringify(rows, null, 2));
-    res.json(rows);
+    // เพิ่มลำดับสำหรับแต่ละกลุ่มข้อมูล
+    const resultWithSequence = rows.map((row, index) => ({
+      sequence: index + 1, // เพิ่มลำดับเริ่มต้นที่ 1
+      ...row,
+    }));
+    console.log("Query Result:", JSON.stringify(resultWithSequence , null, 2));
+    res.json(resultWithSequence );
   } catch (err) {
     console.error("Error fetching task details", err);
     res.status(500).json({ error: "Failed to fetch task details" });
@@ -230,8 +277,13 @@ const getPendingTaskDetails = async (req, res) => {
       `;
 
       const { rows } = await pool1.query(query, [upload_id]);
-      console.log(JSON.stringify(rows, null, 2));
-      res.json(rows);
+      // เพิ่มลำดับสำหรับแต่ละกลุ่มข้อมูล
+      const resultWithSequence = rows.map((row, index) => ({
+        sequence: index + 1, // เพิ่มลำดับเริ่มต้นที่ 1
+        ...row,
+      }));
+      console.log(JSON.stringify(resultWithSequence, null, 2));
+      res.json(resultWithSequence);
   } catch (err) {
       console.error("Error fetching task details", err);
       res.status(500).json({ error: "Failed to fetch task details" });
@@ -346,40 +398,46 @@ const saveCountedQuantities = async (req, res) => {
 
 // ฟังก์ชันสำหรับเปลี่ยนสถานะเป็น 'Completed'
 const completeTask = async (req, res) => {
-    const { upload_id } = req.params;
-    const { userId } = req.user;
-    try {
-        // ดึงข้อมูล mat_requests ทั้งหมดที่เกี่ยวข้องกับ upload_id
-        const result = await pool1.query('SELECT remaining_quantity, counted_quantity FROM mat_requests WHERE upload_id = $1', [upload_id]);
-        
-        const allEqual = result.rows.every(row => row.remaining_quantity === row.counted_quantity);
+  const { upload_id } = req.params;
+  const { userId } = req.user;
 
-        // อัพเดตสถานะในตาราง uploads ตามผลการตรวจสอบ
-        const newStatus = allEqual ? 'ดำเนินการเรียบร้อย' : 'รอตรวจสอบ';
-        await pool1.query('UPDATE uploads SET current_status = $1, last_status_update = NOW() WHERE upload_id = $2', [newStatus, upload_id]);
+  try {
+    // ดึงข้อมูล mat_requests ทั้งหมดที่เกี่ยวข้องกับ upload_id
+    const result = await pool1.query('SELECT remaining_quantity, counted_quantity FROM mat_requests WHERE upload_id = $1', [upload_id]);
 
-        // อัปเดต duration และ average_duration สำหรับสถานะ "กำลังดำเนินการ"
-        await updateDurationAndAverage(upload_id, 'กำลังดำเนินการ');
+    const allEqual = result.rows.every(row => row.remaining_quantity === row.counted_quantity);
 
-        // บันทึกการเปลี่ยนแปลงสถานะลงในตาราง operationstatuses
-        await pool1.query(
-            'INSERT INTO operationstatuses (upload_id, status, timestamp) VALUES ($1, $2, NOW())',
-            [upload_id, newStatus]
-        );
+    // อัพเดตสถานะในตาราง uploads ตามผลการตรวจสอบ
+    const newStatus = allEqual ? 'ดำเนินการเรียบร้อย' : 'รอตรวจสอบ';
+    await pool1.query('UPDATE uploads SET current_status = $1, last_status_update = NOW() WHERE upload_id = $2', [newStatus, upload_id]);
 
-        // บันทึกการกระทำของผู้ใช้
-        await logUserAction(userId, 'บันทึกการเบิกจ่าย', upload_id);
+    // อัปเดต duration และ average_duration สำหรับสถานะ "กำลังดำเนินการ"
+    await updateDurationAndAverage(upload_id, 'กำลังดำเนินการ');
 
-        // หากสถานะเป็น 'รอตรวจสอบ' ให้แจ้งเตือนหัวหน้า
-        if (newStatus === 'รอตรวจสอบ') {
-          await notifyManagerBalance(upload_id, req);
-        }
-        
-        res.status(200).send(`Task marked as ${newStatus}`);
-    } catch (err) {
-        console.error('Error marking task as completed:', err);
-        res.status(500).send('Error marking task as completed');
+    // บันทึกการเปลี่ยนแปลงสถานะลงในตาราง operationstatuses
+    await pool1.query(
+      'INSERT INTO operationstatuses (upload_id, status, timestamp) VALUES ($1, $2, NOW())',
+      [upload_id, newStatus]
+    );
+
+    // บันทึกการกระทำของผู้ใช้
+    await logUserAction(userId, 'บันทึกการเบิกจ่าย', upload_id);
+
+    // หากสถานะเป็น 'ดำเนินการเรียบร้อย' ให้ตั้งค่า is_overdue เป็น false
+    if (newStatus === 'ดำเนินการเรียบร้อย') {
+      await pool1.query('UPDATE uploads SET is_overdue = false WHERE upload_id = $1', [upload_id]);
     }
+
+    // หากสถานะเป็น 'รอตรวจสอบ' ให้แจ้งเตือนหัวหน้า
+    if (newStatus === 'รอตรวจสอบ') {
+      await notifyManagerBalance(upload_id, req);
+    }
+
+    res.status(200).send(`Task marked as ${newStatus}`);
+  } catch (err) {
+    console.error('Error marking task as completed:', err);
+    res.status(500).send('Error marking task as completed');
+  }
 };
 
 // เพิ่ม socket.io ใน notifyManager

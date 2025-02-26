@@ -19,6 +19,7 @@ import { io } from "socket.io-client";
 import Swal from "sweetalert2";
 
 const { Header, Content, Footer } = Layout;
+const EXPIRATION_TIME = 8 * 60 * 60 * 1000; // 8 ชั่วโมง (หน่วยเป็นมิลลิวินาที)
 
 const items = [
   { key: "/SupClerkDashboard", label: "แดชบอร์ดรายวัน" },
@@ -136,7 +137,6 @@ const MainLayout = ({ children }) => {
     };
   }, [setNotifications, navigate]);
 
-
   useEffect(() => {
     setSelectedKey(location.pathname); // อัปเดต selectedKey เมื่อ URL เปลี่ยน
   }, [location.pathname]);
@@ -167,6 +167,48 @@ const MainLayout = ({ children }) => {
   const handleMenuClick = (e) => {
     navigate(e.key);
   };
+
+  useEffect(() => {
+    const sessionStartTime = sessionStorage.getItem("sessionStartTime");
+
+    if (!sessionStartTime) {
+      // ถ้ายังไม่มี ให้ตั้งค่า sessionStartTime เป็นเวลาปัจจุบัน
+      sessionStorage.setItem("sessionStartTime", Date.now());
+    } else {
+      const elapsedTime = Date.now() - Number(sessionStartTime);
+      if (elapsedTime >= EXPIRATION_TIME) {
+        handleLogout();
+      } else {
+        // ตั้ง timeout ให้ Logout อัตโนมัติเมื่อครบ 8 ชั่วโมง
+        const remainingTime = EXPIRATION_TIME - elapsedTime;
+        const warningTime = remainingTime - 60 * 1000; // แจ้งเตือนก่อน 1 นาที
+
+        // ตั้งเวลาแจ้งเตือนก่อนหมดอายุ 1 นาที
+        const warningTimer = setTimeout(() => {
+          Swal.fire({
+            title: "Session Expiring!",
+            html: '<span class="sarabun-light">ระบบกำลังจะหมดเวลาในอีก 1 นาที!!!</span>',
+            customClass: {
+              title: "sarabun-bold",
+              confirmButton: "sarabun-light",
+            },
+            icon: "warning",
+            confirmButtonText: "ปิด",
+            allowOutsideClick: false, // ไม่ให้ปิดโดยคลิกข้างนอก
+            allowEscapeKey: false, // ไม่ให้กด ESC ปิด
+          });
+        }, warningTime);
+
+        // ตั้งเวลา Logout อัตโนมัติ
+        const logoutTimer = setTimeout(handleLogout, remainingTime);
+
+        return () => {
+          clearTimeout(warningTimer);
+          clearTimeout(logoutTimer);
+        };
+      }
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -200,7 +242,7 @@ const MainLayout = ({ children }) => {
       console.error("Token not found");
       return;
     }
-  
+
     try {
       // เรียก API เพื่ออัพเดตสถานะเป็น "read"
       await axios.post(
@@ -210,16 +252,14 @@ const MainLayout = ({ children }) => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-  
+
       // เปลี่ยนสถานะการแจ้งเตือนใน state ให้เป็น "read"
       setNotifications((prevNotifications) =>
         prevNotifications.map((notif) =>
-          notif.id === notification.id
-            ? { ...notif, status: "read" }
-            : notif
+          notif.id === notification.id ? { ...notif, status: "read" } : notif
         )
       );
-  
+
       // นำทางไปยังหน้าที่เกี่ยวข้อง
       navigate("/Approval", {
         state: { record: notification },
@@ -331,7 +371,9 @@ const MainLayout = ({ children }) => {
                   notification.status === "unread" ? "#e6f7ff" : "white", // ไฮไลต์พื้นหลังสำหรับ unread
                 cursor: "pointer",
               }}
-              onClick={() => {handleNotificationClick(notification)}}
+              onClick={() => {
+                handleNotificationClick(notification);
+              }}
             >
               <strong className="sarabun-bold" style={{ fontSize: "16px" }}>
                 {notification.sender_username}
@@ -349,7 +391,7 @@ const MainLayout = ({ children }) => {
             </div>
           ))
         ) : (
-          <p className="sarabun-light" >ไม่มีการแจ้งเตือน</p>
+          <p className="sarabun-light">ไม่มีการแจ้งเตือน</p>
         )}
       </Drawer>
 

@@ -155,6 +155,20 @@ const MyTasks = () => {
       render: (inventory_id) => (
         <div className="table-data">{inventory_id}</div>
       ),
+    },{
+      title: "วันที่",
+      dataIndex: "approved_date",
+      key: "approved_date",
+      render: (date) => new Date(date).toLocaleDateString(),
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
     },
     {
       title: "วัตถุดิบ",

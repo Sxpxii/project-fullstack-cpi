@@ -461,6 +461,7 @@ const PendingTaskDetails = () => {
           m.details.map((d, index) => {
             return {
               ...d,
+              sequence: m.sequence,
               mat_unit: m.mat_unit,
               mat_name: m.mat_name,
               material_index: index + 1,
@@ -608,10 +609,30 @@ const PendingTaskDetails = () => {
 
   const columns = [
     {
+      title: "ลำดับ",
+      dataIndex: "sequence",
+      key: "sequence",
+      render: (text, record) => ({
+        children: <span>{text}</span>,
+        props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
+      }),
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
+    },
+    {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
-      render: (text, record, index) => ({
+      render: (text, record) => ({
         children: <span>{text}</span>,
         props: { rowSpan: record.rowSpanMatName },
       }),
@@ -622,8 +643,6 @@ const PendingTaskDetails = () => {
           fontWeight: "bold", // ความหนาของตัวอักษร
           fontSize: "14px", // ขนาดตัวอักษร
           color: "#ffffff", // สีตัวอักษร
-          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
-          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
         },
       }),
     },

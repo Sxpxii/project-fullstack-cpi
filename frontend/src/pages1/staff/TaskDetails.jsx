@@ -42,6 +42,7 @@ const TaskDetails = () => {
   const [buttonType, setButtonType] = useState("savePartial");
 
   const navigate = useNavigate();
+  console.log("useParams:", useParams());
 
   const fetchTaskDetails = async () => {
     try {
@@ -85,7 +86,6 @@ const TaskDetails = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      message.success("Task marked as completed");
 
       setIsTaskCompleted(true);
       console.log("isTaskCompleted after completeTask:", true);
@@ -130,34 +130,70 @@ const TaskDetails = () => {
 
   const handleSaveCountedQuantities = async () => {
     try {
-      const token = sessionStorage.getItem("token");
-      console.log("Temporary Data ปกติ:", temporaryData);
+      // ยืนยันการบันทึกข้อมูลก่อน
+      const result = await Swal.fire({
+        title: "ยืนยันการบันทึกข้อมูล",
+        html: '<span class="sarabun-light">คุณต้องการบันทึกข้อมูลการเบิกจ่ายใช่ไหม?</span>',
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "ใช่, บันทึก",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "green",
+        customClass: {
+          title: "sarabun-bold",
+          confirmButton: "sarabun-light",
+          cancelButton: "sarabun-light",
+        },
+      });
 
-      const payload = Object.entries(temporaryData).map(([id, details]) => ({
-        id: parseInt(id, 10),
-        counted_quantity: details.counted_quantity,
-        actual_quantity: details.actual_quantity,
-        selected_time: details.timestamp,
-      }));
+      // ถ้าผู้ใช้เลือก "ใช่, บันทึก"
+      if (result.isConfirmed) {
+        const token = sessionStorage.getItem("token");
+        console.log("Temporary Data ปกติ:", temporaryData);
 
-      console.log("Payload to send:", payload);
+        const payload = Object.entries(temporaryData).map(([id, details]) => ({
+          id: parseInt(id, 10),
+          counted_quantity: details.counted_quantity,
+          actual_quantity: details.actual_quantity,
+          selected_time: details.timestamp,
+        }));
 
-      const response = await axios.post(
-        `${config.API_URL}/tasks/save-counted-quantities/${upload_id}`,
-        payload,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+        console.log("Payload to send:", payload);
 
-      console.log("Successfully updated:", response.data);
-      message.success("บันทึกการเบิกจ่ายเรียบร้อย");
+        const response = await axios.post(
+          `${config.API_URL}/tasks/save-counted-quantities/${upload_id}`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-      await completeTask();
-      navigate("/MyTasks");
+        console.log("Successfully updated:", response.data);
+
+        // แสดง Swal แจ้งว่าบันทึกสำเร็จ
+        Swal.fire({
+          icon: "success",
+          title: "บันทึกข้อมูลสำเร็จ",
+          html: '<span class="sarabun-light">ข้อมูลการเบิกจ่ายได้ถูกบันทึกเรียบร้อยแล้ว</span>',
+          customClass: {
+            title: "sarabun-bold",
+          },
+        });
+
+        await completeTask();
+        navigate("/MyTasks");
+      } else {
+        // ถ้าผู้ใช้เลือก "ยกเลิก"
+        console.log("User canceled the save operation");
+      }
     } catch (err) {
       console.error("Failed to save counted quantities:", err);
-      message.error("Failed to save counted quantities");
+      Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        html: '<span class="sarabun-light">ไม่สามารถบันทึกข้อมูลได้, กรุณาลองใหม่อีกครั้ง</span>',
+        confirmButtonText: "ตกลง",
+      });
     }
   };
 
@@ -490,9 +526,11 @@ const TaskDetails = () => {
             const actualQuantity = actualQuantities[d.id];
             return {
               ...d,
+              sequence: m.sequence,
               mat_unit: m.mat_unit,
               mat_name: m.mat_name,
               material_index: index + 1,
+              rowSpansequence: index === 0 ? m.details.length : 0,
               rowSpanMatunit: index === 0 ? m.details.length : 0,
               rowSpanMatName: index === 0 ? m.details.length : 0,
               rowSpanQuantity: index === 0 ? m.details.length : 0,
@@ -556,6 +594,26 @@ const TaskDetails = () => {
 
   const columns = [
     {
+      title: "ลำดับ",
+      dataIndex: "sequence",
+      key: "sequence",
+      render: (text, record) => ({
+        children: <span>{text}</span>,
+        props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
+      }),
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
+    },
+    {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
@@ -576,8 +634,6 @@ const TaskDetails = () => {
           fontWeight: "bold", // ความหนาของตัวอักษร
           fontSize: "14px", // ขนาดตัวอักษร
           color: "#ffffff", // สีตัวอักษร
-          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
-          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
         },
       }),
     },
@@ -610,7 +666,7 @@ const TaskDetails = () => {
       }),
     },
     {
-      title: "จำนวนที่ต้องหยิบ",
+      title: "จำนวนที่ต้องจ่าย",
       dataIndex: "quantity",
       key: "quantity",
       onHeaderCell: () => ({
@@ -625,7 +681,7 @@ const TaskDetails = () => {
       align: "center",
     },
     {
-      title: "จ่ายจริง",
+      title: "จำนวนจ่ายจริง",
       dataIndex: "actual_quantity",
       key: "actual_quantity",
       onHeaderCell: () => ({
@@ -670,7 +726,7 @@ const TaskDetails = () => {
       align: "center",
     },
     {
-      title: "จำนวนคงเหลือ",
+      title: "จำนวนคงเหลือในโปรแกรม",
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -685,7 +741,7 @@ const TaskDetails = () => {
       align: "center",
     },
     {
-      title: "นับจริง",
+      title: "จำนวนคงเหลือนับจริง",
       dataIndex: "counted_quantity",
       onHeaderCell: () => ({
         style: {
@@ -729,7 +785,7 @@ const TaskDetails = () => {
       align: "center",
     },
     {
-      title: "คงเหลือรวม",
+      title: "คงเหลือรวมทุกล็อต",
       dataIndex: "total_quantity",
       key: "total_quantity",
       onHeaderCell: () => ({
@@ -819,7 +875,7 @@ const TaskDetails = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <div style={{ marginTop:"20px", marginBottom:"20px"}}>
+        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
           <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>
               <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
@@ -861,8 +917,8 @@ const TaskDetails = () => {
                 backgroundColor: " #DCDCDC",
                 borderRadius: "12px",
                 fontSize: "18px",
-                marginTop:"30px",
-                marginBottom:"30px",
+                marginTop: "30px",
+                marginBottom: "30px",
               }}
             >
               รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}

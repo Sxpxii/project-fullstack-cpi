@@ -51,6 +51,26 @@ const TaskDetailsFinished = () => {
 
   const columns = [
     {
+      title: "ลำดับ",
+      dataIndex: "sequence",
+      key: "sequence",
+      render: (text, record) => ({
+        children: <span>{text}</span>,
+        props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
+      }),
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
+    },
+    {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
@@ -65,8 +85,6 @@ const TaskDetailsFinished = () => {
           fontWeight: "bold", // ความหนาของตัวอักษร
           fontSize: "14px", // ขนาดตัวอักษร
           color: "#ffffff", // สีตัวอักษร
-          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
-          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
         },
       }),
     },
@@ -188,8 +206,10 @@ const TaskDetailsFinished = () => {
     ? data.flatMap((m) =>
         m.details.map((d, index) => ({
           ...d,
+          sequence: m.sequence,
           mat_unit: m.mat_unit,
           mat_name: m.mat_name,
+          rowSpansequence: index === 0 ? m.details.length : 0,
           rowSpanMatunit: index === 0 ? m.details.length : 0,
           rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
           rowSpanQuantity: index === 0 ? m.details.length : 0,

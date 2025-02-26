@@ -57,8 +57,8 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Invalid username or password' });
         }
 
-        const accessToken = jwt.sign({ userId: user.user_id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
-        const refreshToken = jwt.sign({ userId: user.user_id, username: user.username, role: user.role }, process.env.JWT_REFRESH_SECRET, { expiresIn: '8h' });
+        const accessToken = jwt.sign({ userId: user.user_id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '9h' });
+        const refreshToken = jwt.sign({ userId: user.user_id, username: user.username, role: user.role }, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
 
         await logUserAction(user.user_id, 'Login');
         console.log('Login response:', { accessToken, refreshToken, username: user.username, userId: user.user_id });
@@ -87,7 +87,7 @@ const refreshToken = async (req, res) => {
     jwt.verify(token, process.env.JWT_REFRESH_SECRET, (err, user) => {
         if (err) return res.sendStatus(403);
 
-        const accessToken = jwt.sign({ userId: user.userId, role: user.role }, process.env.JWT_SECRET, { expiresIn: '15m' });
+        const accessToken = jwt.sign({ userId: user.userId, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
         res.json({ accessToken });
     });
 };

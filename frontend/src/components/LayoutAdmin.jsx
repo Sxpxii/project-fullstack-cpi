@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Layout, Menu, Avatar, Dropdown, message } from "antd";
-import {
-  UserOutlined,
-  LogoutOutlined,
-} from "@ant-design/icons";
-import { useNavigate, useLocation  } from "react-router-dom";
+import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { TbBuildingWarehouse } from "react-icons/tb";
-import config from '../configAPI';
+import config from "../configAPI";
 
 const { Header, Content, Footer } = Layout;
+const EXPIRATION_TIME = 8 * 60 * 60 * 1000; // 8 ชั่วโมง (หน่วยเป็นมิลลิวินาที)
 
 const items = [
   { key: "/UserManagement", label: "User Management" },
   { key: "/UploadMaterials", label: "Material Management" },
 ];
-
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -30,6 +27,48 @@ const MainLayout = ({ children }) => {
   const handleMenuClick = (e) => {
     navigate(e.key);
   };
+
+  useEffect(() => {
+    const sessionStartTime = sessionStorage.getItem("sessionStartTime");
+
+    if (!sessionStartTime) {
+      // ถ้ายังไม่มี ให้ตั้งค่า sessionStartTime เป็นเวลาปัจจุบัน
+      sessionStorage.setItem("sessionStartTime", Date.now());
+    } else {
+      const elapsedTime = Date.now() - Number(sessionStartTime);
+      if (elapsedTime >= EXPIRATION_TIME) {
+        handleLogout();
+      } else {
+        // ตั้ง timeout ให้ Logout อัตโนมัติเมื่อครบ 8 ชั่วโมง
+        const remainingTime = EXPIRATION_TIME - elapsedTime;
+        const warningTime = remainingTime - 60 * 1000; // แจ้งเตือนก่อน 1 นาที
+
+        // ตั้งเวลาแจ้งเตือนก่อนหมดอายุ 1 นาที
+        const warningTimer = setTimeout(() => {
+          Swal.fire({
+            title: "Session Expiring!",
+            html: '<span class="sarabun-light">ระบบกำลังจะหมดเวลาในอีก 1 นาที!!!</span>',
+            customClass: {
+              title: "sarabun-bold",
+              confirmButton: "sarabun-light",
+            },
+            icon: "warning",
+            confirmButtonText: "ปิด",
+            allowOutsideClick: false, // ไม่ให้ปิดโดยคลิกข้างนอก
+            allowEscapeKey: false, // ไม่ให้กด ESC ปิด
+          });
+        }, warningTime);
+
+        // ตั้งเวลา Logout อัตโนมัติ
+        const logoutTimer = setTimeout(handleLogout, remainingTime);
+
+        return () => {
+          clearTimeout(warningTimer);
+          clearTimeout(logoutTimer);
+        };
+      }
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {

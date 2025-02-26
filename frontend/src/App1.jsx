@@ -2,12 +2,12 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import PrivateRoute from "./PrivateRoute";
 import Login from "./pages1/Login";
-import Dashboard from "./pages1/clerk/Dashboard";
+//import Dashboard from "./pages1/clerk/Dashboard";
 import Dashboardclerk from "./pages1/clerk/Dashboard1";
 import Details from "./pages1/clerk/Details";
 import Register from "./pages1/Register";
-import UploadBalance from "./pages1/clerk/UploadBalance";
-import UploadRequest from "./pages1/clerk/UploadRequest";
+//import UploadBalance from "./pages1/clerk/UploadBalance";
+//import UploadRequest from "./pages1/clerk/UploadRequest";
 import UploadItemRequest from "./pages1/clerk/UploadItemRequest";
 import OperationsDashboard from "./pages1/staff/Dashboard";
 import MyTasks from "./pages1/staff/MyTasks";
@@ -51,11 +51,11 @@ React.useEffect(() => {
 
         {/* Routes for Warehouse Officer */}
         <Route element={<PrivateRoute allowedRoles={["Warehouse Officer"]} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/*<Route path="/dashboard" element={<Dashboard />} />*/}
           <Route path="/dashboardClerk" element={<Dashboardclerk />} />
-          <Route path="/details/:id" element={<Details />} />
-          <Route path="/UploadBalance" element={<UploadBalance />} />
-          <Route path="/UploadRequest" element={<UploadRequest />} />
+          <Route path="/details/:upload_id" element={<Details />} />
+          {/*<Route path="/UploadBalance" element={<UploadBalance />} />
+          <Route path="/UploadRequest" element={<UploadRequest />} />*/}
           <Route path="/UploadItemRequest" element={<UploadItemRequest />} />
         </Route>
 

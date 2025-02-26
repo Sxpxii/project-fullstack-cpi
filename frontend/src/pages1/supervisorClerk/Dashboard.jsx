@@ -594,6 +594,7 @@ const SupervisorDashboard = () => {
               </Card>
             </Col>
           </Row>
+         
           <Row>
             <div
               className="sarabun-bold"
@@ -642,6 +643,7 @@ const SupervisorDashboard = () => {
               </Card>
             </Col>
           </Row>
+         
         </Card>
 
         <Row gutter={24} style={{ marginTop: 30 }}>

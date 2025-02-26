@@ -20,7 +20,6 @@ function Login() {
       if (
         !response ||
         !response.accessToken ||
-        !response.refreshToken ||
         !response.userId
       ) {
         throw new Error("Invalid response from server");
@@ -30,7 +29,6 @@ function Login() {
       const userId = response.userId;
 
       sessionStorage.setItem("token", response.accessToken);
-      sessionStorage.setItem("refreshToken", response.refreshToken);
       sessionStorage.setItem("username", username);
       sessionStorage.setItem("role", role);
       sessionStorage.setItem("userId", userId);
@@ -38,7 +36,7 @@ function Login() {
       message.success("Login successful");
 
       if (role === "Warehouse Officer") {
-        navigate("/Dashboard");
+        navigate("/dashboardClerk");
       } else if (role === "Operations") {
         navigate("/OperationsDashboard");
       } else if (role === "Supervisor Clerk") {

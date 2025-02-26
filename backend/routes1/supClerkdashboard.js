@@ -7,7 +7,9 @@ const { getDailyOverview,
     getDailyIssues,
     getAverageTimes,
     getWorkloadDetail,
-    getAverageTimesByMaterials
+    getAverageTimesByMaterials,
+    getWorkloadTask,
+    getWorkloadTaskItem
  } = require('../controllers1/supClerkDashController'); 
 const { authenticateToken } = require('../controllers1/loginController1');
 
@@ -19,6 +21,8 @@ router.get('/user', getUserInfo);
 
 // Route สำหรับดึงข้อมูลเพื่อวิเคราะห์
 router.get('/workload-details', getWorkloadDetail);
+router.get('/workload-tasks', getWorkloadTask);
+router.get('/workload-tasks-item', getWorkloadTaskItem);
 router.get('/average-times', getAverageTimes);
 router.get('/average-times-materials', getAverageTimesByMaterials);
 

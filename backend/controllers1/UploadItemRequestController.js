@@ -2,6 +2,7 @@ const fs = require('fs');
 const XLSX = require('xlsx');
 const path = require('path');
 const { pool1 } = require('../config/db');
+const iconv = require('iconv-lite');
 
 // บันทึกการอัปโหลดไฟล์
 const recordFileUpload = async (userId, fileName, materialType, approvedDate) => {
@@ -47,9 +48,24 @@ const updateTotalQuantity = async (uploadId) => {
             'UPDATE uploads SET total_quantity = $1 WHERE upload_id = $2',
             [totalQuantity, uploadId]
         );
+        return totalQuantity;
     } catch (error) {
         console.error('Error updating total quantity:', error);
         throw error;
+    }
+};
+
+const rollbackData = async (uploadId) => {
+    try {
+        await pool1.query('DELETE FROM mat_requests WHERE upload_id = $1', [uploadId]);
+        await pool1.query('DELETE FROM material_matunits WHERE upload_id = $1', [uploadId]);
+        await pool1.query('DELETE FROM operationstatuses WHERE upload_id = $1', [uploadId]);
+        await pool1.query('DELETE FROM uploads WHERE upload_id = $1', [uploadId]);
+        await pool1.query('COMMIT');
+        console.log(`Rolled back data for uploadId: ${uploadId}`);
+    } catch (err) {
+        console.error("Error", err);
+        throw err; // เพิ่มการโยนข้อผิดพลาดกลับ
     }
 };
 
@@ -64,9 +80,9 @@ const uploadFileAndConvert = (req, res) => {
         const { file } = req.files;
         const fileName = file.name;
         // ตรวจสอบรูปแบบไฟล์
-        if (path.extname(fileName).toLowerCase() !== '.xlsx') {
+        /*if (path.extname(fileName).toLowerCase() !== '.xlsx') {
             return res.status(300).json({ message: 'ไฟล์ไม่ถูกต้อง กรุณาอัปโหลดไฟล์ .xlsx' });
-        }
+        }*/
         const filePath = path.join(__dirname, '..', 'temp', fileName);
 
         file.mv(filePath, async (err) => {
@@ -79,7 +95,19 @@ const uploadFileAndConvert = (req, res) => {
             const uploadId = await recordFileUpload(userId, fileName, materialType, approvedDate);
             await recordOperationStatus(uploadId, 'รอรับงาน');
 
-            const workbook = XLSX.readFile(filePath, { cellDates: false, raw: true });
+            /*const workbook = XLSX.readFile(filePath, { cellDates: false, raw: true });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const range = XLSX.utils.decode_range(worksheet['!ref']);*/
+
+            let workbook;
+            try {
+                // ลองอ่านไฟล์ด้วย .xls/.xlsx
+                workbook = XLSX.readFile(filePath, { type: 'binary', cellDates: false, raw: true, codepage: 874});
+            } catch (error) {
+                return res.status(500).json({ message: 'ไม่สามารถเปิดไฟล์ Excel ได้' });
+            }
+
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const range = XLSX.utils.decode_range(worksheet['!ref']);
@@ -103,7 +131,7 @@ const uploadFileAndConvert = (req, res) => {
                             const formattedDate = `${day}-${month}-${year}`; // รูปแบบ DD-MM-YY
                             rowData[XLSX.utils.encode_col(col)] = formattedDate;
                         } else {
-                            rowData[XLSX.utils.encode_col(col)] = cell.v; // เก็บค่าปกติ
+                            rowData[XLSX.utils.encode_col(col)] = cell.v ;  // เก็บค่าปกติ
                         }
                     } else {
                         rowData[XLSX.utils.encode_col(col)] = ''; // ค่าว่างถ้าไม่มีข้อมูล
@@ -113,7 +141,12 @@ const uploadFileAndConvert = (req, res) => {
 
                 // ตรวจสอบว่าข้อมูลในคอลัมน์ B เป็น MatUnit หรือ matLot
                 const columnB = rowData.B || '';
-                if (/^R\d{6}-\d{5}-\d{4}/.test(columnB)) {
+
+                // ตรวจสอบรูปแบบของ MatUnit
+                const matUnitRegex1 = /^R\d{6}-\d{5}-\d{4}/;  // เดิม
+                const matUnitRegex2 = /^P\d{6}-\d{5} \(.*?\)/; // ใหม่ (แบบ "P210201-05220 (ใบ)")
+
+                if (matUnitRegex1.test(columnB) || matUnitRegex2.test(columnB)) {
                     // เป็น MatUnit
                     const [matUnit, mat_name] = columnB.split(':').map((s) => s.trim());
                     currentMatUnit = {
@@ -157,16 +190,66 @@ const uploadFileAndConvert = (req, res) => {
             });
 
             // เรียกใช้ฟังก์ชันเพื่อบันทึกข้อมูลในฐานข้อมูล
-            await saveDataToDatabase(groupedData, uploadId);
-            await updateTotalQuantity(uploadId);
-
-            res.status(200).json({ message: 'ประมวลผลไฟล์สำเร็จ', data: groupedData });
+            try {
+                await saveDataToDatabase(groupedData, uploadId);
+                const totalQuantity = await updateTotalQuantity(uploadId);
+                const savedData = await getUploadedData(uploadId);
+                res.status(200).json({ message: 'ประมวลผลไฟล์สำเร็จ', data: savedData, uploadId: uploadId, totalQuantity: totalQuantity, });
+            } catch (dbError) {
+                console.error('Database error:', dbError);
+                await rollbackData(uploadId); // Rollback in case of database error
+                res.status(500).json({ message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' });
+            }
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการประมวลผลไฟล์' });
     }
 };
+
+const getUploadedData = async (uploadId) => {
+    try {
+        const query = `
+            SELECT 
+                m.id,
+                m.mat_name,
+                m.mat_unit,
+                JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                        'id', r.id,
+                        'mat_unit_id', r.mat_unit_id,
+                        'mat_lot', r.mat_lot,
+                        'loc', r.loc,
+                        'quantity', r.quantity,
+                        'total_quantity', r.total_quantity
+                    )
+                    ORDER BY r.id
+                ) AS details
+            FROM material_matunits m
+            JOIN mat_requests r ON m.id = r.mat_unit_id
+            WHERE r.upload_id = $1
+            GROUP BY m.id, m.mat_name, m.mat_unit
+            ORDER BY m.id;
+        `;
+        const { rows } = await pool1.query(query, [uploadId]);
+
+        if (!rows || rows.length === 0) {
+            throw new Error('ไม่พบข้อมูล');
+        }
+
+        const resultWithSequence = rows.map((row, index) => ({
+            sequence: index + 1,
+            ...row,
+        }));
+
+        console.log("Result with Sequence:", JSON.stringify(resultWithSequence, null, 2));
+        return resultWithSequence;
+    } catch (err) {
+        console.error("Error fetching task details", err);
+        throw err; // เพิ่มการโยนข้อผิดพลาดกลับ
+    }
+};
+
 
 const saveDataToDatabase = async (groupedData, uploadId) => {
     try {
@@ -202,6 +285,55 @@ const saveDataToDatabase = async (groupedData, uploadId) => {
     }
 };
 
+const ReturnData = async (req, res) => {
+    const { uploadId } = req.body;
+  
+    // Validate input
+    if (!uploadId) {
+      return res.status(400).json({
+        message: "Upload ID is required.",
+      });
+    }
+  
+    const client = await pool1.connect(); // Connect to the database
+    try {
+      // Begin transaction
+      await client.query("BEGIN");
+  
+      // Delete data from mat_requests
+      await client.query("DELETE FROM mat_requests WHERE upload_id = $1", [uploadId]);
+  
+      // Delete data from material_matunits
+      await client.query("DELETE FROM material_matunits WHERE upload_id = $1", [uploadId]);
+  
+      // Delete data from operationstatuses
+      await client.query("DELETE FROM operationstatuses WHERE upload_id = $1", [uploadId]);
+  
+      // Delete data from uploads
+      await client.query("DELETE FROM uploads WHERE upload_id = $1", [uploadId]);
+  
+      // Commit transaction
+      await client.query("COMMIT");
+  
+      // Send success response
+      return res.status(200).json({
+        message: "Data successfully rolled back.",
+      });
+    } catch (error) {
+      // Rollback transaction in case of error
+      await client.query("ROLLBACK");
+      console.error("Error during ReturnData:", error);
+  
+      return res.status(500).json({
+        message: "An error occurred while rolling back data.",
+        error: error.message,
+      });
+    } finally {
+      client.release(); // Release the database client
+    }
+  };
+
 module.exports = {
-    uploadFileAndConvert
+    uploadFileAndConvert,
+    ReturnData
 };

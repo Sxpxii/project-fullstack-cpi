@@ -303,6 +303,134 @@ const getWorkloadDetail = async (req, res) => {
   }
 };
 
+// ฟังก์ชันดึงข้อมูลภาระงาน(รายการย่อย)
+const getWorkloadTask = async (req, res) => {
+  try {
+    const result = await pool1.query(`
+        SELECT 
+            u.upload_id,
+            u.user_id,
+            u.assigned_to,
+            u1.username AS user_username,
+            u2.username AS assigned_to_username,
+            COUNT(mr.id) AS total_requests
+        FROM uploads u
+        LEFT JOIN mat_requests mr ON u.upload_id = mr.upload_id
+        LEFT JOIN users1 u1 ON u.user_id = u1.user_id 
+        LEFT JOIN users1 u2 ON u.assigned_to = u2.user_id 
+        WHERE u.user_id IS NOT NULL 
+        GROUP BY u.upload_id, u.user_id, u.assigned_to, u1.username, u2.username
+        ORDER BY u.upload_id;
+    `);
+
+     //แปลงข้อมูล `WorkloadDetails`
+     const workloadDetails = result.rows;
+
+      // คำนวณยอดรวมตาม assigned_to (เปลี่ยนเป็น object)
+    const assignedTo = {};
+    workloadDetails.forEach(({ assigned_to_username, total_requests }) => {
+      if (assigned_to_username) { // ตรวจสอบค่า null หรือ undefined
+        if (!assignedTo[assigned_to_username]) {
+          assignedTo[assigned_to_username] = 0;
+        }
+        assignedTo[assigned_to_username] += parseInt(total_requests, 10);
+      }
+    });
+
+    // คำนวณยอดรวมตาม user_id (เปลี่ยนเป็น object)
+    const userId = {};
+    workloadDetails.forEach(({ user_username, total_requests }) => {
+      if (user_username) { // ตรวจสอบค่า null หรือ undefined
+        if (!userId[user_username]) {
+          userId[user_username] = 0;
+        }
+        userId[user_username] += parseInt(total_requests, 10);
+      }
+    });
+
+    // คำนวณยอดรวมของ total_requests ทั้งหมด
+    const grandTotalRequests = workloadDetails.reduce((sum, { total_requests }) => sum + parseInt(total_requests, 10), 0);
+
+    // ส่งข้อมูลกลับไปยัง frontend
+    res.json({
+      WorkloadTask: workloadDetails,
+      assignedTo: assignedTo,
+      userId: userId,
+      grandTotalRequests: grandTotalRequests
+    });
+
+  } catch (err) {
+    console.error("Error fetching workload task counts:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// ฟังก์ชันดึงข้อมูลภาระงาน(ยอดรวม)
+const getWorkloadTaskItem = async (req, res) => {
+  try {
+    const result = await pool1.query(`
+      SELECT 
+          u.upload_id,
+          u.user_id, 
+          u.assigned_to, 
+          u1.username AS user_username, 
+          u2.username AS assigned_to_username, 
+          u.total_quantity
+      FROM uploads u
+      LEFT JOIN users1 u1 ON u.user_id = u1.user_id 
+      LEFT JOIN users1 u2 ON u.assigned_to = u2.user_id 
+      WHERE u.user_id IS NOT NULL
+      GROUP BY u.upload_id, u.user_id, u.assigned_to, u1.username, u2.username
+      ORDER BY u.upload_id;
+  `);
+
+    //แปลงข้อมูล `TaskItemData`
+    const TaskItemData = result.rows;
+
+    // คำนวณยอดรวมตาม assigned_to (เฉพาะ assigned_to_username)
+    const assignedToTaskItem = {};
+    TaskItemData.forEach(({ assigned_to_username, total_quantity }) => {
+      if (assigned_to_username) {
+        if (!assignedToTaskItem[assigned_to_username]) {
+          assignedToTaskItem[assigned_to_username] = 0;
+        }
+        assignedToTaskItem[assigned_to_username] += parseInt(total_quantity, 10);
+      }
+    });
+
+    // คำนวณยอดรวมตาม user_id (เฉพาะ user_username)
+    const userIdTaskItem = {};
+    TaskItemData.forEach(({ user_username, total_quantity }) => {
+      if (user_username) {
+        if (!userIdTaskItem[user_username]) {
+          userIdTaskItem[user_username] = 0;
+        }
+        userIdTaskItem[user_username] += parseInt(total_quantity, 10);
+      }
+    });
+
+    const TotalTaskItem = TaskItemData.reduce((sum, { total_quantity }) => sum + parseInt(total_quantity, 10), 0);
+
+    console.log('user_id:', userIdTaskItem);
+    console.log('assigned_to:', assignedToTaskItem);
+    console.log('Workload Details:', TaskItemData);
+    console.log('TotalTaskItem:', TotalTaskItem);
+
+    //ส่งข้อมูลกลับไปยัง frontend
+    res.json({
+      TaskItemData: TaskItemData,
+      assignedToTaskItem: assignedToTaskItem,
+      userIdTaskItem: userIdTaskItem,
+      TotalTaskItem: TotalTaskItem.toString()
+    });
+
+  } catch (err) {
+    console.error("Error fetching workload task counts:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
 // ฟังก์ชันดึงข้อมูลเวลาเฉลี่ยของแต่ละสถานะ
 const getAverageTimes = async (req, res) => {
   const client = await pool1.connect();
@@ -320,7 +448,7 @@ const getAverageTimes = async (req, res) => {
           ELSE 4  -- ใช้ค่าอื่นๆ ถ้าสถานะไม่ตรงตามที่กำหนด
         END
     `);
-    //console.log('AverageTimes',result.rows);
+    console.log('AverageTimes',result.rows);
     res.status(200).json(result.rows);
   } catch (err) {
     console.error('Error fetching average durations:', err);
@@ -348,7 +476,7 @@ const getAverageTimesByMaterials = async (req, res) => {
       WHERE os.duration IS NOT NULL
     `;
     const materialUploadsResult = await pool1.query(queryMaterialUploads);
-    console.log('Step 1: material_uploads data:', materialUploadsResult.rows);
+    //console.log('Step 1: material_uploads data:', materialUploadsResult.rows);
 
     // ขั้นตอนที่ 2: คำนวณค่าเฉลี่ย duration ต่อ material_type และ status
     const queryGroupedData = `
@@ -371,7 +499,7 @@ const getAverageTimesByMaterials = async (req, res) => {
       GROUP BY material_type, status
     `;
     const groupedDataResult = await pool1.query(queryGroupedData);
-    console.log('Step 2: grouped_data with avg_duration_per_status:', groupedDataResult.rows);
+    //console.log('Step 2: grouped_data with avg_duration_per_status:', groupedDataResult.rows);
 
     // ขั้นตอนที่ 3: เรียงลำดับข้อมูลขั้นสุดท้าย
     const finalQuery = `
@@ -409,7 +537,7 @@ const getAverageTimesByMaterials = async (req, res) => {
         END;
     `;
     const finalResult = await pool1.query(finalQuery);
-    console.log('Step 3: Final result:', finalResult.rows);
+    //console.log('Step 3: Final result:', finalResult.rows);
 
     // ส่งผลลัพธ์กลับไปยัง client
     res.status(200).json(finalResult.rows);
@@ -428,5 +556,7 @@ module.exports = {
     updateDurationAndAverage,
     getAverageTimes,
     getWorkloadDetail,
-    getAverageTimesByMaterials
+    getAverageTimesByMaterials,
+    getWorkloadTask,
+    getWorkloadTaskItem
 };

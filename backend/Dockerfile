@@ -1,0 +1,20 @@
+# ใช้ Node.js image
+FROM node:16
+
+# ตั้งค่า working directory
+WORKDIR /app
+
+# คัดลอกไฟล์ package.json และ package-lock.json ไปที่ container
+COPY backend/package*.json ./
+
+# ติดตั้ง dependencies
+RUN npm install
+
+# คัดลอกโค้ดของ backend ไปยัง container
+COPY backend/ .
+
+# พอร์ตที่แอปฟัง
+EXPOSE 3002
+
+# คำสั่งในการรันแอป
+CMD ["node", "server1.js"]

@@ -1,9 +1,9 @@
 // src/pages1/UploadItemRequest.jsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import MainLayout from "../../components/LayoutClerk";
 import config from "../../configAPI";
-import { Breadcrumb, Steps, Button, Card, DatePicker } from "antd";
+import { Table, Steps, Button, Card, DatePicker } from "antd";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
@@ -16,6 +16,11 @@ const UploadPage = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [materialType, setMaterialType] = useState("");
   const [approvedDate, setApprovedDate] = useState(null);
+  const [data, setData] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [formattedData, setFormattedData] = useState([]);
+  const [uploadId, setUploadId] = useState(null);
+  const [totalQuantity, setTotalQuantity] = useState(null);
 
   const navigate = useNavigate();
 
@@ -68,32 +73,143 @@ const UploadPage = () => {
     try {
       const token = sessionStorage.getItem("token");
 
-      await axios.post(`${config.API_URL}/itemrequests/upload`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      Swal.fire({
-        icon: "success",
-        title: "อัปโหลดสำเร็จ",
-        html: '<span class="sarabun-light">ไฟล์ของคุณถูกอัปโหลดเรียบร้อยแล้ว</span>',
-        customClass: {
-          title: "sarabun-bold", // ใส่คลาสให้กับ title
-        },
-      }).then(() => {
-        navigate("/dashboardClerk"); // นำทางไปยัง /dashboard
-      });
-      setFile(null); // รีเซ็ตไฟล์หลังอัปโหลดสำเร็จ
-      fileInputRef.current.value = ""; // รีเซ็ต input
+      const response = await axios.post(
+        `${config.API_URL}/itemrequests/upload`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setData(response.data.data); // ตั้งค่า data ที่ได้รับจาก API
+      setIsUploading(false); // เสร็จสิ้นการอัปโหลด
+      setUploadId(response.data.uploadId); // เก็บ uploadId
+      setTotalQuantity(response.data.totalQuantity);
+      console.log("Upload ID:", response.data.uploadId);
+      console.log("Response from server:", response.data);
     } catch (error) {
+      setIsUploading(false);
       console.error("Error uploading file:", error);
       Swal.fire({
         icon: "error",
         title: "เกิดข้อผิดพลาด",
-        html: '<span class="sarabun-bold">กรุณาเลือกไฟล์ วัตถุดิบ และวันที่สั่งเบิก</span>',
+        html: '<span class="sarabun-light">กรุณาลองใหม่อีกครั้ง</span>',
         customClass: {
-          title: "sarabun-bold", // ใส่คลาสให้กับ title
+          title: "sarabun-bold",
+        },
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    Swal.fire({
+      icon: "question",
+      title: "ยืนยันการบันทึกข้อมูล",
+      html: '<span class="sarabun-light">คุณต้องการบันทึกข้อมูลใช่หรือไม่?</span>',
+      showCancelButton: true,
+      confirmButtonText: "ใช่, บันทึกข้อมูล",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "green",
+      customClass: {
+        title: "sarabun-bold",
+        confirmButton: "sarabun-light",
+        cancelButton: "sarabun-light",
+      },
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          // ทำการบันทึกข้อมูลที่แสดงใน Table
+          Swal.fire({
+            icon: "success",
+            title: "บันทึกข้อมูลสำเร็จ",
+            html: '<span class="sarabun-light">ข้อมูลถูกบันทึกเรียบร้อยแล้ว</span>',
+            customClass: {
+              title: "sarabun-bold",
+            },
+          }).then(() => {
+            // หลังจากที่ผู้ใช้กดปุ่ม OK ใน Swal แล้วให้ navigate ไปที่ /dashboardClerk
+            navigate("/dashboardClerk");
+          });
+        } catch (error) {
+          console.error("Error saving data:", error);
+          Swal.fire({
+            icon: "error",
+            title: "เกิดข้อผิดพลาดในการบันทึก",
+            html: '<span class="sarabun-light">กรุณาลองใหม่อีกครั้ง</span>',
+            customClass: {
+              title: "sarabun-bold",
+            },
+          });
+        }
+      }
+    });
+  };
+
+  const handleReturnData = async () => {
+    if (!uploadId) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่พบข้อมูล",
+        html: '<span class="sarabun-light">ไม่สามารถยกเลิกข้อมูลได้</span>',
+      });
+      return;
+    }
+
+    // แสดงการยืนยันก่อนดำเนินการ
+    const confirmation = await Swal.fire({
+      title: "ยืนยันการยกเลิกการบันทึก",
+      html: '<span class="sarabun-light">คุณต้องการยกเลิกการบันทึกนี้หรือไม่?</span>',
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33 ",
+      confirmButtonText: "ยืนยัน",
+      cancelButtonText: "ยกเลิก",
+      customClass: {
+        title: "sarabun-bold",
+        confirmButton: "sarabun-light",
+        cancelButton: "sarabun-light",
+      },
+    });
+
+    if (!confirmation.isConfirmed) {
+      return; // ผู้ใช้กดยกเลิก
+    }
+
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await axios.post(
+        `${config.API_URL}/itemrequests/ReturnData`,
+        { uploadId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add the token to the headers
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        Swal.fire({
+          icon: "success",
+          title: "ยกเลิกข้อมูลสำเร็จ",
+          html: '<span class="sarabun-light">ข้อมูลถูกยกเลิกเรียบร้อยแล้ว</span>',
+          customClass: {
+            title: "sarabun-bold",
+          },
+        }).then(() => {
+          navigate("/dashboardClerk"); // รีเซ็ตข้อมูลหรือไปยังหน้าที่ต้องการหลังจากยกเลิก
+        });
+      }
+    } catch (error) {
+      console.error("Error rolling back data:", error);
+      Swal.fire({
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        html: '<span class="sarabun-light">ไม่สามารถยกเลิกข้อมูลได้</span>',
+        customClass: {
+          title: "sarabun-bold",
         },
       });
     }
@@ -124,23 +240,154 @@ const UploadPage = () => {
     setApprovedDate(date ? date.format("YYYY-MM-DD") : null); // เก็บวันที่ในรูปแบบที่ต้องการ
   };
 
+  // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat().format(number);
+  };
+
+  useEffect(() => {
+    // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
+    const formattedData = Array.isArray(data)
+      ? data.flatMap((m) =>
+          m.details.map((d, index) => {
+            return {
+              ...d,
+              sequence: m.sequence,
+              mat_unit: m.mat_unit,
+              mat_name: m.mat_name,
+              material_index: index + 1,
+              rowSpansequence: index === 0 ? m.details.length : 0,
+              rowSpanMatunit: index === 0 ? m.details.length : 0,
+              rowSpanMatName: index === 0 ? m.details.length : 0,
+              rowSpanQuantity: index === 0 ? m.details.length : 0,
+            };
+          })
+        )
+      : [];
+
+    setFormattedData(formattedData); // อัปเดตข้อมูลใน formattedData
+  }, [data]); // คำนวณใหม่เมื่อข้อมูลเหล่านี้เปลี่ยนแปลง
+
+  const columns = [
+    {
+      title: "ลำดับ",
+      dataIndex: "sequence",
+      key: "sequence",
+      render: (text, record) => ({
+        children: <span>{text}</span>,
+        props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
+      }),
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopLeftRadius: "10px", // มุมโค้งด้านซ้ายบน
+          borderBottomLeftRadius: "10px", // มุมโค้งด้านซ้ายล่าง
+        },
+      }),
+    },
+    {
+      title: "รายการ",
+      dataIndex: "mat_name",
+      key: "mat_name",
+      render: (text, record, index) => ({
+        children: <span>{`${record.mat_unit} : ${record.mat_name}`}</span>,
+        props: { rowSpan: record.rowSpanMatName },
+      }),
+      align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+    },
+    {
+      title: "ล็อต",
+      dataIndex: "mat_lot",
+      key: "mat_lot",
+      align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+    },
+    {
+      title: "ตำแหน่ง",
+      dataIndex: "loc",
+      key: "loc",
+      align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+    },
+    {
+      title: "จำนวนสั่งเบิก",
+      dataIndex: "quantity",
+      key: "quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => formatNumber(text),
+      align: "center",
+    },
+    {
+      title: "คงเหลือรวม",
+      dataIndex: "total_quantity",
+      key: "total_quantity",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
+      render: (text) => (text === 0 ? "-" : formatNumber(text)),
+      align: "center",
+    },
+  ];
+
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <Card style={{
-                marginTop:"40px"
-              }}>
-            <div
-              className="dashboard-title sarabun-bold"
-              style={{
-                fontSize: "25px",
-                padding: "10px",
-                marginBottom: "30px",
-              }}
-            >
-              บันทึกข้อมูลการสั่งเบิกวัตถุดิบ :
-            </div>
-          
+        <Card
+          style={{
+            marginTop: "40px",
+          }}
+        >
+          <div
+            className="dashboard-title sarabun-bold"
+            style={{
+              fontSize: "25px",
+              padding: "10px",
+              marginBottom: "30px",
+            }}
+          >
+            บันทึกข้อมูลการสั่งเบิกวัตถุดิบ :
+          </div>
+
           <div>
             <Steps
               current={currentStep}
@@ -194,7 +441,7 @@ const UploadPage = () => {
                     color: "#f0f0f0",
                     backgroundColor: "#5755FE",
                     borderColor: "#5755FE",
-                    marginTop:"60px"
+                    marginTop: "60px",
                   }}
                 >
                   ถัดไป
@@ -238,7 +485,7 @@ const UploadPage = () => {
                       backgroundColor: "#f0f0f0",
                       borderColor: "#5755FE",
                       marginRight: "20px",
-                      marginTop:"60px"
+                      marginTop: "60px",
                     }}
                   >
                     ย้อนกลับ
@@ -251,7 +498,7 @@ const UploadPage = () => {
                       backgroundColor: "#5755FE",
                       borderColor: "#5755FE",
                       marginRight: "5px",
-                      marginTop:"60px"
+                      marginTop: "60px",
                     }}
                   >
                     ถัดไป
@@ -279,7 +526,6 @@ const UploadPage = () => {
                       ? "2px dashed #4caf50"
                       : "2px dashed #ccc",
                     borderRadius: "10px",
-                    padding: "20px",
                     textAlign: "center",
                     marginBottom: "20px",
                     position: "relative",
@@ -315,7 +561,6 @@ const UploadPage = () => {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      marginBottom: "10px",
                     }}
                   >
                     <p style={{ margin: 0, marginRight: "10px" }}>
@@ -335,7 +580,12 @@ const UploadPage = () => {
                     </button>
                   </div>
                 )}
-                <div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
                   <Button
                     onClick={prevStep}
                     style={{
@@ -343,7 +593,7 @@ const UploadPage = () => {
                       backgroundColor: "#f0f0f0",
                       borderColor: "#5755FE",
                       marginRight: "20px",
-                      marginTop:"60px"
+                      marginTop: "60px",
                     }}
                   >
                     ย้อนกลับ
@@ -351,18 +601,73 @@ const UploadPage = () => {
                   <Button
                     type="primary"
                     onClick={handleUpload}
+                    loading={isUploading}
                     disabled={!file}
                     style={{
                       color: "#f0f0f0",
                       backgroundColor: "#5755FE",
                       borderColor: "#5755FE",
                       marginRight: "5px",
-                      marginTop:"60px"
+                      marginTop: "60px",
                     }}
                   >
                     อัปโหลด
                   </Button>
                 </div>
+                {data.length > 0 && (
+                  <div style={{ marginTop: "60px" }}>
+                    <Table
+                      columns={columns}
+                      dataSource={formattedData}
+                      rowKey="mat_lot"
+                      pagination={false}
+                    />
+                    {totalQuantity !== null && (
+                      <div
+                        className="sarabun-bold"
+                        style={{
+                          marginTop: "20px",
+                          fontSize: "20px",
+                          color: "#5755FE",
+                          textAlign: "right",
+                        }}
+                      >
+                        <strong>ยอดรวมทั้งหมด : </strong>{formatNumber(totalQuantity)}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        marginTop: "40px",
+                      }}
+                    >
+                      <Button
+                        onClick={handleReturnData}
+                        type="default"
+                        style={{
+                          color: "#ff4d4f",
+                          backgroundColor: "#f0f0f0",
+                          borderColor: "#ff4d4f",
+                          marginRight: "20px",
+                        }}
+                      >
+                        ยกเลิกการบันทึก
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        type="primary"
+                        style={{
+                          color: "#f0f0f0",
+                          backgroundColor: "green",
+                          borderColor: "green",
+                        }}
+                      >
+                        บันทึกข้อมูล
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

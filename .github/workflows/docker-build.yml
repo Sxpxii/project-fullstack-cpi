@@ -39,7 +39,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile.backend
           push: true
-          tags: myusername/project-backend:latest
+          tags: sxpxii/myproject-backend:latest  # เปลี่ยนจาก myusername/project-backend เป็น sxpxii/myproject-backend
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v3
@@ -47,4 +47,4 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile.frontend
           push: true
-          tags: myusername/project-fullstack-cpi 
+          tags: sxpxii/myproject-frontend:latest  # เปลี่ยนจาก myusername/project-fullstack-cpi เป็น sxpxii/myproject-frontend

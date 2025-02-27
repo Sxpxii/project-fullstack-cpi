@@ -1,5 +1,5 @@
 # ใช้ Node.js image สำหรับการ build
-FROM node:16 AS build
+FROM node:18 AS build
 
 # ตั้งค่า working directory
 WORKDIR /app

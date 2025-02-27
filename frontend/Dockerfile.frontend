@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # ติดตั้ง dependencies
-RUN npm ci
+RUN npm ci --silent
 
 # คัดลอกโค้ดของ frontend ไปยัง container
 COPY ./ ./
 
 # สร้างโปรเจค React (build)
-RUN npm run build
+RUN npm run build || tail -n 50 /root/.npm/_logs/*.log
 
 # สร้าง production image โดยใช้ Nginx
 FROM nginx:alpine

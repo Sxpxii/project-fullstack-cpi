@@ -11,7 +11,7 @@ COPY package*.json ./
 RUN npm ci
 
 # คัดลอกโค้ดของ frontend ไปยัง container
-COPY ..
+COPY . .
 
 # สร้างโปรเจค React (build)
 RUN npm run build

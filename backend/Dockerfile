@@ -11,7 +11,7 @@ COPY package*.json ./
 RUN npm ci
 
 # คัดลอกโค้ดของ backend ไปยัง container
-COPY ..
+COPY . .
 
 # พอร์ตที่แอปฟัง
 EXPOSE 3002

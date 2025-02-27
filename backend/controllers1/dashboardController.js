@@ -1,7 +1,6 @@
 const { pool1 } = require('../config/db');
 const { revertCalculations, recalculateFIFO } = require('../services/recalculation');
 const { logUserAction } = require('../controllers1/loginController1');
-const { getMaterial,insertmaterialrequests } = require('../controllers1/requestsController');
 const { updateDurationAndAverage } = require('../controllers1/supClerkDashController');
 
 const getDashboardData = async (req, res) => {

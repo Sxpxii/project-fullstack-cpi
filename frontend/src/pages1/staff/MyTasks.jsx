@@ -21,7 +21,6 @@ import config from "../../configAPI";
 import { MdAssignmentReturn } from "react-icons/md";
 import { IoMdArrowDropright } from "react-icons/io";
 import { IoMdArrowDropleft } from "react-icons/io";
-import ChatApp from "../../components/ChatApp";
 
 const MyTasks = () => {
   const [username, setUsername] = useState("");

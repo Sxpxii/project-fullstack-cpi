@@ -1,32 +1,43 @@
 version: "3.8"
-
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.backend
-    ports:
-      - "3002:3002"
-    environment:
-      - NODE_ENV=production
-    depends_on:
-      - database
-
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
+    image: sxpxii/myproject-frontend:latest  # ใช้ Docker image ที่สร้างจาก GitHub Actions
     ports:
-      - "80:80"
+      - "80:80"  # พอร์ตที่ frontend จะให้บริการ
+    networks:
+      - app-network
     depends_on:
       - backend
+    restart: always  # เพิ่มการตั้งค่า restart policy
 
-  database:
-    image: postgres:14
-    restart: always
-    environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydatabase
+  backend:
+    image: sxpxii/myproject-backend:latest  # ใช้ Docker image ที่สร้างจาก GitHub Actions
     ports:
-      - "5432:5432"
+      - "3002:3002"  # พอร์ตที่ backend จะให้บริการ API
+    networks:
+      - app-network
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}  # เชื่อมต่อกับฐานข้อมูลที่อยู่ใน service db
+    restart: always  # เพิ่มการตั้งค่า restart policy
+
+  db:
+    image: postgres:latest  # ใช้ PostgreSQL image จาก Docker Hub
+    container_name: db
+    environment:
+      POSTGRES_USER: ${DB_USER}  # ใช้ค่า DB_USER จาก .env
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # ใช้ค่า DB_PASSWORD จาก .env
+      POSTGRES_DB: ${DB_NAME}  # ใช้ค่า DB_NAME จาก .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # เก็บข้อมูลฐานข้อมูลใน volume
+    ports:
+      - "5433:5432"  # พอร์ตที่สามารถเข้าถึง database ได้จากเครื่อง host
+    networks:
+      - app-network
+    restart: always  # เพิ่มการตั้งค่า restart policy
+
+networks:
+  app-network:
+    driver: bridge  # ใช้ bridge network สำหรับการเชื่อมต่อระหว่าง services
+
+volumes:
+  postgres_data:  # ใช้ volume สำหรับการเก็บข้อมูล database

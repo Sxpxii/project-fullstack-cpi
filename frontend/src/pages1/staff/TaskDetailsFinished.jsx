@@ -117,7 +117,7 @@ const TaskDetailsFinished = () => {
       }),
     },
     {
-      title: "จำนวนที่ต้องหยิบ",
+      title: "จำนวนที่ต้องจ่าย",
       dataIndex: "quantity",
       key: "quantity",
       onHeaderCell: () => ({
@@ -132,7 +132,7 @@ const TaskDetailsFinished = () => {
       align: "center",
     },
     {
-      title: "จ่ายจริง",
+      title: "จำนวนจ่ายจริง",
       dataIndex: "actual_quantity",
       key: "actual_quantity",
       render: (text) => formatNumber(text),
@@ -147,7 +147,18 @@ const TaskDetailsFinished = () => {
       align: "center",
     },
     {
-      title: "จำนวนคงเหลือ",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือในโปรแกรม
+        </div>
+      ),
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -162,7 +173,18 @@ const TaskDetailsFinished = () => {
       align: "center",
     },
     {
-      title: "นับจริง",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือนับจริง
+        </div>
+      ),
       dataIndex: "counted_quantity",
       render: (text) => formatNumber(text),
       onHeaderCell: () => ({
@@ -227,7 +249,7 @@ const TaskDetailsFinished = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <div style={{ marginTop:"20px", marginBottom:"20px"}}>
+        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
           <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>
               <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
@@ -269,8 +291,8 @@ const TaskDetailsFinished = () => {
               backgroundColor: " #DCDCDC",
               borderRadius: "12px",
               fontSize: "18px",
-              marginTop:"30px",
-              marginBottom:"30px",
+              marginTop: "30px",
+              marginBottom: "30px",
             }}
           >
             รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}

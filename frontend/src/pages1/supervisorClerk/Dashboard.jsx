@@ -12,6 +12,9 @@ import { LuAlarmClock } from "react-icons/lu";
 
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0] // กำหนดค่าเริ่มต้นเป็นวันที่ปัจจุบัน
+  );
   const [state, setState] = React.useState({
     series: [0], // กำหนดค่าเริ่มต้นให้เป็น 0
     options: {
@@ -44,6 +47,9 @@ const SupervisorDashboard = () => {
   const [uploadDetails, setUploadDetails] = useState([]);
   const [isUserActive, setIsUserActive] = useState(true);
   const [uploadOverdue, setUploadOverdue] = useState([]);
+  const [formattedDate, setFormattedDate] = useState("");
+  const [formattedTime, setFormattedTime] = useState("");
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,14 +61,14 @@ const SupervisorDashboard = () => {
           uploadDetailsResponse,
         ] = await Promise.all([
           axios.get(`${config.API_URL}/supClerkdashboard/daily-overview`, {
-            params: { date: today },
+            params: { date: selectedDate },
           }),
           axios.get(`${config.API_URL}/supClerkdashboard/daily-issues`, {
-            params: { date: today },
+            params: { date: selectedDate },
           }),
           axios.get(`${config.API_URL}/supClerkdashboard/daily-details`, {
             // ดึงข้อมูล upload details
-            params: { date: today },
+            params: { date: selectedDate },
           }),
         ]);
 
@@ -125,7 +131,7 @@ const SupervisorDashboard = () => {
               detail.approved_date,
               "DD/MM/YYYY"
             ).format("YYYY-MM-DD");
-            return detailDate === today;
+            return detailDate === selectedDate;
           })
           .sort((a, b) => {
             // ตรวจสอบว่า inventory_id เป็นตัวเลขก่อนทำการเปรียบเทียบ
@@ -173,7 +179,7 @@ const SupervisorDashboard = () => {
       window.removeEventListener("mousemove", handleUserActivity);
       window.removeEventListener("keydown", handleUserActivity);
     };
-  }, [isUserActive]);
+  }, [isUserActive, selectedDate]);
 
   // การตั้งค่า options สำหรับกราฟ Stacked Columns
   const stackedChartOptions = {
@@ -417,7 +423,7 @@ const SupervisorDashboard = () => {
     },
   ];
 
-  // สร้างตัวแปรวันที่และเวลา
+  /*// สร้างตัวแปรวันที่และเวลา
   const currentDate = new Date();
   // จัดรูปแบบวันที่เป็น "14 Jan 2025"
   const formattedDate = currentDate.toLocaleDateString("en-GB", {
@@ -431,7 +437,28 @@ const SupervisorDashboard = () => {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  });
+  });*/
+
+  useEffect(() => {
+    const currentDate = new Date(selectedDate);
+    
+    // อัปเดตวันที่ให้อยู่ในรูปแบบ "14 Jan 2025"
+    const newFormattedDate = currentDate.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    // ถ้าวันที่เลือกไม่ใช่วันที่ปัจจุบัน ให้เวลาเป็น "--.--"
+    const today = new Date().toISOString().split("T")[0];
+    const newFormattedTime =
+      selectedDate === today
+        ? new Date().toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })
+        : "--.--";
+
+    setFormattedDate(newFormattedDate);
+    setFormattedTime(newFormattedTime);
+  }, [selectedDate]);
 
   return (
     <MainLayout>
@@ -446,6 +473,40 @@ const SupervisorDashboard = () => {
           }}
         >
           Dashboard Daily
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+          {/* ตัวเลือกวันที่ */}
+          <label htmlFor="datePicker" style={{ fontSize: "16px", fontWeight: "bold", marginRight:"10px" }}>เลือกวันที่: </label>
+          <input
+            id="datePicker"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="sarabun-light"
+            style={{
+              padding: "8px",
+              fontSize: "16px",
+              borderRadius: "10px",
+              border: "1px solid #ccc",
+              cursor: "pointer"
+            }}
+          />
+          
+          <Button
+            className="sarabun-light"
+            onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+            style={{
+              padding: "8px 12px",
+              fontSize: "15px",
+              backgroundColor: "#00152a",
+              color: "white",
+              border: "none",
+              borderRadius: "9px",
+            }}
+          >
+            รีเซ็ต
+          </Button>
         </div>
 
         <Card
@@ -594,7 +655,7 @@ const SupervisorDashboard = () => {
               </Card>
             </Col>
           </Row>
-         
+
           <Row>
             <div
               className="sarabun-bold"
@@ -643,7 +704,6 @@ const SupervisorDashboard = () => {
               </Card>
             </Col>
           </Row>
-         
         </Card>
 
         <Row gutter={24} style={{ marginTop: 30 }}>

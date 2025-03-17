@@ -9,7 +9,8 @@ const { getDailyOverview,
     getWorkloadDetail,
     getAverageTimesByMaterials,
     getWorkloadTask,
-    getWorkloadTaskItem
+    getWorkloadTaskItem,
+    getDetailsSupClerk
  } = require('../controllers1/supClerkDashController'); 
 const { authenticateToken } = require('../controllers1/loginController1');
 
@@ -25,5 +26,6 @@ router.get('/workload-tasks', getWorkloadTask);
 router.get('/workload-tasks-item', getWorkloadTaskItem);
 router.get('/average-times', getAverageTimes);
 router.get('/average-times-materials', getAverageTimesByMaterials);
+router.get('/details-SupClerk', getDetailsSupClerk);
 
 module.exports = router;

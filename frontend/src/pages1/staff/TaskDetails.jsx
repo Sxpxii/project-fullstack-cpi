@@ -726,7 +726,18 @@ const TaskDetails = () => {
       align: "center",
     },
     {
-      title: "จำนวนคงเหลือในโปรแกรม",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือในโปรแกรม
+        </div>
+      ),
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -741,7 +752,18 @@ const TaskDetails = () => {
       align: "center",
     },
     {
-      title: "จำนวนคงเหลือนับจริง",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือนับจริง
+        </div>
+      ),
       dataIndex: "counted_quantity",
       onHeaderCell: () => ({
         style: {

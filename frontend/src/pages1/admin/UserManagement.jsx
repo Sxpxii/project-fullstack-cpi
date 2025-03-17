@@ -311,7 +311,6 @@ const UserManagement = () => {
                 <Option value="Warehouse Officer">ธุรการคลังวัตถุดิบ</Option>
                 <Option value="Supervisor Clerk">หัวหน้าธุรการคลังวัตถุดิบ</Option>
                 <Option value="Operations">เจ้าหน้าที่คลังวัตถุดิบ</Option>
-                <Option value="Supervisor">หัวหน้า</Option>
                 <Option value="Admin">ผู้ดูแลระบบ</Option>
               </Select>
             </Form.Item>

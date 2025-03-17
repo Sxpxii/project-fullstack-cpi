@@ -1,4 +1,4 @@
-// src/pages1/clerk/Details.jsx
+// src/pages1/supervisorClerk/Details.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Table, Button, Card } from "antd";
@@ -7,7 +7,7 @@ import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/Details.css"; // นำเข้าไฟล์ CSS
 import config from "../../configAPI";
 
-const Details = () => {
+const DetailsSupClerk = () => {
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [] });
   const { upload_id } = useParams();
@@ -28,7 +28,7 @@ const Details = () => {
       }
 
       const response = await axios.get(
-        `${config.API_URL}/dashboardClerk/details/${upload_id}`,
+        `${config.API_URL}/supClerkdashboard/details-SupClerk/${upload_id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -40,29 +40,6 @@ const Details = () => {
     }
   };
 
-  const fetchTotalRequested = async () => {
-    if (!upload_id) {
-      console.error("upload_id is missing, cannot fetch data.");
-      return;
-    }
-    try {
-      console.log(
-        `Fetching total requested quantity for upload_id: ${upload_id}`
-      );
-      const token = sessionStorage.getItem("token");
-      const response = await axios.get(
-        `${config.API_URL}/dashboardClerk/details/${upload_id}/total-requested-quantity`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      console.log("Fetched Total Requested Quantity:", response.data);
-      setTotalRequested(response.data.totalRequested || 0);
-    } catch (err) {
-      console.error("Failed to fetch total requested quantity:", err);
-    }
-  };
-
   useEffect(() => {
     const storedUsername = sessionStorage.getItem("username");
     if (storedUsername) {
@@ -70,9 +47,6 @@ const Details = () => {
     }
     console.log(`Upload ID: ${upload_id}`);
     fetchData();
-    if (upload_id) {
-      fetchTotalRequested(upload_id);
-    }
   }, [upload_id]);
 
   // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
@@ -237,18 +211,7 @@ const Details = () => {
               className="custom-table"
             />
           </div>
-          <Card
-            className="sarabun-bold"
-            style={{
-              backgroundColor: " #DCDCDC",
-              borderRadius: "12px",
-              fontSize: "18px",
-              marginTop: "30px",
-              marginBottom: "30px",
-            }}
-          >
-            รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequested)}
-          </Card>
+          
           <div className="button-container">
             <button
               className="sarabun-light"
@@ -269,4 +232,4 @@ const Details = () => {
   );
 };
 
-export default Details;
+export default DetailsSupClerk;

@@ -19,6 +19,7 @@ import DashboardSupClerk from "./pages1/supervisorClerk/Dashboard";
 import SupEditDetails from "./pages1/supervisorClerk/SupEditDetails";
 import RemainingEditDetails from "./pages1/supervisorClerk/RemainingEditDetails"
 import DashboardAnalysis from "./pages1/supervisorClerk/Analysis";
+import DetailsSupClerk from "./pages1/supervisorClerk/Detail";
 
 const App1 = () => {
 
@@ -59,6 +60,7 @@ React.useEffect(() => {
           <Route path="/Sup-Edit/:upload_id" element={<SupEditDetails />} />
           <Route path="/Edit-Remaining/:upload_id" element={<RemainingEditDetails />} />
           <Route path="/SupClerkDashboardAnalysis" element={<DashboardAnalysis />} />
+          <Route path="/details-SupClerk/:upload_id" element={<DetailsSupClerk />} />
         </Route>
 
         {/* Routes for Operations */}

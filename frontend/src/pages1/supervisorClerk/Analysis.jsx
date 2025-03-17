@@ -16,9 +16,11 @@ import MainLayout from "../../components/LayoutSupervisorClerk";
 import ReactApexChart from "react-apexcharts";
 import config from "../../configAPI";
 import moment from "moment";
+import { EyeOutlined } from '@ant-design/icons';
 
 const DashboardAnalysis = () => {
   const navigate = useNavigate();
+  const [selectedUploadId, setSelectedUploadId] = useState(null);
   const [uploadDetails, setUploadDetails] = useState([]);
   const [filterDate, setFilterDate] = useState(null);
   const [searchID, setSearchID] = useState("");
@@ -56,15 +58,28 @@ const DashboardAnalysis = () => {
     categories: [],
     series: [],
   });
-  const [averageStatusTimesbyMaterialsData,setAverageStatusTimesbyMaterialsData,] = useState({
+  const [
+    averageStatusTimesbyMaterialsData,
+    setAverageStatusTimesbyMaterialsData,
+  ] = useState({
     categories: [],
     series: [],
   });
+  const [filterStartDate, setFilterStartDate] = useState(null);
+  const [filterEndDate, setFilterEndDate] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const today = new Date().toISOString().split("T")[0];
+        const params = {
+          date: new Date().toISOString().split("T")[0],
+          ...(filterStartDate &&
+            filterEndDate && {
+              startDate: filterStartDate,
+              endDate: filterEndDate,
+            }),
+        };
+        console.log("Sending Params:", params);
         const [
           uploadDetailsResponse,
           averageStatusTimesResponse,
@@ -74,15 +89,23 @@ const DashboardAnalysis = () => {
           averageTimesByMaterialsResponse,
         ] = await Promise.all([
           axios.get(`${config.API_URL}/supClerkdashboard/daily-details`, {
-            // ดึงข้อมูล upload details
-            params: { date: today },
+            params,
           }),
-          axios.get(`${config.API_URL}/supClerkdashboard/average-times`),
-          axios.get(`${config.API_URL}/supClerkdashboard/workload-details`),
-          axios.get(`${config.API_URL}/supClerkdashboard/workload-tasks`),
-          axios.get(`${config.API_URL}/supClerkdashboard/workload-tasks-item`),
+          axios.get(`${config.API_URL}/supClerkdashboard/average-times`, {
+            params,
+          }),
+          axios.get(`${config.API_URL}/supClerkdashboard/workload-details`, {
+            params,
+          }),
+          axios.get(`${config.API_URL}/supClerkdashboard/workload-tasks`, {
+            params,
+          }),
+          axios.get(`${config.API_URL}/supClerkdashboard/workload-tasks-item`, {
+            params,
+          }),
           axios.get(
-            `${config.API_URL}/supClerkdashboard/average-times-materials`
+            `${config.API_URL}/supClerkdashboard/average-times-materials`,
+            { params }
           ),
         ]);
 
@@ -95,7 +118,7 @@ const DashboardAnalysis = () => {
         });
 
         // ตรวจสอบข้อมูลหลังจัดเรียง
-        //console.log("Sorted Upload Details:", sortedUploadDetails);
+        console.log("Sorted Upload Details:", sortedUploadDetails);
 
         // Set Upload Details Data
         setUploadDetails(sortedUploadDetails);
@@ -231,11 +254,16 @@ const DashboardAnalysis = () => {
       window.removeEventListener("mousemove", handleUserActivity);
       window.removeEventListener("keydown", handleUserActivity);
     };
-  }, [isUserActive]);
+  }, [filterStartDate, filterEndDate, isUserActive]);
+
+  const handleViewDetailsClick = async (record) => {
+    setSelectedUploadId(record.upload_id);
+    navigate(`/details-SupClerk/${record.upload_id}`); // เปลี่ยนไปยังหน้า Details
+  };
 
   const columns = [
     {
-      title: "Inventory ID",
+      title: "Inv. ID",
       dataIndex: "inventory_id",
       key: "inventory_id",
       align: "center",
@@ -376,8 +404,6 @@ const DashboardAnalysis = () => {
           fontWeight: "bold", // ความหนาของตัวอักษร
           fontSize: "14px", // ขนาดตัวอักษร
           color: "#ffffff", // สีตัวอักษร
-          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
-          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
         },
       }),
       render: (current_status) => {
@@ -408,6 +434,34 @@ const DashboardAnalysis = () => {
         );
       },
     },
+    {
+      title: "",
+      key: "action",
+      align: "center",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+          borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
+          borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
+        },
+      }),
+      render: (_, record) => {
+        return (
+          <span
+            style={{
+              fontSize: "16px",
+              cursor: "pointer", // ทำให้สามารถคลิกได้
+            }}
+            onClick={() => handleViewDetailsClick(record)} // เรียกฟังก์ชันเมื่อคลิก
+          >
+            <EyeOutlined style={{ color: "#00152a" }} /> 
+          </span>
+        );
+      },
+    },
   ];
 
   // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
@@ -420,16 +474,47 @@ const DashboardAnalysis = () => {
     let data = [...uploadDetails]; // คัดลอกข้อมูลก่อนการกรอง
 
     if (searchID) {
-      data = data.filter((item) =>
-        item.inventory_id.toString().includes(searchID)
+      data = data.filter(
+        (item) =>
+          item.inventory_id && item.inventory_id.toString().includes(searchID)
       );
     }
     if (filterMaterialType) {
       data = data.filter((item) => item.material_type === filterMaterialType);
     }
+    if (filterStartDate && filterEndDate) {
+      data = data.filter((item) => {
+        const itemDate = moment(
+          item.approved_date,
+          "DD/MM/YYYY",
+          true
+        ).isValid()
+          ? moment(item.approved_date, "DD/MM/YYYY")
+          : null;
+
+        // ใช้ moment เพื่อแปลงวันที่จาก filterStartDate และ filterEndDate ให้เป็น moment object
+        const startDate = moment(filterStartDate);
+        const endDate = moment(filterEndDate);
+
+        return itemDate && itemDate.isBetween(startDate, endDate, null, "[]"); // ใช้ isBetween เพื่อให้ครอบคลุมช่วงวันที่
+      });
+    }
 
     setFilteredData(data); // อัปเดตข้อมูลที่กรองแล้ว
-  }, [searchID, filterMaterialType, uploadDetails]); // เพิ่ม dependency ให้ถูกต้อง
+    console.log("Filtered Data:", data); // เพิ่มการตรวจสอบข้อมูลหลังการกรอง
+  }, [
+    searchID,
+    filterMaterialType,
+    filterStartDate,
+    filterEndDate,
+    uploadDetails,
+  ]); // เพิ่ม dependency ให้ถูกต้อง
+
+  // ฟังก์ชันรีเซ็ตค่า
+  const handleReset = () => {
+    setFilterStartDate("");
+    setFilterEndDate("");
+  };
 
   return (
     <MainLayout>
@@ -445,6 +530,85 @@ const DashboardAnalysis = () => {
         >
           Dashboard Analysis
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "10px",
+          }}
+        >
+          <div>
+            <label
+              htmlFor="datePicker"
+              style={{
+                fontSize: "16px",
+                fontWeight: "bold",
+                marginRight: "10px",
+              }}
+            >
+              เริ่ม:
+            </label>
+            <input
+              type="date"
+              value={filterStartDate || ""}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              className="sarabun-light"
+              style={{
+                padding: "8px",
+                fontSize: "16px",
+                borderRadius: "10px",
+                border: "1px solid #ccc",
+                cursor: "pointer",
+                marginRight: "10px",
+              }}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="datePicker"
+              style={{
+                fontSize: "16px",
+                fontWeight: "bold",
+                marginRight: "10px",
+              }}
+            >
+              สิ้นสุด:
+            </label>
+            <input
+              type="date"
+              value={filterEndDate || ""}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              className="sarabun-light"
+              style={{
+                padding: "8px",
+                fontSize: "16px",
+                borderRadius: "10px",
+                border: "1px solid #ccc",
+                cursor: "pointer",
+                marginRight: "10px",
+              }}
+            />
+          </div>
+
+          <Button
+            className="sarabun-light"
+            onClick={handleReset}
+            style={{
+              padding: "8px 12px",
+              fontSize: "15px",
+              backgroundColor: "#00152a",
+              color: "white",
+              border: "none",
+              borderRadius: "9px",
+            }}
+          >
+            รีเซ็ต
+          </Button>
+        </div>
+
         <Row gutter={16}>
           <Col className="gutter-row" span={8}>
             <Card
@@ -1137,6 +1301,7 @@ const DashboardAnalysis = () => {
                   x: "max-content", // เปิดการเลื่อนในแนวนอนตามขนาดของคอลัมน์
                   y: 600, // เปิดการเลื่อนในแนวตั้งตามความสูงที่กำหนด
                 }}
+                
                 style={{
                   overflow: "auto", // แสดงแถบเลื่อนเฉพาะเมื่อมีเนื้อหาเกิน
                   scrollbarWidth: "thin", // ปรับขนาดของแถบเลื่อน

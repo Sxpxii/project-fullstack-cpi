@@ -11,7 +11,6 @@ const EXPIRATION_TIME = 8 * 60 * 60 * 1000; // 8 ชั่วโมง (หน�
 
 const items = [
   { key: "/UserManagement", label: "User Management" },
-  { key: "/UploadMaterials", label: "Material Management" },
 ];
 
 const MainLayout = ({ children }) => {

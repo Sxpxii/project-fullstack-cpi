@@ -675,7 +675,7 @@ const PendingTaskDetails = () => {
       }),
     },
     {
-      title: "จำนวนที่ต้องหยิบ",
+      title: "จำนวนที่ต้องจ่าย",
       dataIndex: "quantity",
       key: "quantity",
       onHeaderCell: () => ({
@@ -690,7 +690,7 @@ const PendingTaskDetails = () => {
       align: "center",
     },
     {
-      title: "จ่ายจริง",
+      title: "จำนวนจ่ายจริง",
       dataIndex: "actual_quantity",
       key: "actual_quantity",
       onHeaderCell: () => ({
@@ -745,7 +745,18 @@ const PendingTaskDetails = () => {
       align: "center",
     },
     {
-      title: "จำนวนคงเหลือ",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือในโปรแกรม
+        </div>
+      ),
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -760,7 +771,18 @@ const PendingTaskDetails = () => {
       align: "center",
     },
     {
-      title: "นับจริง",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือนับจริง
+        </div>
+      ),
       dataIndex: "counted_quantity",
       onHeaderCell: () => ({
         style: {
@@ -814,7 +836,7 @@ const PendingTaskDetails = () => {
       align: "center",
     },
     {
-      title: "คงเหลือรวม",
+      title: "คงเหลือรวมทุกล็อต",
       dataIndex: "total_quantity",
       key: "total_quantity",
       onHeaderCell: () => ({

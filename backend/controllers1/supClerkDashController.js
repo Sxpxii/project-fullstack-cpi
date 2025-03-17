@@ -248,8 +248,13 @@ const updateDurationAndAverage = async (upload_id, status) => {
 // ฟังก์ชันดึงข้อมูลภาระงาน
 const getWorkloadDetail = async (req, res) => {
   try {
+    console.log("Received Query Params:", req.query);
+    const { startDate, endDate } = req.query;
+    console.log("Start Date:", startDate);
+    console.log("End Date:", endDate);
+
     // SQL query ที่ใช้ JOIN กับตาราง user1 เพื่อดึงชื่อ user_id และ assigned_to
-    const query = `
+    let  query = `
       SELECT 
         u.upload_id,
         u.user_id,
@@ -259,11 +264,19 @@ const getWorkloadDetail = async (req, res) => {
       FROM uploads u
       LEFT JOIN users1 ON u.user_id = users1.user_id
       LEFT JOIN users1 AS assigned_to_user ON u.assigned_to = assigned_to_user.user_id
-      GROUP BY u.upload_id, u.user_id, u.assigned_to, users1.username, assigned_to_user.username
+      
     `;
     
-    // ดึงข้อมูลจากฐานข้อมูล
-    const result = await pool1.query(query);
+    let queryParams = [];
+    if (startDate && endDate) {
+        query += ` WHERE u.approved_date BETWEEN $1 AND $2 `;
+        queryParams.push(startDate, endDate);
+    }
+
+    // GROUP BY ต้องไม่มี WHERE ข้างหน้า
+    query += ` GROUP BY u.upload_id, u.user_id, u.assigned_to, users1.username, assigned_to_user.username, u.approved_date`;
+
+    const result = await pool1.query(query, queryParams);
 
     // เปลี่ยน user_id และ assigned_to เป็นชื่อ
     const userIdCounts = result.rows.reduce((acc, row) => {
@@ -306,7 +319,9 @@ const getWorkloadDetail = async (req, res) => {
 // ฟังก์ชันดึงข้อมูลภาระงาน(รายการย่อย)
 const getWorkloadTask = async (req, res) => {
   try {
-    const result = await pool1.query(`
+    const { startDate, endDate } = req.query;
+
+    let query = `
         SELECT 
             u.upload_id,
             u.user_id,
@@ -319,9 +334,22 @@ const getWorkloadTask = async (req, res) => {
         LEFT JOIN users1 u1 ON u.user_id = u1.user_id 
         LEFT JOIN users1 u2 ON u.assigned_to = u2.user_id 
         WHERE u.user_id IS NOT NULL 
-        GROUP BY u.upload_id, u.user_id, u.assigned_to, u1.username, u2.username
+        
+    `;
+
+    let queryParams = [];
+
+    if (startDate && endDate) {
+      query += ` AND  u.approved_date BETWEEN $1 AND $2 `;
+      queryParams.push(startDate, endDate);
+    }
+
+    query += `
+        GROUP BY u.upload_id, u.user_id, u.assigned_to, u1.username, u2.username, u.approved_date
         ORDER BY u.upload_id;
-    `);
+    `;
+
+    const result = await pool1.query(query, queryParams);
 
      //แปลงข้อมูล `WorkloadDetails`
      const workloadDetails = result.rows;
@@ -368,7 +396,9 @@ const getWorkloadTask = async (req, res) => {
 // ฟังก์ชันดึงข้อมูลภาระงาน(ยอดรวม)
 const getWorkloadTaskItem = async (req, res) => {
   try {
-    const result = await pool1.query(`
+    const { startDate, endDate } = req.query;
+
+    let query = `
       SELECT 
           u.upload_id,
           u.user_id, 
@@ -380,9 +410,22 @@ const getWorkloadTaskItem = async (req, res) => {
       LEFT JOIN users1 u1 ON u.user_id = u1.user_id 
       LEFT JOIN users1 u2 ON u.assigned_to = u2.user_id 
       WHERE u.user_id IS NOT NULL
-      GROUP BY u.upload_id, u.user_id, u.assigned_to, u1.username, u2.username
+      
+  `;
+
+  let queryParams = [];
+
+    if (startDate && endDate) {
+      query += ` AND  u.approved_date BETWEEN $1 AND $2 `;
+      queryParams.push(startDate, endDate);
+    }
+
+    query += `
+      GROUP BY u.upload_id, u.user_id, u.assigned_to, u1.username, u2.username, u.total_quantity, u.approved_date
       ORDER BY u.upload_id;
-  `);
+    `;
+
+    const result = await pool1.query(query, queryParams);
 
     //แปลงข้อมูล `TaskItemData`
     const TaskItemData = result.rows;
@@ -547,6 +590,57 @@ const getAverageTimesByMaterials = async (req, res) => {
   }
 };
 
+// ฟังก์ชันสำหรับดึงรายละเอียดของงาน
+const getDetailsSupClerk = async (req, res) => {
+  try {
+    const { upload_id } = req.params;
+
+    if (!upload_id) {
+      return res.status(400).json({ error: "upload_id is required" });
+    }
+
+    const query = `
+      SELECT 
+        m.id,
+        m.mat_name,
+        m.mat_unit,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', r.id,
+            'mat_unit_id', r.mat_unit_id,
+            'mat_lot', r.mat_lot,
+            'loc', r.loc,
+            'quantity', r.quantity,
+            'total_quantity', r.total_quantity
+          )
+          ORDER BY r.id
+        ) AS details
+      FROM material_matunits m
+      JOIN mat_requests r ON m.id = r.mat_unit_id
+      WHERE r.upload_id = $1
+      GROUP BY m.id, m.mat_name, m.mat_unit
+      ORDER BY m.id;
+    `;
+
+    const { rows } = await pool1.query(query, [upload_id]);
+
+    // เพิ่มลำดับสำหรับแต่ละกลุ่มข้อมูล
+    const resultWithSequence = rows.map((row, index) => ({
+      sequence: index + 1, // เพิ่มลำดับเริ่มต้นที่ 1
+      ...row,
+    }));
+
+    // ตรวจสอบผลลัพธ์
+    console.log("Result with Sequence:", JSON.stringify(resultWithSequence, null, 2));
+
+    // ส่งข้อมูลพร้อมลำดับกลับไปยัง client
+    res.json(resultWithSequence);
+  } catch (err) {
+    console.error("Error fetching task details", err);
+    res.status(500).json({ error: "Failed to fetch task details" });
+  }
+};
+
 
 module.exports = {
     getDailyOverview,
@@ -558,5 +652,6 @@ module.exports = {
     getWorkloadDetail,
     getAverageTimesByMaterials,
     getWorkloadTask,
-    getWorkloadTaskItem
+    getWorkloadTaskItem,
+    getDetailsSupClerk
 };

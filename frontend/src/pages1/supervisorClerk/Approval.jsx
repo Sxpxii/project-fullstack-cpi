@@ -23,7 +23,7 @@ const Approval = () => {
     try {
       setLoading(true);
       const token = sessionStorage.getItem("token");
-      const response = await axios.get(`${config.API_URL}/dashboard`, {
+      const response = await axios.get(`${config.API_URL}/supClerkTasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -63,7 +63,7 @@ const Approval = () => {
   // ฟังก์ชันที่เพิ่มมาจากหน้า DashboardSupervisorClerk
   const handleEditClick = async (record) => {
     const token = sessionStorage.getItem("token");
-  
+
     if (record.status === "รอดำเนินการต่อ") {
       try {
         // อัพเดตสถานะการแจ้งเตือนเป็น "read"
@@ -76,7 +76,7 @@ const Approval = () => {
             },
           }
         );
-  
+
         // Navigate to the appropriate page
         navigate(`/Sup-Edit/${record.upload_id}`, { state: { record } });
       } catch (error) {
@@ -85,7 +85,7 @@ const Approval = () => {
     } else if (record.status === "รอตรวจสอบ") {
       navigate(`/Edit-Remaining/${record.upload_id}`, { state: { record } });
     }
-  };  
+  };
 
   const columns = [
     {
@@ -189,48 +189,61 @@ const Approval = () => {
 
   return (
     <MainLayout>
-      <Row gutter={16}>
-        <Col className="gutter-row" span={12}>
-          <Card
-            hoverable
-            onClick={() => handleTabChange("pendingReview")}
-            style={{
-              textAlign: "center",
-              backgroundColor:
-                selectedTab === "pendingReview" ? "#ffd591" : "#fff",
-              borderRadius: "24px", // กรอบมน
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <h3 className="sarabun-bold">ตรวจสอบการจ่ายจริง</h3>
-          </Card>
-        </Col>
-        <Col className="gutter-row" span={12}>
-          <Card
-            hoverable
-            onClick={() => handleTabChange("pendingApproval")}
-            style={{
-              textAlign: "center",
-              backgroundColor:
-                selectedTab === "pendingApproval" ? "#ffa5a1" : "#fff",
-              borderRadius: "24px", // กรอบมน
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <h3 className="sarabun-bold">ตรวจสอบยอดคงเหลือ</h3>
-          </Card>
-        </Col>
-      </Row>
+      <div style={{ padding: "0 48px" }}>
+        <div
+          className="sarabun-bold"
+          style={{
+            fontSize: "35px",
+            marginTop: "30px",
+            marginBottom: "30px",
+            color: "#000000E0",
+          }}
+        >
+          การตรวจสอบและอนุมัติ
+        </div>
+        <Row gutter={16}>
+          <Col className="gutter-row" span={12}>
+            <Card
+              hoverable
+              onClick={() => handleTabChange("pendingReview")}
+              style={{
+                textAlign: "center",
+                backgroundColor:
+                  selectedTab === "pendingReview" ? "#ffd591" : "#fff",
+                borderRadius: "24px", // กรอบมน
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              <h3 className="sarabun-bold">ตรวจสอบการจ่ายจริง</h3>
+            </Card>
+          </Col>
+          <Col className="gutter-row" span={12}>
+            <Card
+              hoverable
+              onClick={() => handleTabChange("pendingApproval")}
+              style={{
+                textAlign: "center",
+                backgroundColor:
+                  selectedTab === "pendingApproval" ? "#ffa5a1" : "#fff",
+                borderRadius: "24px", // กรอบมน
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              <h3 className="sarabun-bold">ตรวจสอบยอดคงเหลือ</h3>
+            </Card>
+          </Col>
+        </Row>
 
-      <Table
-        dataSource={data}
-        columns={columns}
-        loading={loading}
-        rowKey="upload_id"
-        style={{ marginTop: 16 }}
-        className="custom-table"
-        pagination={false}
-      />
+        <Table
+          dataSource={data}
+          columns={columns}
+          loading={loading}
+          rowKey="upload_id"
+          style={{ marginTop: 16 }}
+          className="custom-table"
+          pagination={false}
+        />
+      </div>
     </MainLayout>
   );
 };

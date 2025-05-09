@@ -9,23 +9,24 @@ import {
   Modal,
   InputNumber,
   Card,
-  Breadcrumb,
   Radio,
   Input,
-  Row,
-  Col,
 } from "antd";
 import axios from "axios";
 import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/TaskDetails.css";
 import config from "../../configAPI";
 import Swal from "sweetalert2";
+import {
+  PushpinFilled,
+  CloseOutlined,
+  PlusCircleFilled,
+} from "@ant-design/icons";
 
 const TaskDetails = () => {
   const { upload_id } = useParams();
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [], status: "" });
-  const [isModalVisible, setIsModalVisible] = useState(false);
   const [isTaskCompleted, setIsTaskCompleted] = useState(false);
   const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
   const [formattedData, setFormattedData] = useState([]);
@@ -38,8 +39,11 @@ const TaskDetails = () => {
   const [selectedReason, setSelectedReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
   const [currentRecordId, setCurrentRecordId] = useState(null);
-  const [showReasonButton, setShowReasonButton] = useState(false);
   const [buttonType, setButtonType] = useState("savePartial");
+  const [inventoryId, setInventoryId] = useState(null);
+  const [RemainingReasonModal, setRemainingReasonModal] = useState(false);
+  const [selectedRemainingReason, setSelectedRemainingReason] = useState(null);
+  const [otherRemainingReason, setOtherRemainingReason] = useState("");
 
   const navigate = useNavigate();
   console.log("useParams:", useParams());
@@ -56,6 +60,7 @@ const TaskDetails = () => {
       console.log(response.data);
 
       setData(Array.isArray(response.data) ? response.data : []);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch task details:", err);
     }
@@ -207,6 +212,8 @@ const TaskDetails = () => {
         counted_quantity: details.counted_quantity,
         actual_quantity: details.actual_quantity,
         selected_time: details.timestamp,
+        employee_reason: details.employee_reason || "",
+        employee_reason_remaining: details.employee_reason_remaining || "",
       }));
 
       console.log("Payload to send:", payload);
@@ -264,6 +271,7 @@ const TaskDetails = () => {
         used_quantity: temporaryData[id]?.quantity,
         selected_time: details.timestamp,
         employee_reason: details.employee_reason || "",
+        employee_reason_remaining: details.employee_reason_remaining || "",
       }));
 
       console.log("Payload to send (คลาดเคลื่อน):", payload);
@@ -352,29 +360,19 @@ const TaskDetails = () => {
     setIsDataChanged(true);
   };
 
-  /*const handleRowClick = (record) => {
-    console.log("Clicked record:", record);
-    const filtered = checkDetails.filter(
-      (item) => item.mat_name === record.mat_name
-    );
-
-    if (filtered.length > 0 && filtered[0].details) {
-      console.log("Filtered details:", filtered[0].details);
-      setFilteredData(
-        filtered[0].details
-          .map((detail) => ({
-            ...detail,
-            matunit: record.matunit,
-            mat_name: record.mat_name,
-          }))
-          .sort((a, b) => a.matin.localeCompare(b.matin))
-      );
-    } else {
-      setFilteredData([]);
-    }
-
-    setIsModalVisible(true);
-  };*/
+  // อัปเดตเหตุผลใน temporaryData
+  const handleReasonRemainingChange = (value, id) => {
+    setTemporaryData((prevData) => {
+      const newData = { ...prevData };
+      if (newData[id]) {
+        newData[id].employee_reason_remaining = value; // เพิ่มเหตุผล
+      } else {
+        newData[id] = { employee_reason_remaining: value }; // ถ้าไม่มีข้อมูลให้สร้างใหม่
+      }
+      return newData;
+    });
+    setIsDataChanged(true);
+  };
 
   const handleCheckboxChange = (id, checked) => {
     if (!isTaskCompleted) {
@@ -400,6 +398,11 @@ const TaskDetails = () => {
           ? temporaryData[id].employee_reason
           : "";
 
+      const employeeReasonRemain =
+        temporaryData[id]?.employee_reason_remaining !== undefined
+          ? temporaryData[id].employee_reason_remaining
+          : "";
+
       setTemporaryData((prevData) => {
         const newData = { ...prevData };
         if (checked) {
@@ -410,6 +413,7 @@ const TaskDetails = () => {
             quantity: usedQuantity,
             timestamp: currentTime,
             employee_reason: employeeReason,
+            employee_reason_remaining: employeeReasonRemain,
           };
         } else {
           // ลบข้อมูลถ้า unchecked
@@ -432,6 +436,12 @@ const TaskDetails = () => {
           setCurrentRecordId(null);
         }
 
+        // ตรวจสอบเงื่อนไข remaining_quantity และ counted_quantity
+        if (checked && item.remaining_quantity !== countedQuantity) {
+          setRemainingReasonModal(true); // แสดง Modal เลือกเหตุผล (คงเหลือ)
+          setCurrentRecordId(id);
+        }
+
         return newData;
       });
 
@@ -445,6 +455,10 @@ const TaskDetails = () => {
       setIsDataChanged(true);
     }
   };
+
+  useEffect(() => {
+    console.log("Temporary Data updated:", temporaryData);
+  }, [temporaryData]);
 
   const handleReasonButtonClick = (id) => {
     setCurrentRecordId(id); // เก็บ ID ของรายการที่เลือก
@@ -473,12 +487,36 @@ const TaskDetails = () => {
     setOtherReason("");
   };
 
-  const handleModalOk = () => {
-    setIsModalVisible(false);
+  const handleRemainingReasonButtonClick = (recordId) => {
+    setCurrentRecordId(recordId);
+    setRemainingReasonModal(true);
   };
 
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
+  const handleRemainingReasonOk = () => {
+    if (
+      selectedRemainingReason === "อื่นๆ" &&
+      otherRemainingReason.trim() === ""
+    ) {
+      message.error("กรุณากรอกเลขที่ใบสั่งเบิก");
+      return;
+    }
+    const finalReason =
+      selectedRemainingReason === "อื่นๆ"
+        ? otherRemainingReason.trim()
+        : selectedRemainingReason;
+
+    if (currentRecordId) {
+      handleReasonRemainingChange(finalReason, currentRecordId);
+    }
+    setRemainingReasonModal(false);
+    setSelectedRemainingReason("");
+    setOtherRemainingReason("");
+  };
+
+  const handleRemainingReasonCancel = () => {
+    setRemainingReasonModal(false);
+    setSelectedRemainingReason("");
+    setOtherRemainingReason("");
   };
 
   // เพิ่มฟังก์ชันสำหรับการไฮไลท์แถว
@@ -602,6 +640,7 @@ const TaskDetails = () => {
         props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
       }),
       align: "center",
+      width: 70,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -617,17 +656,51 @@ const TaskDetails = () => {
       title: "รายการ",
       dataIndex: "mat_name",
       key: "mat_name",
-      render: (text, record, index) => ({
-        children: (
-          <span
-          //onClick={() => handleRowClick(record)}
-          >
-            {text}
-          </span>
-        ),
-        props: { rowSpan: record.rowSpanMatName },
-      }),
+      width: 300,
+      render: (text, record, index) => {
+        const backgroundColor = record.is_cs ? "yellow" : "transparent";
+        return {
+          children: (
+            <span
+              style={{
+                backgroundColor,
+                display: "block", // เพื่อให้ background เต็มเซลล์
+                padding: "4px 8px", // ปรับ padding ให้ดูดีขึ้น
+              }}
+            >
+              {text}
+            </span>
+          ),
+          props: { rowSpan: record.rowSpanMatName },
+        };
+      },
       align: "left",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a",
+          fontWeight: "bold",
+          fontSize: "14px",
+          color: "#ffffff",
+        },
+      }),
+    },
+    {
+      /*title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 80,
+          }}
+        >
+          ซ้ำกัน 2 กะ
+        </div>
+      ),*/
+      dataIndex: "is_duplicate",
+      key: "is_duplicate",
+      align: "center",
+      width: 50,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -636,12 +709,37 @@ const TaskDetails = () => {
           color: "#ffffff", // สีตัวอักษร
         },
       }),
+      /*render: (isDuplicate) =>
+        isDuplicate ? (
+          <PushpinFilled style={{ color: "red", fontSize: "15px" }} />
+        ) : null,*/
+      render: (isDuplicate) =>
+        isDuplicate ? (
+          <span style={{ position: "relative", display: "inline-block" }}>
+            <PlusCircleFilled
+              style={{
+                color: "#1a237e",
+                fontSize: "30px",
+                position: "absolute",
+                top: 0,
+                left: 0,
+              }}
+            />
+            <PlusCircleFilled
+              style={{
+                color: "#1a237e",
+                fontSize: "30px",
+              }}
+            />
+          </span>
+        ) : null,
     },
     {
       title: "ล็อต",
       dataIndex: "mat_lot",
       key: "mat_lot",
       align: "left",
+      width: 200,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -656,6 +754,7 @@ const TaskDetails = () => {
       dataIndex: "loc",
       key: "loc",
       align: "left",
+      width: 200,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -669,6 +768,7 @@ const TaskDetails = () => {
       title: "จำนวนที่ต้องจ่าย",
       dataIndex: "quantity",
       key: "quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -684,6 +784,7 @@ const TaskDetails = () => {
       title: "จำนวนจ่ายจริง",
       dataIndex: "actual_quantity",
       key: "actual_quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -738,6 +839,7 @@ const TaskDetails = () => {
           จำนวนคงเหลือในโปรแกรม
         </div>
       ),
+      width: 150,
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -765,6 +867,7 @@ const TaskDetails = () => {
         </div>
       ),
       dataIndex: "counted_quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -810,6 +913,7 @@ const TaskDetails = () => {
       title: "คงเหลือรวมทุกล็อต",
       dataIndex: "total_quantity",
       key: "total_quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -864,10 +968,11 @@ const TaskDetails = () => {
     },
     ,
     {
-      title: "เหตุผล",
+      title: "เหตุผล (จ่ายจริง)",
       dataIndex: "employee_reason",
       key: "employee_reason",
       align: "center",
+      width: 200,
       render: (_, record) => {
         if (isReasonModalVisible && currentRecordId === record.id) {
           return (
@@ -887,6 +992,35 @@ const TaskDetails = () => {
           fontWeight: "bold", // ความหนาของตัวอักษร
           fontSize: "14px", // ขนาดตัวอักษร
           color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+    },
+    {
+      title: "เหตุผล (คงเหลือ)",
+      dataIndex: "employee_reason_remaining",
+      key: "employee_reason_remaining",
+      align: "center",
+      width: 200,
+
+      render: (_, record) => {
+        if (RemainingReasonModal && currentRecordId === record.id) {
+          return (
+            <Button
+              type="primary"
+              onClick={() => handleRemainingReasonButtonClick(record.id)}
+            >
+              เลือกเหตุผล
+            </Button>
+          );
+        }
+        return temporaryData[record.id]?.employee_reason_remaining || "-";
+      },
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
           borderTopRightRadius: "10px", // มุมโค้งด้านขวาบน
           borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
         },
@@ -897,7 +1031,7 @@ const TaskDetails = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+        {/*<div style={{ marginTop: "20px", marginBottom: "20px" }}>
           <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>
               <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
@@ -907,6 +1041,22 @@ const TaskDetails = () => {
             </Breadcrumb.Item>
             <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
           </Breadcrumb>
+        </div>*/}
+
+        <div
+          className="dashboard-title sarabun-bold"
+          style={{
+            fontSize: "30px",
+            textAlign: "center", // จัดข้อความตรงกลาง
+            display: "flex",
+            justifyContent: "center", // จัดให้อยู่ตรงกลางแนวนอน
+            alignItems: "center", // จัดให้อยู่ตรงกลางแนวตั้ง (ถ้าสูง)
+            height: "50px", // ตั้งความสูงให้พอดี
+            marginBottom: "30px",
+            marginTop: "30px",
+          }}
+        >
+          ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
         </div>
 
         <Card
@@ -921,8 +1071,30 @@ const TaskDetails = () => {
               padding: "20px",
             }}
           >
-            รายละเอียดการเบิกจ่ายวัตถุดิบ :
+            รายละเอียด : ใบสั่งงานเลขที่ {inventoryId ? inventoryId : "N/A"}
+            {/* คำอธิบายสัญลักษณ์ */}
+            <div
+              style={{
+                fontSize: "14px",
+                marginTop: "20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "#fff8c4", // สีเหลืองอ่อน
+                padding: "8px 12px",
+                borderRadius: "6px", // มุมโค้งเล็กน้อย
+                border: "1px solid #ffe58f", // เส้นขอบให้ดูเด่นขึ้น
+              }}
+            >
+              <PlusCircleFilled
+                style={{ color: "#1a237e", fontSize: "25px" }}
+              />
+              <span>
+                หมายถึง มีการสั่งเบิกวัตถุดิบรายการนั้นมากกว่า 1 กะ/วัน
+              </span>
+            </div>
           </div>
+
           <div className="table-container">
             <Table
               columns={columns}
@@ -930,8 +1102,9 @@ const TaskDetails = () => {
               pagination={false}
               rowKey={(record) => record.id}
               rowClassName={rowClassName}
-              scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
-              className="custom-table"
+              //scroll={{ x: "max-content"}}
+              scroll={{ x: "max-content", y: 500 }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+              className="custom-table "
             />
             <Card
               className="sarabun-bold"
@@ -943,7 +1116,19 @@ const TaskDetails = () => {
                 marginBottom: "30px",
               }}
             >
-              รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}</div>
+                <div>
+                  รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+                </div>
+              </div>
+
               <Modal
                 title="เลือกเหตุผล"
                 visible={isReasonModalVisible}
@@ -973,6 +1158,37 @@ const TaskDetails = () => {
                       placeholder="กรุณากรอกเหตุผล"
                       value={otherReason}
                       onChange={(e) => setOtherReason(e.target.value)}
+                    />
+                  )}
+                </div>
+              </Modal>
+
+              <Modal
+                title="เลือกเหตุผล"
+                visible={RemainingReasonModal}
+                onOk={handleRemainingReasonOk}
+                onCancel={handleRemainingReasonCancel}
+              >
+                <div>
+                  <Radio.Group
+                    onChange={(e) => setSelectedRemainingReason(e.target.value)}
+                    value={selectedRemainingReason}
+                    style={{ display: "flex", flexDirection: "column" }}
+                  >
+                    <Radio className="sarabun-light" value="ไม่ทราบสาเหตุ">
+                      ไม่ทราบสาเหตุ
+                    </Radio>
+                    <Radio className="sarabun-light" value="อื่นๆ">
+                      อื่นๆ
+                    </Radio>
+                  </Radio.Group>
+                  {selectedRemainingReason === "อื่นๆ" && (
+                    <Input
+                      className="sarabun-light"
+                      style={{ marginTop: 10 }}
+                      placeholder="กรุณากรอกเหตุผล"
+                      value={otherRemainingReason}
+                      onChange={(e) => setOtherRemainingReason(e.target.value)}
                     />
                   )}
                 </div>

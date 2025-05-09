@@ -10,7 +10,8 @@ const { getDailyOverview,
     getAverageTimesByMaterials,
     getWorkloadTask,
     getWorkloadTaskItem,
-    getDetailsSupClerk
+    getDetailsSupClerk,
+    getMaterialUsageSummary,
  } = require('../controllers1/supClerkDashController'); 
 const { authenticateToken } = require('../controllers1/loginController1');
 
@@ -26,6 +27,9 @@ router.get('/workload-tasks', getWorkloadTask);
 router.get('/workload-tasks-item', getWorkloadTaskItem);
 router.get('/average-times', getAverageTimes);
 router.get('/average-times-materials', getAverageTimesByMaterials);
-router.get('/details-SupClerk', getDetailsSupClerk);
+router.get('/details-SupClerk/:upload_id', getDetailsSupClerk);
+
+// Route สำหรับดึงข้อมูลปริมาณการใช้
+router.get('/materialUsageSummary', getMaterialUsageSummary);
 
 module.exports = router;

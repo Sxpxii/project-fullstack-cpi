@@ -7,21 +7,21 @@ const fileUpload = require('express-fileupload');
 const setupSocket = require('./socket');
 const loginRouter = require('./routes1/login');
 const dashboardRouter = require('./routes1/dashboard');
-const dashboardClerkRouter = require('./routes1/dashboardClerk')
+const dashboardClerkRouter = require('./routes1/dashboardClerk');
 const taskRouter = require('./routes1/task');
-const supervisorDashboardRouter = require('./routes1/supervisorDashboard');
-const supervisorAnalysisRouter = require('./routes1/supervisorAnalysis');
 const UserManagementRouter = require('./routes1/UserManagement');
 const supClerkdashboardRouter = require('./routes1/supClerkdashboard');
 const notificationRouter = require('./routes1/notifications');
 const supClerkRouter = require('./routes1/supClerk');
 const UploadItemRequestRouter = require('./routes1/UploadItemRequest')
+const supClerkReportRouter = require('./routes1/supClerkReport')
 
 const app = express();
 const host = '0.0.0.0'; 
 const server = http.createServer(app); // สร้าง HTTP server จาก Express app
 
-const PORT = process.env.PORT || 3002;
+//const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3003;
 
 // Middleware
 app.use(express.json());
@@ -51,12 +51,11 @@ app.use('/itemrequests', UploadItemRequestRouter);
 app.use('/dashboard', dashboardRouter);
 app.use('/dashboardClerk', dashboardClerkRouter);
 app.use('/tasks', taskRouter);
-app.use('/supervisorDashboard', supervisorDashboardRouter);
-app.use('/supervisorAnalysis', supervisorAnalysisRouter);
 app.use('/UserManagement', UserManagementRouter);
 app.use('/supClerkdashboard', supClerkdashboardRouter);
 app.use('/alert', notificationRouter);
 app.use('/supClerkTasks', supClerkRouter);
+app.use('/supClerkReports', supClerkReportRouter);
 
 // Additional GET routes if needed
 app.get('/', (req, res) => {

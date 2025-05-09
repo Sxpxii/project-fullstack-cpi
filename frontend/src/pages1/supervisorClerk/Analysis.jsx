@@ -525,6 +525,7 @@ const DashboardAnalysis = () => {
             fontSize: "35px",
             marginLeft: "20px",
             marginTop: "30px",
+            marginBottom: "20px",
             color: "#000000E0",
           }}
         >

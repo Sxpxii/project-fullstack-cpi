@@ -83,9 +83,10 @@
     background: #f9f9f9;
   }
   
-  .highlight-row {
-    background-color: #bf8489 !important; /* สีพื้นหลังแดงอ่อน */
-    color: #f7384b !important; /* สีข้อความแดงเข้ม */
+  .highlight-row td {
+    background-color: #ffeeef !important; /* สีพื้นหลังแดงอ่อน */
+    color: #ff0019 !important; /* สีข้อความแดงเข้ม */
+    font-weight: 500 !important; 
   }
 
   .custom-table .ant-table {

@@ -13,6 +13,7 @@ const Details = () => {
   const { upload_id } = useParams();
   const [totalRequested, setTotalRequested] = useState(0);
   const [formattedData, setFormattedData] = useState([]);
+  const [inventoryId, setInventoryId] = useState(null);
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -35,6 +36,7 @@ const Details = () => {
       );
       console.log("Fetched data:", response.data);
       setData(Array.isArray(response.data) ? response.data : []);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch data:", err.response?.data || err.message);
     }
@@ -213,6 +215,22 @@ const Details = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
+        <div
+          className="dashboard-title sarabun-bold"
+          style={{
+            fontSize: "30px",
+            textAlign: "center", // จัดข้อความตรงกลาง
+            display: "flex",
+            justifyContent: "center", // จัดให้อยู่ตรงกลางแนวนอน
+            alignItems: "center", // จัดให้อยู่ตรงกลางแนวตั้ง (ถ้าสูง)
+            height: "50px", // ตั้งความสูงให้พอดี
+            marginBottom: "30px",
+            marginTop: "30px",
+          }}
+        >
+          ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
+        </div>
+
         <Card
           style={{
             borderRadius: "15px",
@@ -225,7 +243,7 @@ const Details = () => {
               padding: "20px",
             }}
           >
-            รายละเอียดการเบิกจ่ายวัตถุดิบ :
+            รายละเอียด : ใบสั่งงานเลขที่ {inventoryId ? inventoryId : "N/A"}
           </div>
           <div className="table-container">
             <Table
@@ -247,7 +265,18 @@ const Details = () => {
               marginBottom: "30px",
             }}
           >
-            รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequested)}
+            <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}</div>
+                <div>
+                  รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+                </div>
+              </div>
           </Card>
           <div className="button-container">
             <button

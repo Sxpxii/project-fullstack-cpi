@@ -157,8 +157,10 @@
 }
 
 /* เพิ่มสไตล์สำหรับแถวที่ถูกไฮไลต์ */
-.highlight-row {
-    background-color: red; /* หรือสีที่ต้องการ */
+.highlightrow td {
+    background-color: #ffeeef !important; /* สีพื้นหลังแดงอ่อน */
+    color: #ff001a !important; /* สีข้อความแดงเข้ม */
+    font-weight: 500 !important;  
   }
 
 /* Style สำหรับ Modal Table */

@@ -2,6 +2,59 @@ const { pool1 } = require('../config/db');
 const { logUserAction } = require('../controllers1/loginController1');
 const { updateDurationAndAverage } = require('../controllers1/supClerkDashController');
 
+const getDashboardData = async (req, res) => {
+  try {
+    // ดึงข้อมูลจากตาราง uploads ที่มี status เป็น "รอดดำเนินการต่อ" หรือ "รอตรวจสอบ"
+    const result = await pool1.query(
+      `SELECT upload_id, material_type, approved_date AS date, current_status AS status, last_status_update, inventory_id 
+      FROM uploads 
+      WHERE current_status IN ('รอดำเนินการต่อ', 'รอตรวจสอบ')`
+    );
+    console.log("Step 1: Fetched uploads data:", result.rows);
+
+    // ใช้ Promise.all เพื่อรอให้การตรวจสอบใน notifications เสร็จสิ้นทั้งหมด
+    const filteredData = await Promise.all(result.rows.map(async (row) => {
+      console.log("Processing row:", row);
+      // ถ้าสถานะเป็น "รอดำเนินการต่อ"
+      if (row.status === 'รอดำเนินการต่อ') {
+        // ตรวจสอบว่าในตาราง notifications มี upload_id ที่ตรงกัน
+        const notificationResult = await pool1.query(
+          `SELECT 1 FROM notifications WHERE upload_id = $1`, [row.upload_id]
+        );
+        console.log("Checking notifications for upload_id:", row.upload_id);
+        console.log("Notification result:", notificationResult.rows);
+
+        // ถ้ามีตรงกันให้คืนค่าข้อมูลนี้
+        if (notificationResult.rows.length > 0) {
+          console.log("Found matching notification, returning row:", row);
+          return row;
+        } else {
+          console.log("No matching notification found for upload_id:", row.upload_id);
+        }
+      } else if (row.status === 'รอตรวจสอบ') {
+        // ถ้าสถานะเป็น "รอตรวจสอบ" ให้คืนค่าทันที
+        console.log("Status is 'รอตรวจสอบ', returning row:", row);
+        return row;
+      }
+
+      // ถ้าไม่ตรงกับเงื่อนไขก็ให้ return null
+      console.log("No conditions met for row:", row);
+      return null;
+    }));
+
+    // กรอง undefined หรือ null ออก
+    const cleanData = filteredData.filter(row => row !== null);
+    console.log("Step 2: Filtered data after conditions:", cleanData);
+
+    // ส่งข้อมูลไปยังหน้าบ้าน
+    res.json(cleanData);
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err);
+    res.status(500).send('Error fetching dashboard data');
+  }
+};
+
+
 const getMaterialUsageData = async (req, res) => {
   try {
       const { upload_id } = req.params;
@@ -495,6 +548,7 @@ const sendNotificationToSenderApprove = async (upload_id, req, res) => {
 
 
 module.exports = {
+    getDashboardData,
     getMaterialUsageData,
     getTotalRequested,
     approveUpload,

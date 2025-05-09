@@ -50,9 +50,10 @@ const getTasks = async (req, res) => {
               TO_CHAR(approved_date, 'YYYY-MM-DD') AS approved_date,
               inventory_id,
               last_status_update,
-              is_editing
+              is_editing,
+              isurgent
           FROM uploads
-          WHERE current_status = $1 AND assigned_to IS NULL AND approved_date <= CURRENT_DATE
+          WHERE current_status = $1 AND assigned_to IS NULL 
       `;
       
       const tasks = await pool1.query(query, ['รอรับงาน']);
@@ -200,6 +201,7 @@ const getTaskDetails = async (req, res) => {
 
     const query = `
       SELECT 
+        u.inventory_id,
         m.id,
         m.mat_name,
         m.mat_unit,
@@ -215,14 +217,17 @@ const getTaskDetails = async (req, res) => {
             'actual_quantity', r.actual_quantity,
             'employee_reason', r.employee_reason,
             'manager_reason', r.manager_reason,
-            'total_quantity', r.total_quantity
+            'total_quantity', r.total_quantity,
+            'is_duplicate', r.is_duplicate,
+            'is_cs', r.is_cs
           )
           ORDER BY r.id
         ) AS details
       FROM material_matunits m
       JOIN mat_requests r ON m.id = r.mat_unit_id
+      JOIN uploads u ON r.upload_id = u.upload_id
       WHERE r.upload_id = $1
-      GROUP BY m.id, m.mat_name, m.mat_unit
+      GROUP BY u.inventory_id, m.id, m.mat_name, m.mat_unit
       ORDER BY m.id;
     `;
 
@@ -246,6 +251,7 @@ const getPendingTaskDetails = async (req, res) => {
 
       const query = `
       SELECT 
+          u.inventory_id,
           m.id,
           m.mat_name,
           m.mat_unit,
@@ -262,17 +268,20 @@ const getPendingTaskDetails = async (req, res) => {
                   'actual_quantity', 
                   COALESCE(t.actual_quantity, b.actual_quantity), -- ใช้ค่าจาก material_temporary ถ้ามี
                   'employee_reason', t.employee_reason,
+                  'employee_reason_remaining', t.employee_reason_remaining,
                   'manager_reason', b.manager_reason,
                   'total_quantity', b.total_quantity,
-                  'is_temporary', CASE WHEN t.mat_requests_id IS NOT NULL AND t.mat_requests_id = b.id THEN true  ELSE false END
-              )
+                  'is_temporary', CASE WHEN t.mat_requests_id IS NOT NULL AND t.mat_requests_id = b.id THEN true  ELSE false END,
+                  'is_duplicate',b.is_duplicate
+                  )
               ORDER BY b.id
           ) AS details
       FROM material_matunits m
       JOIN mat_requests b ON m.id = b.mat_unit_id AND b.upload_id = $1
+      LEFT JOIN uploads u ON u.upload_id = b.upload_id
       LEFT JOIN material_temporary t ON t.mat_requests_id = b.id -- เชื่อมกับ material_temporary
       WHERE b.upload_id = $1
-      GROUP BY m.id, m.mat_name, m.mat_unit
+      GROUP BY u.inventory_id, m.id, m.mat_name, m.mat_unit
       ORDER BY m.id;
       `;
 
@@ -530,6 +539,7 @@ const getStatus = async (req, res) => {
 const savePartialCountedQuantities = async (req, res) => {
   const { upload_id } = req.params;
   const payload = req.body;
+  console.log("Payload:", payload);
 
   // ตรวจสอบว่า `upload_id` และ `payload` มีข้อมูลครบถ้วน
   if (!upload_id) {
@@ -544,11 +554,11 @@ const savePartialCountedQuantities = async (req, res) => {
 
     // บันทึกข้อมูลใน `material_temporary`
     const insertOrUpdatePromises  = payload.map(async (item) => {
-      const { id, counted_quantity, actual_quantity, used_quantity, selected_time, employee_reason } = item;
+      const { id, counted_quantity, actual_quantity, used_quantity, selected_time, employee_reason, employee_reason_remaining } = item;
 
       // ตรวจสอบความคลาดเคลื่อน
       if (actual_quantity !== used_quantity) {
-        mismatchedItems.push({ id, actual_quantity, used_quantity, employee_reason });
+        mismatchedItems.push({ id, actual_quantity, used_quantity, employee_reason, employee_reason_remaining });
       }
 
       // ตรวจสอบว่า id นี้มีข้อมูลใน material_temporary อยู่แล้วหรือไม่
@@ -559,22 +569,23 @@ const savePartialCountedQuantities = async (req, res) => {
         // ถ้ามีข้อมูลแล้ว ให้ทำการอัพเดต
         const updateQuery = `
           UPDATE material_temporary
-          SET counted_quantity = $1, actual_quantity = $2, selected_time = $3, employee_reason = $4
-          WHERE mat_requests_id = $5 AND upload_id = $6
+          SET counted_quantity = $1, actual_quantity = $2, selected_time = $3, employee_reason = $4, employee_reason_remaining = $5
+          WHERE mat_requests_id = $6 AND upload_id = $7
         `;
         await pool1.query(updateQuery, [
           counted_quantity,
           actual_quantity,
           selected_time,
           employee_reason,
+          employee_reason_remaining,
           id,
           upload_id,
         ]);
       } else {
         // ถ้าไม่มีข้อมูลในตาราง material_temporary ให้ทำการบันทึกใหม่
         const insertQuery = `
-          INSERT INTO material_temporary (mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason, upload_id)
-          VALUES ($1, $2, $3, $4, $5, $6)
+          INSERT INTO material_temporary (mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason, upload_id, employee_reason_remaining)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
         `;
         await pool1.query(insertQuery, [
           id,
@@ -583,6 +594,7 @@ const savePartialCountedQuantities = async (req, res) => {
           selected_time,
           employee_reason,
           upload_id,
+          employee_reason_remaining,
         ]);
       }
     });
@@ -716,6 +728,7 @@ const notifyManager = async (upload_id, req) => {
 const savePartialQuantities = async (req, res) => {
   const { upload_id } = req.params;
   const payload = req.body; // รับค่าที่ผู้ใช้กรอกมาในรูปแบบ [{ id, counted_quantity, actual_quantity, selected_time, employee_reason }]
+  console.log("Payload:", payload);
 
   try {
     // ดึงข้อมูลทั้งหมดจาก material_temporary ที่เกี่ยวข้องกับ upload_id
@@ -726,10 +739,10 @@ const savePartialQuantities = async (req, res) => {
     if (materialTemporaryRows.length === 0) {
       // ถ้าไม่มีข้อมูลใด ๆ ที่ตรงกับ upload_id ก็จะบันทึกข้อมูลใหม่
       const insertQueries = payload.map(item => {
-        const { id, counted_quantity, actual_quantity, selected_time, employee_reason } = item;
+        const { id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining } = item;
         return pool1.query(
-          'INSERT INTO material_temporary (upload_id, mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason) VALUES ($1, $2, $3, $4, $5, $6)',
-          [upload_id, id, counted_quantity, actual_quantity, selected_time, employee_reason]
+          'INSERT INTO material_temporary (upload_id, mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [upload_id, id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining]
         );
       });
       // รอให้การบันทึกทั้งหมดเสร็จสิ้น
@@ -739,21 +752,21 @@ const savePartialQuantities = async (req, res) => {
 
     // ถ้ามีข้อมูลที่ตรงกับ upload_id
     const updateQueries = payload.map(item => {
-      const { id, counted_quantity, actual_quantity, selected_time, employee_reason } = item;
+      const { id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining } = item;
 
       // ค้นหา row ที่ตรงกับ id จากฐานข้อมูล
       const row = materialTemporaryRows.find(row => row.mat_requests_id === id);
       if (row) {
         // ถ้ามีข้อมูลที่ตรงกับ id ใน material_temporary ก็ให้ทำการอัปเดต
         return pool1.query(
-          'UPDATE material_temporary SET counted_quantity = $1, actual_quantity = $2, selected_time = $3, employee_reason = $4 WHERE mat_requests_id = $5',
-          [counted_quantity, actual_quantity, selected_time, employee_reason, row.id]
+          'UPDATE material_temporary SET counted_quantity = $1, actual_quantity = $2, selected_time = $3, employee_reason = $4, employee_reason_remaining = $5 WHERE mat_requests_id = $6',
+          [counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining, row.id]
         );
       } else {
         // ถ้าไม่มีข้อมูลในตาราง material_temporary ให้ทำการบันทึกใหม่
         return pool1.query(
-          'INSERT INTO material_temporary (upload_id, mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason) VALUES ($1, $2, $3, $4, $5, $6)',
-          [upload_id, id, counted_quantity, actual_quantity, selected_time, employee_reason]
+          'INSERT INTO material_temporary (upload_id, mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [upload_id, id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining]
         );
       }
     });
@@ -774,7 +787,7 @@ const updateMaterialTemporary = async (req, res) => {
     const { payload } = req.body;
 
     for (const entry of payload) {
-      const { id, counted_quantity, actual_quantity, selected_time, employee_reason } = entry;
+      const { id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining } = entry;
 
       // ตรวจสอบว่า id มีอยู่ใน material_temporary หรือไม่
       const existingRecord = await pool1.query(
@@ -786,16 +799,16 @@ const updateMaterialTemporary = async (req, res) => {
         // ถ้ามี id ให้ทำการอัพเดตข้อมูล
         await pool1.query(
           `UPDATE material_temporary
-           SET counted_quantity = $1, actual_quantity = $2, selected_time = $3, employee_reason = $4
-           WHERE id = $5 AND upload_id = $6`,
-          [counted_quantity, actual_quantity, selected_time, employee_reason, id, upload_id]
+           SET counted_quantity = $1, actual_quantity = $2, selected_time = $3, employee_reason = $4, employee_reason_remaining = $5
+           WHERE id = $6 AND upload_id = $7`,
+          [counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining, id, upload_id]
         );
       } else {
         // ถ้าไม่มี id ให้ทำการบันทึกข้อมูลใหม่
         await pool1.query(
-          `INSERT INTO material_temporary (mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason, upload_id)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [id, counted_quantity, actual_quantity, selected_time, employee_reason, upload_id]
+          `INSERT INTO material_temporary (mat_requests_id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining, upload_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining, upload_id]
         );
       }
     }
@@ -818,6 +831,7 @@ const saveMaterialUsage = async (req, res) => {
       `UPDATE mat_requests mu
        SET counted_quantity = mt.counted_quantity,
            employee_reason = mt.employee_reason,
+           employee_reason_remaining = mt.employee_reason_remaining,
            selected_time = mt.selected_time,
            actual_quantity = mt.actual_quantity
        FROM material_temporary mt

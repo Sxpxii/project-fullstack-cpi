@@ -6,7 +6,7 @@ import {
   Table,
   Button,
   Modal,
-  message,
+  DatePicker,
   Tag,
   Card,
   Checkbox,
@@ -18,6 +18,7 @@ import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/OperationDashboard.css";
 import config from "../../configAPI";
 import Swal from "sweetalert2";
+import moment from "moment";
 
 const OperationsDashboard = () => {
   const [username, setUsername] = useState("");
@@ -28,6 +29,9 @@ const OperationsDashboard = () => {
   const navigate = useNavigate();
   const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1024px)" });
   const [isUserActive, setIsUserActive] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   const fetchTasks = async () => {
     try {
@@ -87,9 +91,24 @@ const OperationsDashboard = () => {
     return result;
   }, [tasks, selectedMaterialTypes]);
 
+  const filteredByDateTasks = useMemo(() => {
+    return filteredTasks.filter((task) => {
+      const taskDate = new Date(task.approved_date).toISOString().split("T")[0];
+      return taskDate <= selectedDate;
+    });
+  }, [filteredTasks, selectedDate]);
+
+  const finalFilteredTasks = useMemo(() => {
+    return filteredByDateTasks.filter((task) =>
+      selectedMaterialTypes.length > 0
+        ? selectedMaterialTypes.includes(task.material_type)
+        : true
+    );
+  }, [filteredByDateTasks, selectedMaterialTypes]);
+
   const getCurrentDate = () => {
     return new Date().toISOString().split("T")[0]; // คืนค่าปัจจุบันในรูปแบบ YYYY-MM-DD
-  };
+  };  
 
   useEffect(() => {
     console.log("Updated Selected Material Types:", selectedMaterialTypes);
@@ -180,6 +199,8 @@ const OperationsDashboard = () => {
         customClass: {
           title: "sarabun-bold",
         },
+        timer: 1000, // ปิดหน้าต่างแจ้งเตือนหลังจาก 2 วินาที
+        showConfirmButton: false, // ไม่ให้แสดงปุ่ม OK
       });
       fetchTasks(); // อัปเดตรายการงานทั้งหมด
       fetchMyTasks(); // อัปเดตรายการงานของฉัน
@@ -263,12 +284,21 @@ const OperationsDashboard = () => {
     },
     {
       title: "สถานะ",
-      key: "overdue",
+      key: "current_status",
       render: (record) => {
         const currentDate = getCurrentDate();
         const isOverdue =
-          new Date(record.upload_date).toISOString().split("T")[0] <
+          new Date(record.approved_date).toISOString().split("T")[0] <
           currentDate;
+
+          if (record.isurgent) {
+            return (
+              <Tag className="sarabun-bold" color="#c41411">
+                งานด่วน
+              </Tag>
+            );
+          }
+
         return isOverdue ? (
           <Tag className="sarabun-light" color="red">
             เกินกำหนด
@@ -353,7 +383,6 @@ const OperationsDashboard = () => {
             width: "300px",
             alignSelf: "flex-end",
             boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)", // เพิ่มเงาให้ดูมีมิติ
-           
           }}
           className="sarabun-light"
         >
@@ -362,7 +391,7 @@ const OperationsDashboard = () => {
             onChange={handleMaterialTypeChange}
             style={{
               display: "flex",
-              flexDirection: "column",  // ใช้ flex-direction: column เพื่อแสดงแนวตั้ง
+              flexDirection: "column", // ใช้ flex-direction: column เพื่อแสดงแนวตั้ง
             }}
           >
             {[
@@ -382,7 +411,7 @@ const OperationsDashboard = () => {
                   marginBottom: "10px", // เพิ่มระยะห่างระหว่างตัวเลือก
                   transform: "scale(1.5)", // ขยายขนาด checkbox
                   padding: "5px",
-                  marginLeft:"40px"
+                  marginLeft: "40px",
                 }}
               >
                 {item.label}
@@ -413,6 +442,59 @@ const OperationsDashboard = () => {
 
             <div
               style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "20px",
+              }}
+            >
+              {/* ตัวเลือกวันที่ */}
+              <label
+                htmlFor="datePicker"
+                className="sarabun-bold"
+                style={{
+                  fontSize: "16px",
+                  marginRight: "10px",
+                }}
+              >
+                เลือกวันที่:{" "}
+              </label>
+              <input
+                id="datePicker"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="sarabun-light"
+                style={{
+                  padding: "8px",
+                  fontSize: "16px",
+                  borderRadius: "10px",
+                  border: "1px solid #ccc",
+                  cursor: "pointer",
+                }}
+              />
+
+              <Button
+                className="sarabun-light"
+                onClick={() =>
+                  setSelectedDate(new Date().toISOString().split("T")[0])
+                }
+                style={{
+                  padding: "8px 12px",
+                  fontSize: "15px",
+                  backgroundColor: "#00152a",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "9px",
+                }}
+              >
+                รีเซ็ต
+              </Button>
+            </div>
+
+            <div
+              style={{
                 height: "350px", // กำหนดความสูงของตาราง
                 overflowY: "auto", // ทำให้เลื่อนขึ้นลงได้
               }}
@@ -420,7 +502,7 @@ const OperationsDashboard = () => {
             >
               <Table
                 columns={columns}
-                dataSource={filteredTasks}
+                dataSource={finalFilteredTasks}
                 pagination={false}
                 className="custom-table"
               />

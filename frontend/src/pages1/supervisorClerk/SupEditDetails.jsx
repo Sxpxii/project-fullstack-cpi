@@ -107,8 +107,8 @@ const SupEditDetails = () => {
         // ตรวจสอบว่า inputReason ไม่ว่างเปล่า
         if (!inputReason) {
           Swal.fire({
-            icon: 'warning',
-            title: 'กรุณากรอกเหตุผล',
+            icon: "warning",
+            title: "กรุณากรอกเหตุผล",
             html: '<span class="sarabun-light">กรุณากรอกเหตุผลในการรอวัตถุดิบ</span>',
             customClass: {
               title: "sarabun-bold", // ใส่คลาสให้กับ title
@@ -136,13 +136,13 @@ const SupEditDetails = () => {
       setInputReason("");
     } else {
       Swal.fire({
-        icon: 'warning',
-        title: 'กรุณาเลือกเหตุผลก่อนบันทึก',
-        text: 'กรุณาเลือกเหตุผลเพื่อดำเนินการบันทึก',
+        icon: "warning",
+        title: "กรุณาเลือกเหตุผลก่อนบันทึก",
+        text: "กรุณาเลือกเหตุผลเพื่อดำเนินการบันทึก",
         html: '<span class="sarabun-light">กรุณาเลือกเหตุผลเพื่อดำเนินการบันทึก</span>',
-            customClass: {
-              title: "sarabun-bold", // ใส่คลาสให้กับ title
-            },
+        customClass: {
+          title: "sarabun-bold", // ใส่คลาสให้กับ title
+        },
       });
     }
   };
@@ -179,8 +179,6 @@ const SupEditDetails = () => {
               // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
               fetchData(); // โหลดข้อมูลใหม่หลังจากบันทึกสำเร็จ
               navigate("/Approval");
-
-              
             });
           } else {
             Swal.fire({
@@ -210,64 +208,66 @@ const SupEditDetails = () => {
       confirmButtonColor: "#5755FE",
       cancelButtonColor: "#f0f0f0",
       confirmButtonText: '<span style="color: #f0f0f0;">ใช่, อนุมัติ</span>',
-        cancelButtonText: '<span style="color: #5755FE;">ยกเลิก</span>',
-        customClass: {
-          title: "sarabun-bold", // เพิ่มคลาสให้กับ title
-          htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
-          confirmButton: "sarabun-light",
-          cancelButton: "sarabun-light",
-        }
+      cancelButtonText: '<span style="color: #5755FE;">ยกเลิก</span>',
+      customClass: {
+        title: "sarabun-bold", // เพิ่มคลาสให้กับ title
+        htmlContainer: "sarabun-light", // เพิ่มคลาสให้กับข้อความ
+        confirmButton: "sarabun-light",
+        cancelButton: "sarabun-light",
+      },
     });
     if (result.isConfirmed) {
-        try {
-          console.log("Approving data:", tempData);
-          const token = sessionStorage.getItem("token");
-          const response = await axios.post(
-            `${config.API_URL}/supClerkTasks/approve/${upload_id}`,
-            { data: tempData },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (response.data.success) {
-            // แสดง SweetAlert2 เมื่ออนุมัติสำเร็จ
-            Swal.fire({
-              icon: "success",
-              title: "อนุมัติรายการสำเร็จ",
-              html: '<span class="sarabun-light">คุณได้อนุมัติรายการเรียบร้อยแล้ว!</span>',
-              confirmButtonText: "ตกลง",
-              customClass: {
-                title: "sarabun-bold", // ใส่คลาสให้กับ title
-              },
-            }).then(() => {
-              // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
-              navigate("/Approval");
-            });
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "การอนุมัติไม่สำเร็จ",
-              html: '<span class="sarabun-light">เกิดข้อผิดพลาดในการอนุมัติรายการนี้!</span>',
-              confirmButtonText: "ตกลง",
-              customClass: {
-                title: "sarabun-bold", // ใส่คลาสให้กับ title
-              },
-            });
+      try {
+        console.log("Approving data:", tempData);
+        const token = sessionStorage.getItem("token");
+        const response = await axios.post(
+          `${config.API_URL}/supClerkTasks/approve/${upload_id}`,
+          { data: tempData },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
-        } catch (error) {
+        );
+
+        if (response.data.success) {
+          // แสดง SweetAlert2 เมื่ออนุมัติสำเร็จ
+          Swal.fire({
+            icon: "success",
+            title: "อนุมัติรายการสำเร็จ",
+            html: '<span class="sarabun-light">คุณได้อนุมัติรายการเรียบร้อยแล้ว!</span>',
+            timer: 1000, // ปิดหน้าต่างแจ้งเตือนหลังจาก 2 วินาที
+        showConfirmButton: false, // ไม่ให้แสดงปุ่ม OK
+            customClass: {
+              title: "sarabun-bold", // ใส่คลาสให้กับ title
+            },
+          }).then(() => {
+            // เมื่อกด "ตกลง" ใน SweetAlert2 ให้ทำการ navigate ไปที่หน้า /Approval
+            navigate("/Approval");
+          });
+        } else {
           Swal.fire({
             icon: "error",
-            title: '<span style="font-family: Sarabun-Bold;">เกิดข้อผิดพลาด</span>',
-            html: '<span style="font-family: Sarabun-Light;">เกิดข้อผิดพลาดในการอนุมัติ!</span>',
+            title: "การอนุมัติไม่สำเร็จ",
+            html: '<span class="sarabun-light">เกิดข้อผิดพลาดในการอนุมัติรายการนี้!</span>',
             confirmButtonText: "ตกลง",
+            customClass: {
+              title: "sarabun-bold", // ใส่คลาสให้กับ title
+            },
           });
-          console.error(error);
         }
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title:
+            '<span style="font-family: Sarabun-Bold;">เกิดข้อผิดพลาด</span>',
+          html: '<span style="font-family: Sarabun-Light;">เกิดข้อผิดพลาดในการอนุมัติ!</span>',
+          confirmButtonText: "ตกลง",
+        });
+        console.error(error);
       }
-    };
+    }
+  };
 
   const columns = [
     {
@@ -320,7 +320,7 @@ const SupEditDetails = () => {
       }),
     },
     {
-      title: "จ่ายจริง",
+      title: "จำนวนจ่ายจริง",
       dataIndex: "actual_quantity",
       key: "actual_quantity",
       render: (text, record) => <span>{formatNumber(text)}</span>,
@@ -335,7 +335,7 @@ const SupEditDetails = () => {
       align: "center",
     },
     {
-      title: "เหตุผล",
+      title: "เหตุผล (จ่ายจริง)",
       dataIndex: "employee_reason",
       key: "employee_reason",
       render: (text, record) => <span>{text}</span>,
@@ -405,21 +405,20 @@ const SupEditDetails = () => {
     // แปลงข้อมูลเพื่อแสดงคำถามแต่ละข้อเป็นแถว
     const formattedData = Array.isArray(data)
       ? data.flatMap((m) =>
-          m.details
-            .map((d, index) => {
-              const reason =
-                d.manager_reason || tempData[d.id]?.manager_reason || "-";
-              return {
-                ...d,
-                matunit: m.matunit,
-                mat_name: m.mat_name,
-                rowSpanMatunit: index === 0 ? m.details.length : 0,
-                rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
-                rowSpanQuantity: index === 0 ? m.details.length : 0,
-                counted_quantity: d.counted_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
-                reason: reason,
-              };
-            })
+          m.details.map((d, index) => {
+            const reason =
+              d.manager_reason || tempData[d.id]?.manager_reason || "-";
+            return {
+              ...d,
+              matunit: m.matunit,
+              mat_name: m.mat_name,
+              rowSpanMatunit: index === 0 ? m.details.length : 0,
+              rowSpanMatName: index === 0 ? m.details.length : 0, // แสดง mat_name ในทุกแถวที่เกี่ยวข้อง
+              rowSpanQuantity: index === 0 ? m.details.length : 0,
+              counted_quantity: d.counted_quantity, // ใช้ counted_quantity ถ้ามี หรือ remaining_quantity ถ้าไม่มี
+              reason: reason,
+            };
+          })
         )
       : [];
     setFormattedData(formattedData); // อัปเดตข้อมูลใน formattedData
@@ -457,25 +456,28 @@ const SupEditDetails = () => {
     <MainLayout>
       <div
         style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+          display: "flex",
+          justifyContent: "flex-end",
+          padding: "10px",
         }}
       >
-        <div style={{ margin: "10px" }}>
-          <div
-            className="dashboard-title sarabun-bold"
-            style={{
-              fontSize: "28px",
-              marginLeft: "20px",
-              padding: "20px",
-            }}
-          >
-            ตรวจสอบยอดคงเหลือของวัตถุดิบ
-          </div>
-        </div>
+        {/* ปุ่มอนุมัติ */}
+        <Button
+          style={{
+            backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
+            borderColor: "green", // ขอบของปุ่มเป็นสีเขียว
+            fontSize: "18px", // เพิ่มขนาดตัวอักษร
+            width: "120px", // กำหนดความกว้าง
+            height: "90px", // กำหนดความสูง (เท่ากับ width)
+            display: "flex", // ใช้ flexbox เพื่อจัดให้อยู่ตรงกลาง
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "18px",
+          }}
+          onClick={() => handleApprove(upload_id)}
+        >
+          อนุมัติ
+        </Button>
       </div>
 
       <div>
@@ -484,6 +486,15 @@ const SupEditDetails = () => {
             borderRadius: "15px",
           }}
         >
+          <div
+            className="dashboard-title sarabun-bold"
+            style={{
+              fontSize: "20px",
+              padding: "20px",
+            }}
+          >
+            ตรวจสอบยอดคงเหลือของวัตถุดิบ :
+          </div>
           <div className="table-container ">
             <Table
               columns={columns}
@@ -551,18 +562,6 @@ const SupEditDetails = () => {
             >
               ยืนยันการตรวจสอบ
             </Button>
-
-            {/* ปุ่มอนุมัติ */}
-            <Button
-              style={{
-                color: "#ffffff",
-                backgroundColor: "green",
-                borderColor: "green",
-              }}
-              onClick={() => handleApprove(upload_id)}
-            >
-              อนุมัติ
-            </Button>
           </div>
         </Card>
       </div>
@@ -597,8 +596,11 @@ const SupEditDetails = () => {
           <Radio className="sarabun-light" value="จ่ายวัตถุดิบเท่าที่เหลือ">
             จ่ายวัตถุดิบเท่าที่เหลือ
           </Radio>
+          <Radio className="sarabun-light" value="รอ QC ตรวจสอบ">
+            รอ QC ตรวจสอบ 
+          </Radio>
           <Radio className="sarabun-light" value="รอวัตถุดิบเข้า">
-            รอวัตถุดิบเข้า (ระบุ lot เช่น 16/11/2024  TPPM : 4 ชิ้น))
+            รอวัตถุดิบเข้า (ระบุ lot เช่น 16/11/2024 TPPM : 4 ชิ้น))
           </Radio>
         </Radio.Group>
         {isOtherReason && (

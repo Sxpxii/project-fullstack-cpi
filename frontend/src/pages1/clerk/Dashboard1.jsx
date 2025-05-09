@@ -15,6 +15,7 @@ import axios from "axios";
 import MainLayout from "../../components/LayoutClerk";
 import "../../styles1/Dashboard.css";
 import { FaCheck, FaTrashCan } from "react-icons/fa6";
+import { FaEdit, FaTimes } from "react-icons/fa";
 import config from "../../configAPI";
 import { debounce } from "lodash";
 import Swal from 'sweetalert2';
@@ -41,6 +42,7 @@ const Dashboardclerk = () => {
   const [filterDate, setFilterDate] = useState(""); // State for date filter
   const [filterMaterial, setFilterMaterial] = useState(""); // State for material filter
   const [filterInventoryId, setFilterInventoryId] = useState("");
+  const [isEditing, setIsEditing] = useState({}); // State ตรวจสอบว่ากำลังแก้ไขแถวไหน
 
   const navigate = useNavigate();
 
@@ -192,6 +194,8 @@ const Dashboardclerk = () => {
       console.log("Data to save:", { uploadId, inventoryId });
 
       const token = sessionStorage.getItem("token");
+      console.log("Token being sent:", token);
+
       await axios.post(
         `${config.API_URL}/dashboardClerk/save-inventory-id`,
         { upload_id: uploadId, inventory_id: inventoryId },
@@ -205,7 +209,7 @@ const Dashboardclerk = () => {
         icon: 'success',
         title: 'บันทึก Inventory ID สำเร็จ',
         showConfirmButton: false,
-        timer: 1500,
+        timer: 1000,
         customClass: {
           title: "sarabun-bold", // ใส่คลาสให้กับ title
         },
@@ -255,6 +259,7 @@ const Dashboardclerk = () => {
       dataIndex: "inventory_id",
       key: "inventory_id",
       align: "center",
+      width: 400,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -266,6 +271,80 @@ const Dashboardclerk = () => {
         },
       }),
       render: (text, record) => {
+        const isEditingRow = isEditing[record.upload_id];
+        const hasInventoryId = record.inventory_id && record.inventory_id.trim() !== "";
+    
+        return (
+          <Space size="middle">
+            {isEditingRow ? (
+              <>
+                <Input
+                  style={{ marginRight: 8 }}
+                  value={inputValues[record.upload_id] ?? record.inventory_id ?? ""}
+                  onChange={(e) =>
+                    handleInventoryIdChange(record.upload_id, e.target.value)
+                  }
+                />
+                <Button
+                  icon={<FaCheck />}
+                  onClick={() => {
+                    saveInventoryId(record.upload_id);
+                    setIsEditing((prev) => ({ ...prev, [record.upload_id]: false }));
+                  }}
+                  disabled={!inputValues[record.upload_id]}
+                  style={{ background: "green", color: "white" }}
+                />
+                {hasInventoryId && (
+                  <Button
+                    icon={<FaTimes />} // ปุ่มยกเลิก
+                    onClick={() => {
+                      setInputValues((prev) => ({
+                        ...prev,
+                        [record.upload_id]: record.inventory_id,
+                      }));
+                      setIsEditing((prev) => ({ ...prev, [record.upload_id]: false }));
+                    }}
+                    style={{ backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                {hasInventoryId ? (
+                  <>
+                    <span>{text}</span>
+                    <Button
+                      icon={<FaEdit />} // ปุ่มแก้ไข
+                      onClick={() => setIsEditing((prev) => ({ ...prev, [record.upload_id]: true }))}
+                      style={{ backgroundColor: "#9e9e9e", borderColor: " #9e9e9e", color: "white" }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      style={{ marginRight: 8 }}
+                      value={inputValues[record.upload_id] ?? ""}
+                      onChange={(e) =>
+                        handleInventoryIdChange(record.upload_id, e.target.value)
+                      }
+                    />
+                    <Button
+                      icon={<FaCheck />}
+                      onClick={() => {
+                        saveInventoryId(record.upload_id);
+                        setIsEditing((prev) => ({ ...prev, [record.upload_id]: false }));
+                      }}
+                      disabled={!inputValues[record.upload_id]}
+                      style={{ background: "green", color: "white" }}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </Space>
+        );
+      },
+      /*render: (text, record) => {
         if (text === null) {
           return (
             <Space>
@@ -294,7 +373,7 @@ const Dashboardclerk = () => {
         } else {
           return text;
         }
-      },
+      },*/
     },
     {
       title: "วัตถุดิบ",
@@ -474,7 +553,8 @@ const Dashboardclerk = () => {
       total: data
         ? data.filter(
             (item) =>
-              item.status === "รอรับงาน" && isToday(item.last_status_update)
+              //item.status === "รอรับงาน" && isToday(item.last_status_update)
+            item.status === "รอรับงาน" && isToday(item.approved_date)
           ).length
         : 0,
       color: "#91caff",
@@ -485,8 +565,8 @@ const Dashboardclerk = () => {
       total: data
         ? data.filter(
             (item) =>
-              item.status === "กำลังดำเนินการ" &&
-              isToday(item.last_status_update)
+              //item.status === "กำลังดำเนินการ" && isToday(item.last_status_update)
+            item.status === "กำลังดำเนินการ" && isToday(item.approved_date)
           ).length
         : 0,
       color: "#ffd591",
@@ -497,7 +577,8 @@ const Dashboardclerk = () => {
       total: data
         ? data.filter(
             (item) =>
-              item.status === "รอตรวจสอบ" && isToday(item.last_status_update)
+              //item.status === "รอตรวจสอบ" && isToday(item.last_status_update)
+            item.status === "รอตรวจสอบ" && isToday(item.approved_date)
           ).length
         : 0,
       color: "#ffa5a1",
@@ -508,8 +589,8 @@ const Dashboardclerk = () => {
       total: data
         ? data.filter(
             (item) =>
-              item.status === "ดำเนินการเรียบร้อย" &&
-              isToday(item.last_status_update)
+              //item.status === "ดำเนินการเรียบร้อย" && isToday(item.last_status_update)
+            item.status === "ดำเนินการเรียบร้อย" && isToday(item.approved_date)
           ).length
         : 0,
       color: "#b7eb8f",

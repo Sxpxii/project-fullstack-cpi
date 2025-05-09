@@ -258,7 +258,18 @@ const RemainingEditDetails = () => {
       }),
     },
     {
-      title: "จำนวนคงเหลือ",
+      title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 100,
+          }}
+        >
+          จำนวนคงเหลือในโปรแกรม
+        </div>
+      ),
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       render: (text, record) => <span>{formatNumber(text)}</span>,
@@ -273,7 +284,7 @@ const RemainingEditDetails = () => {
       }),
     },
     {
-      title: "นับจริง",
+      title: "จำนวนนับจริง",
       dataIndex: "counted_quantity",
       key: "counted_quantity",
       render: (text, record) => {

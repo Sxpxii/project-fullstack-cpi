@@ -21,6 +21,7 @@ const UploadPage = () => {
   const [formattedData, setFormattedData] = useState([]);
   const [uploadId, setUploadId] = useState(null);
   const [totalQuantity, setTotalQuantity] = useState(null);
+  const [isUrgent, setIsUrgent] = useState(false);
 
   const navigate = useNavigate();
 
@@ -68,7 +69,14 @@ const UploadPage = () => {
     formData.append("file", file);
     formData.append("materialType", materialType);
     formData.append("approvedDate", approvedDate);
-    console.log("Sending data to server:", materialType, file, approvedDate);
+    formData.append("isUrgent", isUrgent);
+    console.log(
+      "Sending data to server:",
+      materialType,
+      file,
+      approvedDate,
+      isUrgent
+    );
 
     try {
       const token = sessionStorage.getItem("token");
@@ -126,6 +134,8 @@ const UploadPage = () => {
             icon: "success",
             title: "บันทึกข้อมูลสำเร็จ",
             html: '<span class="sarabun-light">ข้อมูลถูกบันทึกเรียบร้อยแล้ว</span>',
+            showConfirmButton: false,
+            timer: 1000,
             customClass: {
               title: "sarabun-bold",
             },
@@ -448,12 +458,12 @@ const UploadPage = () => {
                   <option value="PIN">สลัก/ตะขอ</option>
                   <option value="BP">แผ่นเหล็ก</option>
                   <option value="CHEMICAL">เคมี</option>
-                  <option value="MRO">MRO</option>
+                  {/*<option value="MRO">MRO</option>
                   <option value="rimweb">rimweb</option>
                   <option value="shoe">ก้ามเปล่า</option>
                   <option value="DIS">ดิสกึ่ง</option>
                   <option value="BRAKES">ผ้าเบรก</option>
-                  <option value="pallet">พาเลท</option>
+                  <option value="pallet">พาเลท</option>*/}
                 </select>
                 <Button
                   type="primary"
@@ -536,6 +546,8 @@ const UploadPage = () => {
                   alignItems: "center",
                   justifyContent: "center",
                   minHeight: "400px",
+
+                  position: "relative",
                 }}
               >
                 <div
@@ -577,6 +589,38 @@ const UploadPage = () => {
                       : "ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือกไฟล์"}
                   </p>
                 </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center", // จัดให้อยู่กึ่งกลางแนวตั้ง
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    id="urgentCheckbox"
+                    checked={isUrgent}
+                    onChange={(e) => setIsUrgent(e.target.checked)}
+                    style={{
+                      width: "24px", // ปรับขนาดความกว้างของ checkbox
+                      height: "24px", // ปรับขนาดความสูงของ checkbox
+                      cursor: "pointer", // ทำให้เมาส์เปลี่ยนเป็น pointer
+                      accentColor: "#ff4d4f", // ทำให้ checkbox เป็นสีแดงเมื่อถูกเลือก (รองรับเฉพาะบางเบราว์เซอร์)
+                    }} // ปรับขนาด checkbox ให้ใหญ่ขึ้น
+                  />
+                  <label
+                    htmlFor="urgentCheckbox"
+                    className="sarabun-bold"
+                    style={{
+                      color: "#ff4d4f",
+                      fontSize: "20px", // ปรับขนาดตัวอักษรให้ใหญ่ขึ้น
+                      marginLeft: "8px", // เพิ่มระยะห่างระหว่าง checkbox กับ label
+                      cursor: "pointer", // ทำให้สามารถคลิกที่ label เพื่อเลือก checkbox ได้
+                    }}
+                  >
+                    งานด่วน**
+                  </label>
+                </div>
                 {file && (
                   <div
                     style={{
@@ -601,6 +645,7 @@ const UploadPage = () => {
                     </button>
                   </div>
                 )}
+
                 <div
                   style={{
                     display: "flex",
@@ -653,7 +698,8 @@ const UploadPage = () => {
                           textAlign: "right",
                         }}
                       >
-                        <strong>ยอดรวมเบิกทั้งหมด : </strong>{formatNumber(totalQuantity)}
+                        <strong>ยอดรวมเบิกทั้งหมด : </strong>
+                        {formatNumber(totalQuantity)}
                       </div>
                     )}
                     <div

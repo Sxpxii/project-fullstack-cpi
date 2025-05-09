@@ -11,6 +11,7 @@ const TaskDetailsFinished = () => {
   const { upload_id } = useParams();
   const [data, setData] = useState({ balances: [], status: "" });
   const [totalRequestedQuantity, setTotalRequestedQuantity] = useState(0);
+  const [inventoryId, setInventoryId] = useState(null);
 
   const fetchTaskDetails = async () => {
     try {
@@ -23,6 +24,7 @@ const TaskDetailsFinished = () => {
       );
       console.log(response.data);
       setData(Array.isArray(response.data) ? response.data : []);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch task details:", err);
       message.error("ไม่สามารถดึงข้อมูลรายละเอียดงาน");
@@ -198,7 +200,7 @@ const TaskDetailsFinished = () => {
       align: "center",
     },
     {
-      title: "แก้ไข",
+      title: "วิธีแก้ไข",
       dataIndex: "manager_reason",
       key: "manager_reason",
       align: "center",
@@ -249,7 +251,7 @@ const TaskDetailsFinished = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+        {/*<div style={{ marginTop: "20px", marginBottom: "20px" }}>
           <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>
               <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
@@ -259,6 +261,22 @@ const TaskDetailsFinished = () => {
             </Breadcrumb.Item>
             <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
           </Breadcrumb>
+        </div>*/}
+
+        <div
+          className="dashboard-title sarabun-bold"
+          style={{
+            fontSize: "30px",
+            textAlign: "center", // จัดข้อความตรงกลาง
+            display: "flex",
+            justifyContent: "center", // จัดให้อยู่ตรงกลางแนวนอน
+            alignItems: "center", // จัดให้อยู่ตรงกลางแนวตั้ง (ถ้าสูง)
+            height: "50px", // ตั้งความสูงให้พอดี
+            marginBottom: "30px",
+            marginTop: "30px",
+          }}
+        >
+          ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
         </div>
 
         <Card
@@ -273,7 +291,7 @@ const TaskDetailsFinished = () => {
               padding: "20px",
             }}
           >
-            รายละเอียดการเบิกจ่ายวัตถุดิบ :
+            รายละเอียด : ใบสั่งงานเลขที่ {inventoryId ? inventoryId : "N/A"}
           </div>
           <div className="table-container">
             <Table
@@ -295,7 +313,18 @@ const TaskDetailsFinished = () => {
               marginBottom: "30px",
             }}
           >
-            รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}</div>
+              <div>
+                รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+              </div>
+            </div>
           </Card>
           <div className="button-container">
             <Link to="/MyTasks">

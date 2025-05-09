@@ -5,11 +5,11 @@ const { pool1 } = require('../config/db');
 const iconv = require('iconv-lite');
 
 // บันทึกการอัปโหลดไฟล์
-const recordFileUpload = async (userId, fileName, materialType, approvedDate) => {
+const recordFileUpload = async (userId, fileName, materialType, approvedDate, isUrgent) => {
     try {
         const result = await pool1.query(
-            'INSERT INTO uploads (user_id, filename, upload_date, material_type, approved_date, current_status, last_status_update ) VALUES ($1, $2, NOW(), $3, $4, $5, NOW()) RETURNING upload_id',
-            [userId, fileName, materialType, approvedDate, 'รอรับงาน']
+            'INSERT INTO uploads (user_id, filename, upload_date, material_type, approved_date, current_status, last_status_update, isUrgent ) VALUES ($1, $2, NOW(), $3, $4, $5, NOW(), $6) RETURNING upload_id',
+            [userId, fileName, materialType, approvedDate, 'รอรับงาน', isUrgent]
         );
         return result.rows[0].upload_id;
     } catch (error) {
@@ -71,7 +71,7 @@ const rollbackData = async (uploadId) => {
 
 const uploadFileAndConvert = (req, res) => {
     try {
-        const { materialType, approvedDate } = req.body;
+        const { materialType, approvedDate, isUrgent } = req.body;
 
         if (!req.files || !req.files.file) {
             return res.status(400).json({ message: 'กรุณาอัปโหลดไฟล์' });
@@ -89,7 +89,7 @@ const uploadFileAndConvert = (req, res) => {
             }
 
             const userId = req.user.userId; // สมมติว่า req.user.id มีข้อมูล userId
-            const uploadId = await recordFileUpload(userId, fileName, materialType, approvedDate);
+            const uploadId = await recordFileUpload(userId, fileName, materialType, approvedDate, isUrgent);
             await recordOperationStatus(uploadId, 'รอรับงาน');
 
             /*const workbook = XLSX.readFile(filePath, { cellDates: false, raw: true });
@@ -111,6 +111,7 @@ const uploadFileAndConvert = (req, res) => {
 
             const groupedData = []; // ใช้เก็บข้อมูลที่จัดกลุ่ม
             let currentMatUnit = null;
+            let isCS = false;
 
             for (let row = 3; row <= range.e.r; row++) { // เริ่มอ่านจากแถวที่ 4 (index 3)
                 const rowData = {};
@@ -147,12 +148,19 @@ const uploadFileAndConvert = (req, res) => {
                 const matUnitRegex5 = /^[-\w/()]+(?:-\w+)? \([\wก-๙]+\):/;
 
                 if (matUnitRegex1.test(columnB) || matUnitRegex2.test(columnB) || matUnitRegex3.test(columnB) || matUnitRegex4.test(columnB)|| matUnitRegex5.test(columnB)) {
+                    isCS = false;
                     // เป็น MatUnit
                     const [matUnit, mat_name] = columnB.split(':').map((s) => s.trim());
+                    if (materialType === 'WD' && mat_name.includes('(CS)')) {
+                        isCS = true;
+                    }
+                    
                     currentMatUnit = {
                         matUnit,
                         mat_name,
+                        isCS,
                         matLots: [],
+                        
                     };
                     groupedData.push(currentMatUnit);
                 } else if (/^\d{2}\/\d{2}\/\d{2,4}/.test(columnB) && currentMatUnit) {
@@ -219,6 +227,7 @@ const uploadFileAndConvert = (req, res) => {
             try {
                 await saveDataToDatabase(groupedData, uploadId);
                 const totalQuantity = await updateTotalQuantity(uploadId);
+                await checkForDuplicateRequests(uploadId, approvedDate, materialType);
                 const savedData = await getUploadedData(uploadId);
                 res.status(200).json({ message: 'ประมวลผลไฟล์สำเร็จ', data: savedData, uploadId: uploadId, totalQuantity: totalQuantity, });
             } catch (dbError) {
@@ -277,7 +286,6 @@ const getUploadedData = async (uploadId) => {
     }
 };
 
-
 const saveDataToDatabase = async (groupedData, uploadId) => {
     try {
         // เริ่มต้นการเชื่อมต่อฐานข้อมูล
@@ -297,8 +305,8 @@ const saveDataToDatabase = async (groupedData, uploadId) => {
             // เพิ่มข้อมูลใน mat_requests
             for (const matLot of matUnitData.matLots) {
                 await client.query(
-                    'INSERT INTO mat_requests (mat_unit_id, mat_lot, loc, quantity, remaining_quantity, total_quantity, upload_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                    [matUnitId, matLot.matLot, matLot.loc, matLot.quantity, matLot.remainingQuantity, matLot.totalQuantity, uploadId]
+                    'INSERT INTO mat_requests (mat_unit_id, mat_lot, loc, quantity, remaining_quantity, total_quantity, upload_id, is_cs) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+                    [matUnitId, matLot.matLot, matLot.loc, matLot.quantity, matLot.remainingQuantity, matLot.totalQuantity, uploadId, matUnitData.isCS || false,]
                 );
             }
         }
@@ -357,6 +365,62 @@ const ReturnData = async (req, res) => {
       });
     } finally {
       client.release(); // Release the database client
+    }
+  };
+
+const checkForDuplicateRequests = async (uploadId, approvedDate, materialType) => {
+    try {
+      // 1. หา upload อื่น ๆ ที่ approved_date และ material_type เดียวกัน
+      const { rows: relatedUploads } = await pool1.query(
+        `SELECT upload_id FROM uploads
+         WHERE approved_date = $1 AND material_type = $2 AND upload_id != $3`,
+        [approvedDate, materialType, uploadId]
+      );
+  
+      if (relatedUploads.length === 0) return;
+  
+      // 2. ดึง mat_unit และ mat_name จาก upload ปัจจุบัน
+    const { rows: currentMaterials } = await pool1.query(
+        `SELECT mm.id AS mat_unit_id, mm.mat_name, mr.id AS request_id
+         FROM material_matunits mm
+         JOIN mat_requests mr ON mm.id = mr.mat_unit_id
+         WHERE mm.upload_id = $1 AND mr.upload_id = $1`,
+        [uploadId]
+      );
+  
+      for (const upload of relatedUploads) {
+        const otherUploadId = upload.upload_id;
+  
+        // 3. ดึง mat_unit และ mat_name ของ upload ที่มีวันที่และประเภทเดียวกัน
+        const { rows: otherMaterials } = await pool1.query(
+          `SELECT mm.id AS mat_unit_id, mm.mat_name, mr.id AS request_id
+           FROM material_matunits mm
+           JOIN mat_requests mr ON mm.id = mr.mat_unit_id
+           WHERE mm.upload_id = $1 AND mr.upload_id = $1`,
+          [otherUploadId]
+        );
+  
+        // 4. เปรียบเทียบ mat_name
+        for (const current of currentMaterials) {
+          for (const other of otherMaterials) {
+            if (current.mat_name === other.mat_name) {
+              // 5. ถ้า mat_name ซ้ำกัน ให้ update is_duplicate = true
+              await pool1.query(
+                `UPDATE mat_requests SET is_duplicate = true WHERE id = $1`,
+                [current.request_id]
+              );
+              await pool1.query(
+                `UPDATE mat_requests SET is_duplicate = true WHERE id = $1`,
+                [other.request_id]
+              );
+            }
+          }
+        }
+      }
+  
+      console.log('✅ ตรวจสอบข้อมูลซ้ำเสร็จสิ้น');
+    } catch (error) {
+      console.error('❌ เกิดข้อผิดพลาดในการตรวจสอบข้อมูลซ้ำ:', error);
     }
   };
 

@@ -293,17 +293,17 @@ const MyTasks = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <div>
+        {/*<div>
           <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>
               <Link to="/OperationsDashboard">รายการเบิกจ่ายทั้งหมด</Link>
             </Breadcrumb.Item>
             <Breadcrumb.Item>รายการเบิกจ่ายของฉัน</Breadcrumb.Item>
           </Breadcrumb>
-        </div>
+        </div>*/}
 
         <Row>
-          <Col span={24} style={{ marginBottom: "20px" }}>
+          <Col span={24} style={{ marginBottom: "30px", marginTop:"30px" }}>
             <Button
               onClick={() => setShowCompletedTasks(!showCompletedTasks)}
               style={{
@@ -353,7 +353,7 @@ const MyTasks = () => {
                   >
                     งานที่ต้องดำเนินการ
                   </div>
-                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                  <div style={{ maxHeight: "450px", overflowY: "auto" }}>
                     <Table
                       columns={columns}
                       dataSource={ongoingTasks}
@@ -370,7 +370,7 @@ const MyTasks = () => {
                   >
                     งานที่ดำเนินการเรียบร้อย
                   </div>
-                  <div style={{ maxHeight: "450px", overflowY: "auto" }}>
+                  <div style={{ maxHeight: "350px", overflowY: "auto" }}>
                     <Table
                       columns={columns}
                       dataSource={completedTasks}

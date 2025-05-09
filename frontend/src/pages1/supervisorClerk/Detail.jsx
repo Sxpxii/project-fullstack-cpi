@@ -3,15 +3,22 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Table, Button, Card } from "antd";
 import axios from "axios";
-import MainLayout from "../../components/LayoutClerk";
+import MainLayout from "../../components/LayoutSupervisorClerk";
 import "../../styles1/Details.css"; // นำเข้าไฟล์ CSS
 import config from "../../configAPI";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const DetailsSupClerk = () => {
   const [username, setUsername] = useState("");
   const [data, setData] = useState({ balances: [] });
   const { upload_id } = useParams();
   const [totalRequested, setTotalRequested] = useState(0);
+  const [inventoryId, setInventoryId] = useState(null);
   const [formattedData, setFormattedData] = useState([]);
   const navigate = useNavigate();
 
@@ -35,6 +42,7 @@ const DetailsSupClerk = () => {
       );
       console.log("Fetched data:", response.data);
       setData(Array.isArray(response.data) ? response.data : []);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch data:", err.response?.data || err.message);
     }
@@ -89,6 +97,7 @@ const DetailsSupClerk = () => {
         props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
       }),
       align: "center",
+      width: 70,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -150,6 +159,55 @@ const DetailsSupClerk = () => {
       title: "จำนวนที่ต้องจ่าย",
       dataIndex: "quantity",
       key: "quantity",
+      width: 150,
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => formatNumber(text),
+      align: "center",
+    },
+    {
+      title: "จำนวนจ่ายจริง",
+      dataIndex: "actual_quantity",
+      key: "actual_quantity",
+      width: 150,
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => formatNumber(text),
+      align: "center",
+    },
+    {
+      title: "จำนวนคงเหลือในโปรแกรม",
+      dataIndex: "remaining_quantity",
+      key: "remaining_quantity",
+      width: 150,
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => formatNumber(text),
+      align: "center",
+    },
+    {
+      title: "จำนวนคงเหลือจริง",
+      dataIndex: "counted_quantity",
+      key: "counted_quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -165,6 +223,82 @@ const DetailsSupClerk = () => {
       title: "คงเหลือรวมทุกล็อต",
       dataIndex: "total_quantity",
       key: "total_quantity",
+      width: 150,
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (text) => (text === 0 ? "-" : formatNumber(text)),
+      align: "center",
+    },
+    {
+      title: "เหตุผลจนท.(จ่ายจริง)",
+      dataIndex: "employee_reason",
+      key: "employee_reason",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      align: "center",
+    },
+    {
+      title: "เหตุผลจนท.(คงเหลือ)",
+      dataIndex: "employee_reason_remaining",
+      key: "employee_reason_remaining",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      align: "center",
+    },
+    {
+      title: "เหตุผลหัวหน้า(จ่ายจริง)",
+      dataIndex: "manager_reason",
+      key: "manager_reason",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      align: "center",
+    },
+    {
+      title: "เหตุผลหัวหน้า(คงเหลือ)",
+      dataIndex: "manager_reason_remaining",
+      key: "manager_reason_remaining",
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      align: "center",
+    },
+    {
+      title: "เวลา",
+      dataIndex: "selected_time",
+      key: "selected_time",
+      render: (text) =>
+              text
+                ? dayjs.utc(text).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss")
+                : "-",
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -175,18 +309,30 @@ const DetailsSupClerk = () => {
           borderBottomRightRadius: "10px", // มุมโค้งด้านขวาล่าง
         },
       }),
-      render: (text) => (text === 0 ? "-" : formatNumber(text)),
       align: "center",
     },
   ];
 
   const handleBackClick = () => {
-    navigate("/dashboardClerk");
+    navigate("/SupClerkDashboardAnalysis");
   };
 
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
+        <div style={{ flex: 1 }}></div> {/* เว้นฝั่งซ้ายให้พอมีระยะ */}
+        <div
+          className="dashboard-title sarabun-bold"
+          style={{
+            fontSize: "30px",
+            textAlign: "center",
+            flex: 1,
+            marginTop:"30px",
+            marginBottom:"30px"
+          }}
+        >
+          ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
+        </div>
         <Card
           style={{
             borderRadius: "15px",
@@ -199,7 +345,7 @@ const DetailsSupClerk = () => {
               padding: "20px",
             }}
           >
-            รายละเอียดการเบิกจ่ายวัตถุดิบ :
+            รายละเอียด :
           </div>
           <div className="table-container">
             <Table
@@ -211,15 +357,24 @@ const DetailsSupClerk = () => {
               className="custom-table"
             />
           </div>
-          
-          <div className="button-container">
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "20px",
+              marginBottom: "20px",
+            }}
+          >
             <button
               className="sarabun-light"
               style={{
                 color: "#5755FE",
                 backgroundColor: "#f0f0f0",
                 borderColor: "#5755FE",
-                marginRight: "5px",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                cursor: "pointer",
               }}
               onClick={handleBackClick}
             >

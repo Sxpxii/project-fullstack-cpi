@@ -11,8 +11,6 @@ import MyTasks from "./pages1/staff/MyTasks";
 import TaskDetails from "./pages1/staff/TaskDetails";
 import TaskDetailsFinished from "./pages1/staff/TaskDetailsFinished";
 import PendingTaskDetails from "./pages1/staff/PendingTaskDetails";
-import SupervisorDashboard from "./pages1/supervisor/Dashboard";
-import Analysis from "./pages1/supervisor/Analysis";
 import UserManagement from "./pages1/admin/UserManagement";
 import Approval from "./pages1/supervisorClerk/Approval";
 import DashboardSupClerk from "./pages1/supervisorClerk/Dashboard";
@@ -20,6 +18,8 @@ import SupEditDetails from "./pages1/supervisorClerk/SupEditDetails";
 import RemainingEditDetails from "./pages1/supervisorClerk/RemainingEditDetails"
 import DashboardAnalysis from "./pages1/supervisorClerk/Analysis";
 import DetailsSupClerk from "./pages1/supervisorClerk/Detail";
+import ReportByDate from "./pages1/supervisorClerk/ReportByDate";
+import DashboardMaterialUsage from  "./pages1/supervisorClerk/DashboardMaterialUsage";
 
 const App1 = () => {
 
@@ -44,7 +44,7 @@ React.useEffect(() => {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/Register" element={<Register />} />
+        
 
         {/* Routes for Warehouse Officer */}
         <Route element={<PrivateRoute allowedRoles={["Warehouse Officer"]} />}>
@@ -61,6 +61,8 @@ React.useEffect(() => {
           <Route path="/Edit-Remaining/:upload_id" element={<RemainingEditDetails />} />
           <Route path="/SupClerkDashboardAnalysis" element={<DashboardAnalysis />} />
           <Route path="/details-SupClerk/:upload_id" element={<DetailsSupClerk />} />
+          <Route path="/ReportByDate" element={<ReportByDate />} />
+          <Route path="/DashboardMaterialUsage" element={<DashboardMaterialUsage />} />
         </Route>
 
         {/* Routes for Operations */}
@@ -75,21 +77,12 @@ React.useEffect(() => {
           <Route path="/PendingTaskDetails/:upload_id" element={<PendingTaskDetails />} />
         </Route>
 
-        {/* Routes for Supervisor */}
-        <Route element={<PrivateRoute allowedRoles={["Supervisor"]} />}>
-          <Route
-            path="/SupervisorDashboard"
-            element={<SupervisorDashboard />}
-          />
-          <Route path="/Analysis" element={<Analysis />} />
-        </Route>
-
         {/* Routes for Admin */}
         <Route element={<PrivateRoute allowedRoles={["Admin"]} />}>
           <Route path="/UserManagement" element={<UserManagement />} />
+          <Route path="/Register" element={<Register />} />
         </Route>
 
-        
       </Routes>
     </Router>
   );

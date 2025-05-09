@@ -22,7 +22,7 @@ const getDashboardData = async (req, res) => {
     }
 };
 
-// ฟังก์ชันสำหรับดึงข้อมูล
+/*// ฟังก์ชันสำหรับดึงข้อมูล
 const getMaterialDetails = async (req, res) => {
     const { upload_id } = req.params; 
     const query = `
@@ -64,9 +64,8 @@ const getMaterialDetails = async (req, res) => {
       console.error('Error executing query', error);
       res.status(500).json({ error: 'Error fetching material details' });
     }
-  };
+  };*/
   
-
 
 // ฟังก์ชันสำหรับดึงรายละเอียดของงาน
 const getDetails = async (req, res) => {
@@ -79,6 +78,7 @@ const getDetails = async (req, res) => {
 
     const query = `
       SELECT 
+        u.inventory_id,
         m.id,
         m.mat_name,
         m.mat_unit,
@@ -95,8 +95,9 @@ const getDetails = async (req, res) => {
         ) AS details
       FROM material_matunits m
       JOIN mat_requests r ON m.id = r.mat_unit_id
+      JOIN uploads u ON r.upload_id = u.upload_id
       WHERE r.upload_id = $1
-      GROUP BY m.id, m.mat_name, m.mat_unit
+      GROUP BY u.inventory_id, m.id, m.mat_name, m.mat_unit
       ORDER BY m.id;
     `;
 
@@ -154,6 +155,8 @@ const deleteUpload = async (req, res) => {
         await pool1.query('DELETE FROM mat_requests WHERE upload_id = $1', [upload_id]);
         // ลบข้อมูลในตาราง material_matunits
         await pool1.query('DELETE FROM material_matunits WHERE upload_id = $1', [upload_id]);
+        // ลบข้อมูลที่อ้างอิงในตาราง notifications ก่อน
+        await pool1.query('DELETE FROM notifications WHERE upload_id = $1', [upload_id]);
         // ลบข้อมูลที่อ้างอิงในตาราง operationstatuses ก่อน
         await pool1.query('DELETE FROM operationstatuses WHERE upload_id = $1', [upload_id]);
         // ลบข้อมูลในตาราง uploads
@@ -188,10 +191,81 @@ const deleteUpload = async (req, res) => {
             [inventory_id, upload_id]
         );
 
+        await notifyUrgentTask(upload_id, inventory_id, req);
+
       res.status(200).json({ message: 'Inventory IDs updated successfully' });
     } catch (error) {
       console.error('Error updating Inventory IDs:', error);
       res.status(500).json({ message: 'Failed to update Inventory IDs' });
+    }
+};
+
+const notifyUrgentTask = async (upload_id, inventory_id, req) => {
+  console.log("uploadId received in getSaveInventory:", upload_id);
+  console.log("Inventory IDs received in getSaveInventory:", inventory_id);
+  const io = req.io; 
+  console.log("Socket.IO ใน Request:", io);
+  
+  const { userId } = req.user;  // ใช้ userId แทน senderId
+  console.log("Sender ID from request:", userId);
+
+  const client = await pool1.connect();
+    try {
+        await client.query('BEGIN');
+
+        // ตรวจสอบว่าอัปโหลดนี้เป็นงานด่วนหรือไม่
+        const { rows: uploadRows } = await client.query(
+            'SELECT isurgent FROM uploads WHERE upload_id = $1',
+            [upload_id]
+        );
+
+        if (uploadRows.length === 0 || !uploadRows[0].isurgent) {
+            console.log("Not an urgent task, skipping notifications.");
+            await client.query('COMMIT');
+            return;
+        }
+
+        console.log("Urgent task detected! Notifying Operations...");
+
+        // ดึงรายชื่อ user_id ของ Operations
+        const { rows: operationsUsers } = await client.query(
+            "SELECT user_id FROM users1 WHERE role = 'Operations'"
+        );
+
+        if (operationsUsers.length > 0) {
+            const message = `มีงานด่วนที่ต้องดำเนินการ`;
+            const type = "urgent_task";
+            const status = "unread";
+
+            // เพิ่มแจ้งเตือนให้ทีม Operations
+            const notifications = operationsUsers.map((user) =>
+                client.query(
+                    `INSERT INTO notifications 
+                        (sender_id, recipient_id, message, type, status, created_at, inventory_id, upload_id) 
+                    VALUES 
+                        ($1, $2, $3, $4, $5, NOW(), $6, $7)`,
+                    [userId, user.user_id, message, type, status, inventory_id, upload_id]
+                )
+            );
+
+            await Promise.all(notifications);
+            console.log("Notifications sent successfully to Operations team.");
+
+            // แจ้งเตือนผ่าน Socket.IO
+            io.emit('notificationUrgent', {
+                inventoryId: inventory_id,
+                message: message,
+                type: type,
+                createdAt: new Date().toLocaleString()
+            });
+        }
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Error while sending urgent task notifications:", err);
+    } finally {
+        client.release();
     }
 };
 
@@ -228,7 +302,7 @@ module.exports = {
     getDashboardData,
     getDetails,
     getSaveInventory,
-    getMaterialDetails,
+    //getMaterialDetails,
     getUpdateInventory,
     deleteUpload,
     getTotalRequested

@@ -601,6 +601,7 @@ const getDetailsSupClerk = async (req, res) => {
 
     const query = `
       SELECT 
+        u.inventory_id,
         m.id,
         m.mat_name,
         m.mat_unit,
@@ -611,14 +612,23 @@ const getDetailsSupClerk = async (req, res) => {
             'mat_lot', r.mat_lot,
             'loc', r.loc,
             'quantity', r.quantity,
-            'total_quantity', r.total_quantity
+            'actual_quantity', r.actual_quantity,
+            'remaining_quantity', r.remaining_quantity,
+            'counted_quantity', r.counted_quantity,
+            'total_quantity', r.total_quantity,
+            'employee_reason', r.employee_reason,
+            'employee_reason_remaining', r.employee_reason_remaining,
+            'manager_reason', r.manager_reason,
+            'manager_reason_remaining', r.manager_reason_remaining,
+            'selected_time', r.selected_time
           )
           ORDER BY r.id
         ) AS details
       FROM material_matunits m
       JOIN mat_requests r ON m.id = r.mat_unit_id
+      JOIN uploads u ON r.upload_id = u.upload_id
       WHERE r.upload_id = $1
-      GROUP BY m.id, m.mat_name, m.mat_unit
+      GROUP BY u.inventory_id, m.id, m.mat_name, m.mat_unit
       ORDER BY m.id;
     `;
 
@@ -641,6 +651,53 @@ const getDetailsSupClerk = async (req, res) => {
   }
 };
 
+const getMaterialUsageSummary = async (req, res) => {
+  try {
+    const { materialType, startDate, endDate } = req.query;
+
+    const values = [];
+    let whereClause = `WHERE u.current_status = 'ดำเนินการเรียบร้อย' AND u.approved_date IS NOT NULL`;
+
+    if (materialType) {
+      values.push(materialType);
+      whereClause += ` AND u.material_type = $${values.length}`;
+    }
+
+    if (startDate) {
+      values.push(startDate);
+      whereClause += ` AND u.upload_date >= $${values.length}`;
+    }
+
+    if (endDate) {
+      values.push(endDate);
+      whereClause += ` AND u.upload_date <= $${values.length}`;
+    }
+
+    const query = `
+      SELECT
+        mu.mat_unit,
+        mu.mat_name,
+        SUM(mr.quantity) AS total_requested,
+        SUM(mr.actual_quantity) AS total_issued
+      FROM
+        mat_requests mr
+      JOIN material_matunits mu ON mr.mat_unit_id = mu.id
+      JOIN uploads u ON mu.upload_id = u.upload_id
+      ${whereClause}
+      GROUP BY
+        mu.mat_unit, mu.mat_name
+      ORDER BY
+        mu.mat_unit;
+    `;
+
+    const result = await pool1.query(query, values);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error getting material usage summary:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 
 module.exports = {
     getDailyOverview,
@@ -653,5 +710,6 @@ module.exports = {
     getAverageTimesByMaterials,
     getWorkloadTask,
     getWorkloadTaskItem,
-    getDetailsSupClerk
+    getDetailsSupClerk,
+    getMaterialUsageSummary,
 };

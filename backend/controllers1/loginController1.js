@@ -116,7 +116,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-const authorizeRoles = (...allowedRoles) => {
+/*const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
         if (!allowedRoles.includes(req.user.role)) {
             return res.sendStatus(403);
@@ -132,7 +132,7 @@ const authorizeAdmin = (req, res, next) => {
     } else {
       res.status(403).json({ error: 'Unauthorized' });
     }
-  };
+  };*/
 
 module.exports = {
     register,
@@ -140,7 +140,7 @@ module.exports = {
     logout,
     refreshToken,
     authenticateToken,
-    authorizeRoles,
-    authorizeAdmin,
+    /*authorizeRoles,
+    authorizeAdmin,*/
     logUserAction
 };

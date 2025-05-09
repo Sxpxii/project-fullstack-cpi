@@ -18,6 +18,11 @@ import MainLayout from "../../components/LayoutStaff";
 import "../../styles1/TaskDetails.css";
 import config from "../../configAPI";
 import Swal from "sweetalert2";
+import {
+  PushpinFilled,
+  CloseOutlined,
+  PlusCircleFilled,
+} from "@ant-design/icons";
 
 const PendingTaskDetails = () => {
   const { upload_id } = useParams();
@@ -36,6 +41,10 @@ const PendingTaskDetails = () => {
   const [currentRecordId, setCurrentRecordId] = useState(null);
   const [buttonType, setButtonType] = useState("savePartial");
   const [isCompleteButtonClicked, setIsCompleteButtonClicked] = useState(false);
+  const [inventoryId, setInventoryId] = useState(null);
+  const [RemainingReasonModal, setRemainingReasonModal] = useState(false);
+  const [selectedRemainingReason, setSelectedRemainingReason] = useState(null);
+  const [otherRemainingReason, setOtherRemainingReason] = useState("");
 
   const navigate = useNavigate();
 
@@ -50,6 +59,7 @@ const PendingTaskDetails = () => {
       );
       console.log(response.data);
       setData(Array.isArray(response.data) ? response.data : []);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch task details:", err);
       message.error("ไม่สามารถดึงข้อมูลรายละเอียดงาน");
@@ -167,6 +177,8 @@ const PendingTaskDetails = () => {
         counted_quantity: details.counted_quantity,
         actual_quantity: details.actual_quantity,
         selected_time: details.timestamp,
+        employee_reason: details.employee_reason || "",
+        employee_reason_remaining: details.employee_reason_remaining || "",
       }));
 
       console.log("Payload to send:", payload);
@@ -224,6 +236,7 @@ const PendingTaskDetails = () => {
         quantity: temporaryData[id]?.quantity,
         selected_time: details.timestamp,
         employee_reason: details.employee_reason || "",
+        employee_reason_remaining: details.employee_reason_remaining || "",
       }));
 
       console.log("Payload to send (คลาดเคลื่อน):", payload);
@@ -296,13 +309,34 @@ const PendingTaskDetails = () => {
     }
   };
 
-  const handleQuantityChange = (value, id) => {
+  /*const handleQuantityChange = (value, id) => {
     if (!isTaskCompleted) {
       setCountedQuantities((prevQuantities) => ({
         ...prevQuantities,
         [id]: value,
       }));
       console.log("Updated Counted Quantities:", countedQuantities);
+      setIsDataChanged(true);
+    }
+  };*/
+
+  const handleQuantityChange = (value, id) => {
+    if (!isTaskCompleted) {
+      setCountedQuantities((prevQuantities) => ({
+        ...prevQuantities,
+        [id]: value,
+      }));
+
+      setTemporaryData((prevData) => {
+        const newData = { ...prevData };
+        if (!newData[id]) {
+          newData[id] = {}; // ถ้ายังไม่มีข้อมูลใน temporaryData ให้สร้าง object ใหม่
+        }
+        newData[id].counted_quantity = value; // อัปเดตค่า counted_quantity
+        return newData;
+      });
+
+      console.log("Updated Temporary Data:", temporaryData);
       setIsDataChanged(true);
     }
   };
@@ -315,6 +349,20 @@ const PendingTaskDetails = () => {
         newData[id].employee_reason = value; // เพิ่มเหตุผล
       } else {
         newData[id] = { employee_reason: value }; // ถ้าไม่มีข้อมูลให้สร้างใหม่
+      }
+      return newData;
+    });
+    setIsDataChanged(true);
+  };
+
+  // อัปเดตเหตุผลใน temporaryData
+  const handleReasonRemainingChange = (value, id) => {
+    setTemporaryData((prevData) => {
+      const newData = { ...prevData };
+      if (newData[id]) {
+        newData[id].employee_reason_remaining = value; // เพิ่มเหตุผล
+      } else {
+        newData[id] = { employee_reason_remaining: value }; // ถ้าไม่มีข้อมูลให้สร้างใหม่
       }
       return newData;
     });
@@ -350,6 +398,9 @@ const PendingTaskDetails = () => {
 
       const employeeReason = temporaryData[id]?.employee_reason || "";
 
+      const employeeReasonRemain =
+        temporaryData[id]?.employee_reason_remaining || "";
+
       setTemporaryData((prevData) => {
         const newData = { ...prevData };
         if (checked) {
@@ -360,6 +411,7 @@ const PendingTaskDetails = () => {
             quantity: usedQuantity,
             timestamp: currentTime,
             employee_reason: employeeReason,
+            employee_reason_remaining: employeeReasonRemain,
           };
         } else {
           // ลบข้อมูลถ้า unchecked
@@ -382,6 +434,12 @@ const PendingTaskDetails = () => {
           setCurrentRecordId(null);
         }
 
+        // ตรวจสอบเงื่อนไข remaining_quantity และ counted_quantity
+        if (checked && item.remaining_quantity !== countedQuantity) {
+          setRemainingReasonModal(true); // แสดง Modal เลือกเหตุผล (คงเหลือ)
+          setCurrentRecordId(id);
+        }
+
         return newData;
       });
 
@@ -395,6 +453,10 @@ const PendingTaskDetails = () => {
       setIsDataChanged(true);
     }
   };
+
+  useEffect(() => {
+    console.log("Temporary Data updated:", temporaryData);
+  }, [temporaryData]);
 
   const handleReasonButtonClick = (id) => {
     setCurrentRecordId(id); // เก็บ ID ของรายการที่เลือก
@@ -421,6 +483,38 @@ const PendingTaskDetails = () => {
     setIsReasonModalVisible(false);
     setSelectedReason("");
     setOtherReason("");
+  };
+
+  const handleRemainingReasonButtonClick = (recordId) => {
+    setCurrentRecordId(recordId);
+    setRemainingReasonModal(true);
+  };
+
+  const handleRemainingReasonOk = () => {
+    if (
+      selectedRemainingReason === "อื่นๆ" &&
+      otherRemainingReason.trim() === ""
+    ) {
+      message.error("กรุณากรอกเลขที่ใบสั่งเบิก");
+      return;
+    }
+    const finalReason =
+      selectedRemainingReason === "อื่นๆ"
+        ? otherRemainingReason.trim()
+        : selectedRemainingReason;
+
+    if (currentRecordId) {
+      handleReasonRemainingChange(finalReason, currentRecordId);
+    }
+    setRemainingReasonModal(false);
+    setSelectedRemainingReason("");
+    setOtherRemainingReason("");
+  };
+
+  const handleRemainingReasonCancel = () => {
+    setRemainingReasonModal(false);
+    setSelectedRemainingReason("");
+    setOtherRemainingReason("");
   };
 
   // ฟังก์ชันสำหรับการนำทางกลับ
@@ -465,6 +559,7 @@ const PendingTaskDetails = () => {
               mat_unit: m.mat_unit,
               mat_name: m.mat_name,
               material_index: index + 1,
+              rowSpansequence: index === 0 ? m.details.length : 0,
               rowSpanMatunit: index === 0 ? m.details.length : 0,
               rowSpanMatName: index === 0 ? m.details.length : 0,
               rowSpanQuantity: index === 0 ? m.details.length : 0,
@@ -509,6 +604,7 @@ const PendingTaskDetails = () => {
           actual_quantity: details.actual_quantity,
           selected_time: details.timestamp,
           employee_reason: details.employee_reason || "",
+          employee_reason_remaining: details.employee_reason_remaining || "",
         }));
 
         console.log("Payload being sent:", payload);
@@ -601,8 +697,11 @@ const PendingTaskDetails = () => {
   };
 
   const getRowClassName = (record) => {
-    if (record.is_temporary && record.actual_quantity !== record.quantity) {
-      return "highlight-row"; // เพิ่มคลาสไฮไลท์แถว
+    if (
+      (record.is_temporary && record.actual_quantity !== record.quantity) || 
+      (record.is_temporary && record.counted_quantity !== record.remaining_quantity)
+    ) {
+      return "highlightrow"; // เพิ่มคลาสไฮไลท์แถว
     }
     return "";
   };
@@ -617,6 +716,7 @@ const PendingTaskDetails = () => {
         props: { rowSpan: record.rowSpansequence }, // ใช้ rowSpan จากข้อมูลที่จัดรูปแบบ
       }),
       align: "center",
+      width: 70,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -645,6 +745,52 @@ const PendingTaskDetails = () => {
           color: "#ffffff", // สีตัวอักษร
         },
       }),
+    },
+    {
+      /*title: (
+        <div
+          style={{
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "center",
+            maxWidth: 80,
+          }}
+        >
+          ซ้ำกัน 2 กะ
+        </div>
+      ),*/
+      dataIndex: "is_duplicate",
+      key: "is_duplicate",
+      align: "center",
+      width: 50,
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+      render: (isDuplicate) =>
+              isDuplicate ? (
+                <span style={{ position: "relative", display: "inline-block" }}>
+                  <PlusCircleFilled
+                    style={{
+                      color: "#1a237e",
+                      fontSize: "30px",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                    }}
+                  />
+                  <PlusCircleFilled
+                    style={{
+                      color: "#1a237e",
+                      fontSize: "30px",
+                    }}
+                  />
+                </span>
+              ) : null,
     },
     {
       title: "ล็อต",
@@ -678,6 +824,7 @@ const PendingTaskDetails = () => {
       title: "จำนวนที่ต้องจ่าย",
       dataIndex: "quantity",
       key: "quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -757,6 +904,7 @@ const PendingTaskDetails = () => {
           จำนวนคงเหลือในโปรแกรม
         </div>
       ),
+      width: 150,
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -839,6 +987,7 @@ const PendingTaskDetails = () => {
       title: "คงเหลือรวมทุกล็อต",
       dataIndex: "total_quantity",
       key: "total_quantity",
+      width: 150,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -892,10 +1041,11 @@ const PendingTaskDetails = () => {
       },
     },
     {
-      title: "เหตุผล",
+      title: "เหตุผล (จ่ายจริง)",
       dataIndex: "employee_reason",
       key: "employee_reason",
       align: "center",
+      width: 200,
       render: (_, record) => {
         // ตรวจสอบว่าเหตุผลถูกตั้งค่าหรือไม่
         const reason =
@@ -928,10 +1078,49 @@ const PendingTaskDetails = () => {
       }),
     },
     {
+      title: "เหตุผล (คงเหลือ)",
+      dataIndex: "employee_reason_remaining",
+      key: "employee_reason_remaining",
+      align: "center",
+      width: 200,
+      render: (_, record) => {
+        // ตรวจสอบว่าเหตุผลถูกตั้งค่าหรือไม่
+        const remainingReason =
+          temporaryData[record.id]?.employee_reason_remaining ||
+          record.employee_reason_remaining ||
+          "-";
+
+          if (record.is_temporary) {
+            return remainingReason;
+          } else {
+            if (RemainingReasonModal && currentRecordId === record.id) {
+              return (
+                <Button
+                  type="primary"
+                  onClick={() => handleRemainingReasonButtonClick(record.id)}
+                >
+                  เลือกเหตุผล
+                </Button>
+              );
+            }
+            return remainingReason;
+          }
+        },
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
+          fontWeight: "bold", // ความหนาของตัวอักษร
+          fontSize: "14px", // ขนาดตัวอักษร
+          color: "#ffffff", // สีตัวอักษร
+        },
+      }),
+    },
+    {
       title: "แก้ไข",
       dataIndex: "manager_reason",
       key: "manager_reason",
       align: "center",
+      width: 250,
       render: (text, record) => {
         return text || "-"; // แสดงค่า text ถ้ามีค่า, ถ้าไม่มีให้แสดง "-"
       },
@@ -951,7 +1140,7 @@ const PendingTaskDetails = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+        {/*<div style={{ marginTop: "20px", marginBottom: "20px" }}>
           <Breadcrumb className="sarabun-light" style={{ margin: "16px 0" }}>
             <Breadcrumb.Item>
               <Link to="/OperationsDashboard">รายการเบิก-จ่ายทั้งหมด</Link>
@@ -961,6 +1150,48 @@ const PendingTaskDetails = () => {
             </Breadcrumb.Item>
             <Breadcrumb.Item>รายละเอียดการเบิก-จ่าย</Breadcrumb.Item>
           </Breadcrumb>
+        </div>*/}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between", // จัดตำแหน่งให้ปุ่มอยู่ขวาและข้อความอยู่กลาง
+            alignItems: "center", // จัดให้อยู่ตรงกลางแนวตั้ง
+            width: "100%", // ใช้ความกว้างเต็มที่
+            padding: "10px",
+          }}
+        >
+          {/* ใบสั่งงานเลขที่อยู่ตรงกลาง */}
+          <div
+            className="dashboard-title sarabun-bold"
+            style={{
+              fontSize: "30px",
+              textAlign: "center", // จัดข้อความตรงกลาง
+              flex: 1, // ให้ข้อความมีพื้นที่มากขึ้น
+            }}
+          >
+            ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
+          </div>
+
+          {/* ปุ่ม "ปิดงาน" อยู่ขวา */}
+          <Button
+            type="primary"
+            style={{
+              backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
+              borderColor: "green", // ขอบของปุ่มเป็นสีเขียว
+              fontSize: "18px", // เพิ่มขนาดตัวอักษร
+              width: "120px", // กำหนดความกว้าง
+              height: "90px", // กำหนดความสูง (เท่ากับ width)
+              display: "flex", // ใช้ flexbox เพื่อจัดให้อยู่ตรงกลาง
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "18px",
+            }}
+            disabled={!isCompleteButtonEnabled}
+            onClick={handleCompleteTask}
+          >
+            ปิดงาน
+          </Button>
         </div>
 
         <Card
@@ -968,6 +1199,35 @@ const PendingTaskDetails = () => {
             borderRadius: "15px",
           }}
         >
+          <div
+            className="dashboard-title sarabun-bold"
+            style={{
+              fontSize: "20px",
+              padding: "20px",
+            }}
+          >
+            รายละเอียด : ใบสั่งงานเลขที่ {inventoryId ? inventoryId : "N/A"}
+            <div
+              style={{
+                fontSize: "14px",
+                marginTop: "20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "#fff8c4", // สีเหลืองอ่อน
+                padding: "8px 12px",
+                borderRadius: "6px", // มุมโค้งเล็กน้อย
+                border: "1px solid #ffe58f", // เส้นขอบให้ดูเด่นขึ้น
+              }}
+            >
+              <PlusCircleFilled
+                style={{ color: "#1a237e", fontSize: "25px" }}
+              />
+              <span>
+                หมายถึง มีการสั่งเบิกวัตถุดิบรายการนั้นมากกว่า 1 กะ/วัน
+              </span>
+            </div>
+          </div>
           <div className="table-container">
             <Table
               columns={columns}
@@ -975,7 +1235,8 @@ const PendingTaskDetails = () => {
               pagination={false}
               rowKey={(record) => record.material_id}
               rowClassName={getRowClassName}
-              scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+              //scroll={{ x: "max-content" }} // ทำให้ตารางเลื่อนไปข้างๆ ได้หากข้อมูลกว้าง
+              scroll={{ x: "max-content", y: 500 }}
               className="custom-table"
             />
             <Card
@@ -988,7 +1249,18 @@ const PendingTaskDetails = () => {
                 marginBottom: "30px",
               }}
             >
-              รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}</div>
+                <div>
+                  รวมจำนวนที่สั่งเบิก : {formatNumber(totalRequestedQuantity)}
+                </div>
+              </div>
               <Modal
                 title="เลือกเหตุผล"
                 visible={isReasonModalVisible}
@@ -1001,9 +1273,15 @@ const PendingTaskDetails = () => {
                     value={selectedReason}
                     style={{ display: "flex", flexDirection: "column" }}
                   >
-                    <Radio value="วัตถุดิบหมด">วัตถุดิบหมด</Radio>
-                    <Radio value="จ่ายผิดพลาด">จ่ายผิดพลาด</Radio>
-                    <Radio value="อื่นๆ">อื่นๆ</Radio>
+                    <Radio className="sarabun-light" value="วัตถุดิบหมด">
+                      วัตถุดิบหมด
+                    </Radio>
+                    <Radio className="sarabun-light" value="จ่ายผิดพลาด">
+                      จ่ายผิดพลาด
+                    </Radio>
+                    <Radio className="sarabun-light" value="อื่นๆ">
+                      อื่นๆ
+                    </Radio>
                   </Radio.Group>
                   {selectedReason === "อื่นๆ" && (
                     <Input
@@ -1011,6 +1289,37 @@ const PendingTaskDetails = () => {
                       placeholder="กรุณากรอกเหตุผล"
                       value={otherReason}
                       onChange={(e) => setOtherReason(e.target.value)}
+                    />
+                  )}
+                </div>
+              </Modal>
+
+              <Modal
+                title="เลือกเหตุผล"
+                visible={RemainingReasonModal}
+                onOk={handleRemainingReasonOk}
+                onCancel={handleRemainingReasonCancel}
+              >
+                <div>
+                  <Radio.Group
+                    onChange={(e) => setSelectedRemainingReason(e.target.value)}
+                    value={selectedRemainingReason}
+                    style={{ display: "flex", flexDirection: "column" }}
+                  >
+                    <Radio className="sarabun-light" value="ไม่ทราบสาเหตุ">
+                    ไม่ทราบสาเหตุ
+                    </Radio>
+                    <Radio className="sarabun-light" value="อื่นๆ">
+                    อื่นๆ
+                    </Radio>
+                  </Radio.Group>
+                  {selectedRemainingReason === "อื่นๆ" && (
+                    <Input
+                      className="sarabun-light"
+                      style={{ marginTop: 10 }}
+                      placeholder="กรุณากรอกเหตุผล"
+                      value={otherRemainingReason}
+                      onChange={(e) => setOtherRemainingReason(e.target.value)}
                     />
                   )}
                 </div>
@@ -1036,7 +1345,8 @@ const PendingTaskDetails = () => {
               >
                 ย้อนกลับ
               </Button>
-
+            </div>
+            <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
               <Button
                 onClick={handleButtonClick}
                 style={{
@@ -1066,18 +1376,6 @@ const PendingTaskDetails = () => {
                 {buttonType === "savePartial" && "บันทึกชั่วคราว"}
                 {buttonType === "reportIssue" && "รายงานปัญหา"}
                 {buttonType === "complete" && "เสร็จสิ้น"}
-              </Button>
-
-              <Button
-                type="primary"
-                style={{
-                  backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
-                  borderColor: "green", // ขอบของปุ่มเป็นสีเขียว
-                }}
-                disabled={!isCompleteButtonEnabled}
-                onClick={handleCompleteTask}
-              >
-                ปิดงาน
               </Button>
             </div>
           </div>

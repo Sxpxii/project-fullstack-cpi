@@ -4,7 +4,7 @@ const router = express.Router();
 const { getDashboardData,  
     getDetails, 
     getSaveInventory,
-    getMaterialDetails,
+    /*getMaterialDetails,*/
     getUpdateInventory,
     deleteUpload,
     getTotalRequested
@@ -12,10 +12,10 @@ const { getDashboardData,
 const { authenticateToken } = require('../controllers1/loginController1');
 
 router.get('/', getDashboardData);
-router.get('/materialrequests/:upload_id', getMaterialDetails);
+/*router.get('/materialrequests/:upload_id', getMaterialDetails);*/
 router.get('/details/:upload_id', getDetails);
 router.get('/details/:upload_id/total-requested-quantity', authenticateToken, getTotalRequested);
-router.post('/save-inventory-id',  getSaveInventory );
+router.post('/save-inventory-id', authenticateToken, getSaveInventory );
 router.post('/updateInventoryId/:upload_id',  getUpdateInventory );
 router.delete('/delete-uploads/:upload_id',authenticateToken, deleteUpload );
 

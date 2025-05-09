@@ -23,8 +23,10 @@ const EXPIRATION_TIME = 8 * 60 * 60 * 1000; // 8 ชั่วโมง (หน�
 
 const items = [
   { key: "/SupClerkDashboard", label: "แดชบอร์ดรายวัน" },
-  { key: "/SupClerkDashboardAnalysis", label: "วิเคราะห์" },
+  { key: "/SupClerkDashboardAnalysis", label: "แดชบอร์ดวิเคราะห์" },
+  { key: "/DashboardMaterialUsage", label: "แดชบอร์ดปริมาณการใช้วัตถุดิบ" },
   { key: "/Approval", label: "ตรวจสอบอนุมัติ" },
+  { key: "/ReportByDate", label: "รายงาน" },
 ];
 
 const MainLayout = ({ children }) => {

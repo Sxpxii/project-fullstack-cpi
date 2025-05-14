@@ -3,6 +3,7 @@ import axios from "axios";
 import config from "../../configAPI";
 import MainLayout from "../../components/LayoutSupervisorClerk";
 import { Row, Col, Table, Button, Card, Spin } from "antd";
+import ReactApexChart from "react-apexcharts";
 
 const materialTypeLabels = {
   PK_DIS: "กล่องดิส/ใบแนบ/สติ๊กเกอร์",
@@ -50,11 +51,85 @@ const MaterialUsageSummary = () => {
     handleSearch(); // โหลดเมื่อเปิดหน้า
   }, []);
 
+  useEffect(() => {
+    // เงื่อนไขคือเมื่อ filter ทั้งหมดเป็นค่าว่าง => reload ข้อมูล
+    if (!filterStartDate && !filterEndDate && !materialType) {
+      handleSearch();
+    }
+  }, [filterStartDate, filterEndDate, materialType]);
+
   const handleReset = () => {
     setFilterStartDate("");
     setFilterEndDate("");
+    setMaterialType(""); // แนะนำให้รีเซ็ตประเภทด้วย
     setData([]);
+    setTop5Materials([]); // ✅ ล้างข้อมูลกราฟและกล่อง Top 5
   };
+
+  const barChartOptions = {
+    chart: {
+      type: "bar",
+      height: 350,
+      toolbar: {
+        show: false,
+      },
+      fontFamily: "Sarabun, sans-serif",
+    },
+    legend: {
+      show: false, // ✅ ซ่อนคำอธิบายสี
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true, // แนวนอน
+        borderRadius: 8,
+        barHeight: "70%",
+        distributed: true,
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val) => formatNumber(val), // ✅ คั่น , ที่ data label
+      style: {
+        colors: ["#424242"],
+        fontFamily: "Sarabun, sans-serif",
+        fontSize: "14px",
+      },
+    },
+    xaxis: {
+      title: {
+        text: "จำนวนที่เบิก",
+        style: {
+          fontFamily: "Sarabun, sans-serif",
+          fontSize: "14px",
+        },
+      },
+      labels: {
+        formatter: (val) => formatNumber(val),
+        style: {
+          fontSize: "14px",
+          fontFamily: "Sarabun, sans-serif",
+        },
+      },
+      categories: top5Materials.map((item) => item.mat_name), // ✅ กลับมาไว้ที่ xaxis
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: "14px",
+          fontFamily: "Sarabun, sans-serif",
+        },
+        maxWidth: 300,
+      },
+    },
+    colors: ["#4fc3f7", "#ADD495", "#ffd54f", "#ff8a65", "#ab47bc"],
+  };
+
+  const barChartSeries = [
+    {
+      name: "จำนวนที่เบิก",
+      data: top5Materials.map((item) => item.total_requested),
+    },
+  ];
 
   // ฟังก์ชันสำหรับจัดรูปแบบตัวเลข
   const formatNumber = (number) => {
@@ -147,6 +222,7 @@ const MaterialUsageSummary = () => {
           Dashboard ปริมาณการใช้วัตถุดิบ
         </div>
 
+        {/*
         <div
           className="sarabun-bold"
           style={{
@@ -162,7 +238,6 @@ const MaterialUsageSummary = () => {
           {top5Materials.map((item, index) => (
             <Col className="gutter-row" span={6} key={item.mat_name}>
               <div style={{ position: "relative", marginBottom: "30px" }}>
-                {/* วงกลมแสดงอันดับ */}
                 <div
                   style={{
                     position: "absolute",
@@ -186,7 +261,6 @@ const MaterialUsageSummary = () => {
                   {index + 1}
                 </div>
 
-                {/* ตัว Card */}
                 <Card
                   style={{
                     background: "#ffffff",
@@ -222,7 +296,7 @@ const MaterialUsageSummary = () => {
             </Col>
           ))}
         </Row>
-
+      */}
         <div
           style={{
             display: "flex",
@@ -230,6 +304,7 @@ const MaterialUsageSummary = () => {
             alignItems: "center",
             gap: "20px",
             marginTop: "30px",
+            marginBottom: "30px",
             flexWrap: "wrap", // กรณีหน้าจอเล็กให้ขึ้นบรรทัดใหม่
           }}
         >
@@ -344,6 +419,26 @@ const MaterialUsageSummary = () => {
             รีเซ็ต
           </Button>
         </div>
+
+        <Card
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "24px",
+          }}
+        >
+          <div
+            className="sarabun-bold"
+            style={{ fontSize: "20px", marginBottom: "10px" }}
+          >
+            กราฟแสดงการใช้วัตถุดิบสูงสุด 5 อันดับ
+          </div>
+          <ReactApexChart
+            options={barChartOptions}
+            series={barChartSeries}
+            type="bar"
+            height={350}
+          />
+        </Card>
 
         <Row gutter={24} style={{ marginTop: 30 }}>
           <Col span={24}>

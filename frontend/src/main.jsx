@@ -1,7 +1,7 @@
 // main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom';
-import App1 from './App1.jsx'
+import App1 from './App.jsx'
 import './index.css';
 
 

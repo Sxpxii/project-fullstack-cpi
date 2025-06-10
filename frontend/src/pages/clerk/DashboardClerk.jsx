@@ -344,36 +344,6 @@ const Dashboardclerk = () => {
           </Space>
         );
       },
-      /*render: (text, record) => {
-        if (text === null) {
-          return (
-            <Space>
-              {!isInputHidden[record.upload_id] && (
-                <Input
-                  value={inputValues[record.upload_id] || ""}
-                  onChange={(e) =>
-                    handleInventoryIdChange(record.upload_id, e.target.value)
-                  }
-                />
-              )}
-              {!isButtonHidden[record.upload_id] && (
-                <Button
-                  style={{
-                    color: "green",
-                    backgroundColor: "#f0f0f0",
-                    borderColor: "#f0f0f0",
-                  }}
-                  icon={<FaCheck />}
-                  onClick={() => saveInventoryId(record.upload_id)}
-                  disabled={!inputValues[record.upload_id]}
-                />
-              )}
-            </Space>
-          );
-        } else {
-          return text;
-        }
-      },*/
     },
     {
       title: "วัตถุดิบ",

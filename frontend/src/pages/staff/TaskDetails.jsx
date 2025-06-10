@@ -17,11 +17,7 @@ import MainLayout from "../../components/LayoutStaff";
 import "../../styles/TaskDetails.css";
 import config from "../../configAPI";
 import Swal from "sweetalert2";
-import {
-  PushpinFilled,
-  CloseOutlined,
-  PlusCircleFilled,
-} from "@ant-design/icons";
+import { PlusCircleFilled } from "@ant-design/icons";
 
 const TaskDetails = () => {
   const { upload_id } = useParams();
@@ -161,6 +157,8 @@ const TaskDetails = () => {
           counted_quantity: details.counted_quantity,
           actual_quantity: details.actual_quantity,
           selected_time: details.timestamp,
+          employee_reason: details.employee_reason || "",
+          employee_reason_remaining: details.employee_reason_remaining || "",
         }));
 
         console.log("Payload to send:", payload);
@@ -412,8 +410,6 @@ const TaskDetails = () => {
             actual_quantity: actualQuantity,
             quantity: usedQuantity,
             timestamp: currentTime,
-            employee_reason: employeeReason,
-            employee_reason_remaining: employeeReasonRemain,
           };
         } else {
           // ลบข้อมูลถ้า unchecked
@@ -422,6 +418,10 @@ const TaskDetails = () => {
             ...item, // คืนค่า `actual_quantity` และค่าอื่น ๆ เป็นค่าเดิม
             counted_quantity: item.remaining_quantity,
             actual_quantity: item.quantity,
+            quantity: usedQuantity,
+            timestamp: currentTime,
+            employee_reason: employeeReason,
+            employee_reason_remaining: employeeReasonRemain,
           };
         }
 
@@ -709,10 +709,6 @@ const TaskDetails = () => {
           color: "#ffffff", // สีตัวอักษร
         },
       }),
-      /*render: (isDuplicate) =>
-        isDuplicate ? (
-          <PushpinFilled style={{ color: "red", fontSize: "15px" }} />
-        ) : null,*/
       render: (isDuplicate) =>
         isDuplicate ? (
           <span style={{ position: "relative", display: "inline-block" }}>
@@ -839,7 +835,7 @@ const TaskDetails = () => {
           จำนวนคงเหลือในโปรแกรม
         </div>
       ),
-      width: 150,
+      width: 120,
       dataIndex: "remaining_quantity",
       key: "remaining_quantity",
       onHeaderCell: () => ({
@@ -867,7 +863,7 @@ const TaskDetails = () => {
         </div>
       ),
       dataIndex: "counted_quantity",
-      width: 150,
+      width: 120,
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#00152a", // สีพื้นหลังของหัวคอลัมน์
@@ -1131,7 +1127,7 @@ const TaskDetails = () => {
               </div>
 
               <Modal
-                title="เลือกเหตุผล"
+                title="เลือกเหตุผลจ่ายจริง"
                 visible={isReasonModalVisible}
                 onOk={handleReasonOk}
                 onCancel={handleReasonCancel}
@@ -1165,7 +1161,7 @@ const TaskDetails = () => {
               </Modal>
 
               <Modal
-                title="เลือกเหตุผล"
+                title="เลือกเหตุผลคงเหลือ"
                 visible={RemainingReasonModal}
                 onOk={handleRemainingReasonOk}
                 onCancel={handleRemainingReasonCancel}

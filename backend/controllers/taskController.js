@@ -377,7 +377,7 @@ const saveCountedQuantities = async (req, res) => {
 
         // สร้างรายการอัพเดตสำหรับแต่ละ material_id
         const updateQueries = payload.map(item => {
-            const { id, counted_quantity, actual_quantity, selected_time } = item; // ดึงข้อมูลจาก payload ที่ frontend ส่งมา
+            const { id, counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining } = item; // ดึงข้อมูลจาก payload ที่ frontend ส่งมา
 
             // ค้นหา row ที่ตรงกับ id จากฐานข้อมูล
             const row = materialUsageRows.find(row => row.id === id);
@@ -387,8 +387,8 @@ const saveCountedQuantities = async (req, res) => {
                 // ตรวจสอบว่าค่าที่ได้รับแตกต่างจาก remaining_quantity หรือไม่
                 if (counted_quantity !== undefined || remaining_quantity !== counted_quantity) {
                     return pool1.query(
-                        'UPDATE mat_requests SET counted_quantity = $1, actual_quantity = $2, selected_time = $3 WHERE id = $4',
-                        [counted_quantity, actual_quantity, selected_time, id] // อัปเดตทั้ง counted_quantity และ selected_time
+                        'UPDATE mat_requests SET counted_quantity = $1, actual_quantity = $2, selected_time = $3 , employee_reason = $4, employee_reason_remaining = $5 WHERE id = $6',
+                        [counted_quantity, actual_quantity, selected_time, employee_reason, employee_reason_remaining, id] // อัปเดตทั้ง counted_quantity และ selected_time
                     );
                 }
             }

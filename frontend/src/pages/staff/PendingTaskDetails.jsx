@@ -144,6 +144,8 @@ const PendingTaskDetails = () => {
         counted_quantity: details.counted_quantity,
         actual_quantity: details.actual_quantity,
         selected_time: details.timestamp,
+        employee_reason: details.employee_reason || "",
+        employee_reason_remaining: details.employee_reason_remaining || "",
       }));
 
       console.log("Payload to send:", payload);

@@ -6,6 +6,10 @@ const getDetailsReports = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
+    // แปลงเป็น Date พร้อมเวลา
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
     const query = `
       SELECT 
         u.inventory_id,
@@ -34,11 +38,11 @@ const getDetailsReports = async (req, res) => {
       JOIN uploads u ON r.upload_id = u.upload_id
       LEFT JOIN users1 u1 ON u.user_id = u1.user_id
       LEFT JOIN users1 u2 ON u.assigned_to = u2.user_id
-      WHERE ($1::date IS NULL OR $2::date IS NULL OR u.upload_date BETWEEN $1 AND $2)
+      WHERE ($1::timestamp IS NULL OR $2::timestamp IS NULL OR u.upload_date BETWEEN $1 AND $2)
       ORDER BY m.id, r.id;
     `;
 
-    const values = [startDate || null, endDate || null];
+    const values = [start || null, end || null];
 
     const { rows } = await pool1.query(query, values);
 

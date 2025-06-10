@@ -27,6 +27,7 @@ const getAllUsers = async (req, res) => {
       SELECT u1.user_id, u1.username, u1.role, u2.username as invited_by, u1.created_at, u1.lastactivity
       FROM users1 u1
       LEFT JOIN users1 u2 ON u1.invited_by = u2.user_id
+      ORDER BY u1.created_at ASC
     `);
 
     console.log('all users:', result.rows);

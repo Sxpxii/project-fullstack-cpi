@@ -164,7 +164,7 @@ const uploadFileAndConvert = (req, res) => {
                     };
                     groupedData.push(currentMatUnit);
                 } else if (/^\d{2}\/\d{2}\/\d{2,4}/.test(columnB) && currentMatUnit) {
-                    // เป็น matLot (อ่านข้อมูลแบบเต็ม ไม่แยก date และ lotInfo)
+                    // เป็น matLot (อ่านข้อมูลแบบเต็ม โดยไม่มีข้อมูล Lot ด้านหลัง เช่น 01/01/2024, 15/05/23)
                     const matLot = {
                         matLot: columnB.trim(),
                         loc: rowData.C || '',
@@ -174,7 +174,7 @@ const uploadFileAndConvert = (req, res) => {
                     };
                     currentMatUnit.matLots.push(matLot);
                 } else if (/^\d{2}-\d{2}-\d{2,4}/.test(columnB) && currentMatUnit) {
-                    // เป็น matLot ในรูปแบบ dd-mm-yy หรือ dd/mm/yyyy
+                    // เป็น matLot ในรูปแบบ dd-mm-yy หรือ dd/mm/yyyy (แยก lotInfo หลังวันที่ด้วย space) เช่น 01-01-2024 LOT123, 15-05-23 A1
                     const matLot = columnB.trim();
                     const date = matLot.split(' ')[0]; // แยกวันที่ออกจากข้อมูล
                     const lotInfo = matLot.split(' ')[1] || ''; // ข้อมูล Lot ที่เหลือ
@@ -188,7 +188,7 @@ const uploadFileAndConvert = (req, res) => {
                     };
                     currentMatUnit.matLots.push(matLotData);
                 } else if (/^\d{4}PRC\d{6}$/.test(columnB) && currentMatUnit) {
-                    // เป็น matLot ในรูปแบบ dd-mm-yy หรือ dd/mm/yyyy
+                    // รหัส Lot แบบพิเศษ เช่น 2024PRC000123, 2023PRC123456
                     const matLot = columnB.trim();
                     const date = matLot.split(' ')[0]; // แยกวันที่ออกจากข้อมูล
                     const lotInfo = matLot.split(' ')[1] || ''; // ข้อมูล Lot ที่เหลือ
@@ -201,8 +201,21 @@ const uploadFileAndConvert = (req, res) => {
                         totalQuantity: parseFloat((rowData.F || 0).toString().replace(/,/g, '')),
                     };
                     currentMatUnit.matLots.push(matLotData);
+                } else if (/^\d{2}[./-]\d{2}[./-]\d{2,4}( .*)?$/.test(columnB) && currentMatUnit) {
+                    // รองรับทั้ง dd-mm-yyyy, dd/mm/yyyy, dd.mm.yyyy พร้อม lot ด้านหลัง เช่น 01-01-2024 BATCH01, 15/05/2023 A1, 31.12.22 ZL
+                    const parts = columnB.trim().split(' ');
+                    const datePart = parts[0];
+                    const lotInfo = parts.slice(1).join(' ') || '';
+                    const matLotData = {
+                        matLot: `${datePart} ${lotInfo}`.trim(),
+                        loc: rowData.C || '',
+                        quantity: parseFloat((rowData.D || 0).toString().replace(/,/g, '')),
+                        remainingQuantity: parseFloat((rowData.E || 0).toString().replace(/,/g, '')),
+                        totalQuantity: parseFloat((rowData.F || 0).toString().replace(/,/g, '')),
+                    };
+                    currentMatUnit.matLots.push(matLotData);
                 } else if (/^C\d{6}-\d{4};\d{2}\/\d{2}\/\d{4}-[A-Z]$/.test(columnB) && currentMatUnit) {
-                    // รูปแบบใหม่ C240828-0922;29/08/2024-F
+                    // รูปแบบ C240828-0922;29/08/2024-F, C240101-0001;01/01/2024-A
                     const [lotId, dateCode] = columnB.split(';');
                     
                     const matLotData = {

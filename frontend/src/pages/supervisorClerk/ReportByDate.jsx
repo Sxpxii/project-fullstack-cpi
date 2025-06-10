@@ -25,8 +25,12 @@ const DateRangeFilter = () => {
       const params = {};
 
       if (filterStartDate && filterEndDate) {
+        // แปลง endDate ให้รวมเวลา 23:59:59
+        const end = new Date(filterEndDate);
+        end.setHours(23, 59, 59, 999); // <<< สำคัญตรงนี้
+
         params.startDate = filterStartDate;
-        params.endDate = filterEndDate;
+        params.endDate = end.toISOString(); 
       }
 
       const response = await axios.get(
@@ -71,8 +75,11 @@ const DateRangeFilter = () => {
       "เหตุผลหัวหน้า (จ่ายจริง)": item.manager_reason || "-",
       "เหตุผลหัวหน้า (คงเหลือ)": item.manager_reason_remaining || "-",
       เวลา: item.selected_time
-      ? dayjs.utc(item.selected_time).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss")
-      : "-",
+        ? dayjs
+            .utc(item.selected_time)
+            .tz("Asia/Bangkok")
+            .format("YYYY-MM-DD HH:mm:ss")
+        : "-",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -405,45 +412,45 @@ const DateRangeFilter = () => {
   return (
     <MainLayout>
       <div style={{ padding: "0 48px" }}>
-          <div
-            className="sarabun-bold"
+        <div
+          className="sarabun-bold"
+          style={{
+            fontSize: "35px",
+            marginLeft: "20px",
+            marginTop: "30px",
+            color: "#000000E0",
+          }}
+        >
+          Report
+        </div>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <button
+            className="sarabun-light"
             style={{
-              fontSize: "35px",
-              marginLeft: "20px",
-              marginTop: "30px",
-              color: "#000000E0",
-            }}
-          >
-            Report
-          </div>
-          <div
-            style={{
-              flex: 1,
+              color: "#f0f0f0",
+              backgroundColor: "#28a745 ",
+              borderColor: "#28a745",
+              padding: "12px 20px", // เพิ่มขนาดปุ่ม
+              fontSize: "16px",
+              borderRadius: "8px",
+              cursor: "pointer",
               display: "flex",
-              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "8px",
             }}
+            onClick={exportToExcel}
           >
-            <button
-              className="sarabun-light"
-              style={{
-                color: "#f0f0f0",
-                backgroundColor: "#28a745 ",
-                borderColor: "#28a745",
-                padding: "12px 20px", // เพิ่มขนาดปุ่ม
-                fontSize: "16px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-              onClick={exportToExcel}
-            >
-              <FaFileExcel style={{ fontSize: "20px" }} />
-              Export เป็น Excel
-            </button>
-          </div>
-        
+            <FaFileExcel style={{ fontSize: "20px" }} />
+            Export เป็น Excel
+          </button>
+        </div>
+
         <div
           style={{
             display: "flex",

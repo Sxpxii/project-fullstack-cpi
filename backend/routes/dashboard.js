@@ -16,7 +16,7 @@ const { getDashboardData,
  } = require('../controllers/dashboardController'); 
 const { authenticateToken } = require('../controllers/loginController');
 
-router.get('/', getDashboardData);
+router.get('/', getDashboardData); 
 router.get('/materialrequests/:upload_id', getMaterialDetails);
 router.get('/details/:upload_id', getDetails);
 router.get('/details/:upload_id/total-requested-quantity', authenticateToken, getTotalRequested);

@@ -89,6 +89,7 @@ const UploadPage = () => {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
+          timeout: 300000,
         }
       );
 

@@ -1,10 +1,11 @@
 // routes/dashboard.js
 const express = require('express');
 const router = express.Router();
-const { getDashboardData, getMaterialUsageData, getTotalRequested, approveUpload, confirmEdit, updateStatusNotificationsByid, updateStatusNotificationsByuploadId, getRemainingDetails, approveRemaining} = require('../controllers/supClerkController'); 
+const { getDashboardData, getMaterialUsageData, getTotalRequested, approveUpload, confirmEdit, updateStatusNotificationsByid, updateStatusNotificationsByuploadId, getRemainingDetails, approveRemaining, getAuditDetails} = require('../controllers/supClerkController'); 
 const { authenticateToken } = require('../controllers/loginController');
 
 router.get('/', getDashboardData);
+router.get('/audit-details/:upload_id', authenticateToken, getAuditDetails);
 router.get('/details/:upload_id', authenticateToken, getMaterialUsageData);
 router.get('/remaining-details/:upload_id', authenticateToken, getRemainingDetails);
 router.get('/total-requested-quantity/:upload_id', authenticateToken, getTotalRequested);

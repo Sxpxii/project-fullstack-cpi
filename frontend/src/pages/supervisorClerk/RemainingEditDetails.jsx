@@ -20,6 +20,7 @@ const RemainingEditDetails = () => {
   const [managerReason, setManagerReason] = useState(""); // สำหรับเก็บเหตุผลที่เลือก
   const [isOtherReason, setIsOtherReason] = useState(false); // ตรวจสอบว่าเหตุผลเป็น "อื่นๆ" หรือไม่
   const [inputReason, setInputReason] = useState("");
+  
 
   const navigate = useNavigate();
 
@@ -301,7 +302,7 @@ const RemainingEditDetails = () => {
       align: "center",
     },
     {
-      title: "ตรวจสอบ/แก้ไข",
+      title: "ตรวจสอบคงเหลือ",
       dataIndex: "manager_reason_remaining",
       key: "manager_reason_remaining",
       align: "center",

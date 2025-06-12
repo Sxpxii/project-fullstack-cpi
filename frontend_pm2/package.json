@@ -1,0 +1,17 @@
+{
+  "name": "frontend_pm2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "path-to-regexp": "^6.2.1",
+    "pm2": "^6.0.8"
+  }
+}

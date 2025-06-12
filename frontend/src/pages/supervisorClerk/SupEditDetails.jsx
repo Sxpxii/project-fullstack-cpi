@@ -457,14 +457,14 @@ const SupEditDetails = () => {
 
   return (
     <MainLayout>
-      <div
+      {/*<div
         style={{
           display: "flex",
           justifyContent: "flex-end",
           padding: "10px",
         }}
       >
-        {/* ปุ่มอนุมัติ */}
+        {/* ปุ่มอนุมัติ 
         <Button
           style={{
             backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
@@ -481,7 +481,7 @@ const SupEditDetails = () => {
         >
           อนุมัติ
         </Button>
-      </div>
+      </div>*/}
 
       <div>
         <Card

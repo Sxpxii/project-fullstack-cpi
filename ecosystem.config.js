@@ -1,13 +1,26 @@
 module.exports = {
   apps: [
     {
-      name: 'backend', // ตั้งชื่อแอป
-      script: './backend/server1.js',              // ไฟล์หลักที่ใช้รันเซิร์ฟเวอร์
-      watch: true,   
-      autorestart: true, // Ensures the app restarts on crash
-      max_memory_restart: "1000M",                   // จะ restart app เมื่อมีการแก้ไขไฟล์
+      name: 'frontend',
+      cwd: 'C:/Users/compact-01/Desktop/ning/project-fullstack/frontend_pm2',
+      script: 'server.js',
+      watch: true,
+      autorestart: true,
+      max_memory_restart: "1000M",
       env_production: {
-        NODE_ENV: 'production',         // ENV สำหรับ production
+        NODE_ENV: 'production',
+        PORT: 5173
+      }
+    },
+    {
+      name: 'backend',
+      cwd: 'C:/Users/compact-01/Desktop/ning/project-fullstack/backend',
+      script: 'server.js',
+      watch: true,
+      autorestart: true,
+      max_memory_restart: "1000M",
+      env_production: {
+        NODE_ENV: 'production',
         PORT: 3002
       }
     }

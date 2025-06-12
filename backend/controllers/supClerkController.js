@@ -139,6 +139,58 @@ const getRemainingDetails = async (req, res) => {
     }
 };
 
+const getAuditDetails = async (req, res) => {
+  try {
+      const { upload_id } = req.params;
+      const query = `
+        SELECT 
+          m.id,
+          m.mat_name,
+          m.mat_unit,
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', b.id,
+              'mat_unit_id', b.mat_unit_id,
+              'mat_lot', b.mat_lot,
+              'loc', b.loc,
+              'quantity', b.quantity,
+              'actual_quantity', COALESCE(t.actual_quantity, b.actual_quantity), -- ใช้ค่าจาก material_temporary ถ้ามี
+              'employee_reason', t.employee_reason,
+              'employee_reason_remaining', t.employee_reason_remaining,
+              'manager_reason', b.manager_reason,
+              'remaining_quantity', b.remaining_quantity,
+              'counted_quantity', COALESCE(t.counted_quantity, b.counted_quantity), -- ใช้ค่าจาก material_temporary ถ้ามี
+              'manager_reason_remaining', b.manager_reason_remaining,
+              'check', CASE 
+                      WHEN b.counted_quantity IS NOT NULL AND b.counted_quantity != b.remaining_quantity THEN true
+                      ELSE false
+                   END,
+              'check_remaining', CASE 
+                      WHEN b.counted_quantity IS NOT NULL 
+                        AND b.counted_quantity != b.remaining_quantity 
+                      THEN true
+                      ELSE false
+                    END
+            )
+            ORDER BY b.id
+          ) AS details
+        FROM material_matunits m
+        JOIN mat_requests b ON m.id = b.mat_unit_id AND b.upload_id = $1
+        LEFT JOIN material_temporary t ON t.mat_requests_id = b.id -- เชื่อมกับ material_temporary
+        WHERE b.upload_id = $1
+        GROUP BY m.id, m.mat_name, m.mat_unit
+        ORDER BY m.id;
+      `;
+  
+      const { rows } = await pool1.query(query, [upload_id]);
+      console.log(JSON.stringify(rows, null, 2));
+      res.json(rows);
+    } catch (err) {
+      console.error("Error fetching task details", err);
+      res.status(500).json({ error: "Failed to fetch task details" });
+    }
+};
+
 const getTotalRequested = async (req, res) => {
     try {
         const { upload_id } = req.params;
@@ -179,53 +231,64 @@ const getTotalRequested = async (req, res) => {
     }
   };*/
 
-  const confirmEdit = async (req, res) => {
-    const { upload_id } = req.params;
-    const { tempData } = req.body;
-  
-    // ตรวจสอบว่า tempData มีข้อมูลหรือไม่
-    if (!tempData || tempData.length === 0) {
-      return res.status(400).json({ message: "ไม่มีข้อมูลสำหรับการบันทึก" });
-    }
-  
-    const client = await pool1.connect();
-  
-    try {
-      // เริ่มต้น transaction
-      await client.query("BEGIN");
-  
-      // วน loop ผ่าน tempData เพื่ออัปเดต manager_reason ใน mat_requests
-      for (const record of tempData) {
-        const { id, manager_reason } = record;
-  
-        // ตรวจสอบความสมบูรณ์ของข้อมูล
-        if (!id || !manager_reason) {
-          throw new Error("ข้อมูลไม่สมบูรณ์");
-        }
-  
-        // อัปเดตข้อมูลใน mat_requests
-        await client.query(
-          `UPDATE mat_requests SET manager_reason = $1 WHERE id = $2`,
-          [manager_reason, id]
-        );
-      }
-  
-      console.log("Calling Notification  with upload_id:", upload_id);
-      await sendNotificationToSender(upload_id, req); 
+const confirmEdit = async (req, res) => {
+  const { upload_id } = req.params;
+  const { tempData } = req.body;
 
-      // ยืนยันการเปลี่ยนแปลง
-      await client.query("COMMIT");
-      res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
-    } catch (error) {
-      // ยกเลิก transaction หากเกิดข้อผิดพลาด
-      await client.query("ROLLBACK");
-      console.error("Error updating material_usage:", error);
-      res.status(500).json({ message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" });
-    } finally {
-      // ปล่อยการเชื่อมต่อกับฐานข้อมูล
-      client.release();
+  if (!tempData || tempData.length === 0) {
+    return res.status(400).json({ message: "ไม่มีข้อมูลสำหรับการบันทึก" });
+  }
+
+  const client = await pool1.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    for (const record of tempData) {
+      const { id, manager_reason } = record;
+
+      if (!id || !manager_reason) {
+        throw new Error("ข้อมูลไม่สมบูรณ์");
+      }
+
+      await client.query(
+        `UPDATE mat_requests SET manager_reason = $1 WHERE id = $2`,
+        [manager_reason, id]
+      );
     }
-  };  
+
+    // ตรวจสอบว่า manager_reason ทั้งหมดเป็น "จ่ายวัตถุดิบเท่าที่เหลือ"
+    const allReasonsMatch = tempData.every(
+      (item) => item.manager_reason === "จ่ายวัตถุดิบเท่าที่เหลือ"
+    );
+
+    await client.query("COMMIT");
+
+    if (allReasonsMatch) {
+      // ถ้าตรงเงื่อนไข ให้เรียก approveUpload โดยไม่ต้องแจ้งเตือนปกติ
+      const fakeReq = {
+        ...req,
+        user: req.user,
+        params: { upload_id },
+      };
+
+      // เรียก approveUpload (และมันจะส่ง notification ผ่าน sendNotificationToSenderApprove อยู่แล้ว)
+      await approveUpload(fakeReq, res);
+    } else {
+      // ถ้าไม่ใช่ทั้งหมด "จ่ายวัตถุดิบเท่าที่เหลือ" ให้ส่ง Notification ตามปกติ
+      console.log("Calling Notification with upload_id:", upload_id);
+      await sendNotificationToSender(upload_id, req);
+      res.status(200).json({ message: "บันทึกข้อมูลสำเร็จ" });
+    }
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error updating material_usage:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" });
+  } finally {
+    client.release();
+  }
+};
   
 const saveMaterialUsage = async (upload_id) => {
   try {
@@ -234,6 +297,7 @@ const saveMaterialUsage = async (upload_id) => {
       `UPDATE mat_requests mu
        SET counted_quantity = mt.counted_quantity,
            employee_reason = mt.employee_reason,
+           employee_reason_remaining = mt.employee_reason_remaining,
            selected_time = mt.selected_time,
            actual_quantity = mt.actual_quantity
        FROM material_temporary mt
@@ -254,27 +318,45 @@ const saveMaterialUsage = async (upload_id) => {
 
   const approveUpload = async (req, res) => {
     const { userId } = req.user;
-    const { data } = req.body;
     const { upload_id } = req.params;
     // ย้าย console.log มาหลังจากการประกาศ upload_id
     console.log("uploadId received in notifyManager:", upload_id);
 
     try {
         // อัปเดตเหตุผลใน material_usage
-        for (const record of data) {
+        /*for (const record of data) {
           if (record.manager_reason) {
             await pool1.query(
               'UPDATE mat_requests SET manager_reason = $1 WHERE id = $2 AND upload_id = $3',
               [record.manager_reason, record.id, upload_id]
             );
           }
-        }
+        }*/
 
         // เรียกใช้ saveMaterialUsage
         await saveMaterialUsage(upload_id); 
 
+        // 🔍 ตรวจสอบว่าใน mat_requests มี record ที่ employee_reason_remaining ไม่ว่างหรือไม่
+        const checkResult = await pool1.query(
+          `SELECT COUNT(*) AS count
+            FROM mat_requests
+            WHERE upload_id = $1 AND employee_reason_remaining IS NOT NULL AND TRIM(employee_reason_remaining) <> ''`,
+          [upload_id]
+         );
+
+        const remainingCount = parseInt(checkResult.rows[0].count, 10);
+
+        let newStatus = '';
+        if (remainingCount > 0) {
+            // ถ้ามี reason → สถานะเป็น 'รอตรวจสอบ'
+            newStatus = 'รอตรวจสอบ';
+        } else {
+            // ถ้าไม่มี reason → สถานะเป็น 'ดำเนินการเรียบร้อย'
+            newStatus = 'ดำเนินการเรียบร้อย';
+        }
+
         // อัปเดตสถานะเป็น 'ดำเนินการเรียบร้อย'
-        await pool1.query('UPDATE uploads SET current_status = $1 WHERE upload_id = $2', ['ดำเนินการเรียบร้อย', upload_id]);
+        await pool1.query('UPDATE uploads SET current_status = $1 WHERE upload_id = $2', [newStatus, upload_id]);
 
         // อัปเดต duration และ average_duration
         await updateDurationAndAverage(upload_id, 'รอตรวจสอบ');
@@ -549,6 +631,7 @@ const sendNotificationToSenderApprove = async (upload_id, req, res) => {
 
 module.exports = {
     getDashboardData,
+    getAuditDetails,
     getMaterialUsageData,
     getTotalRequested,
     approveUpload,

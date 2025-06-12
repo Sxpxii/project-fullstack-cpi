@@ -30,6 +30,7 @@ app.use(cors({
     origin: '*', // หรือกำหนดเป็น IP เครื่องที่คุณจะเข้าถึงได้ เช่น 'http://192.168.5.93:5173'
   }));
 app.use(fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 },
     useTempFiles: true, // ใช้ temp files สำหรับการอัพโหลด
     tempFileDir: '/tmp/' // ตั้งค่า temp directory
 }));
@@ -60,16 +61,6 @@ app.use('/supClerkReports', supClerkReportRouter);
 // Additional GET routes if needed
 app.get('/', (req, res) => {
     res.send('GET request received for root');
-});
-
-const path = require('path');
-
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// Handle client-side routing, return React index.html for unknown routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
 
 // ติดตั้ง Socket.IO

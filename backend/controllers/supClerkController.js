@@ -60,6 +60,7 @@ const getMaterialUsageData = async (req, res) => {
       const { upload_id } = req.params;
       const query = `
         SELECT 
+          u.inventory_id,
           m.id,
           m.mat_name,
           m.mat_unit,
@@ -82,9 +83,10 @@ const getMaterialUsageData = async (req, res) => {
           ) AS details
         FROM material_matunits m
         JOIN mat_requests b ON m.id = b.mat_unit_id AND b.upload_id = $1
+        JOIN uploads u ON u.upload_id = b.upload_id
         LEFT JOIN material_temporary t ON t.mat_requests_id = b.id -- เชื่อมกับ material_temporary
         WHERE b.upload_id = $1
-        GROUP BY m.id, m.mat_name, m.mat_unit
+        GROUP BY u.inventory_id, m.id, m.mat_name, m.mat_unit
         ORDER BY m.id;
       `;
   
@@ -102,6 +104,7 @@ const getRemainingDetails = async (req, res) => {
       const { upload_id } = req.params;
       const query = `
         SELECT 
+          u.inventory_id,
           m.id,
           m.mat_name,
           m.mat_unit,
@@ -124,9 +127,10 @@ const getRemainingDetails = async (req, res) => {
           ) AS details
         FROM material_matunits m
         JOIN mat_requests b ON m.id = b.mat_unit_id AND b.upload_id = $1
+        JOIN uploads u ON u.upload_id = b.upload_id
         LEFT JOIN material_temporary t ON t.mat_requests_id = b.id -- เชื่อมกับ material_temporary
         WHERE b.upload_id = $1
-        GROUP BY m.id, m.mat_name, m.mat_unit
+        GROUP BY u.inventory_id, m.id, m.mat_name, m.mat_unit
         ORDER BY m.id;
       `;
   

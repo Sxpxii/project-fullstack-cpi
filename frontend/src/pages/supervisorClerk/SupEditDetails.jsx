@@ -20,6 +20,7 @@ const SupEditDetails = () => {
   const [managerReason, setManagerReason] = useState(""); // สำหรับเก็บเหตุผลที่เลือก
   const [isOtherReason, setIsOtherReason] = useState(false); // ตรวจสอบว่าเหตุผลเป็น "อื่นๆ" หรือไม่
   const [inputReason, setInputReason] = useState("");
+  const [inventoryId, setInventoryId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -46,6 +47,7 @@ const SupEditDetails = () => {
       }));
       console.log("Fetched Data:", formattedData);
       setData(formattedData);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch data:", err);
     }
@@ -238,8 +240,8 @@ const SupEditDetails = () => {
             icon: "success",
             title: "อนุมัติรายการสำเร็จ",
             html: '<span class="sarabun-light">คุณได้อนุมัติรายการเรียบร้อยแล้ว!</span>',
-            timer: 1000, 
-            showConfirmButton: false, 
+            timer: 1000,
+            showConfirmButton: false,
             customClass: {
               title: "sarabun-bold",
             },
@@ -252,8 +254,8 @@ const SupEditDetails = () => {
             icon: "error",
             title: "การอนุมัติไม่สำเร็จ",
             html: '<span class="sarabun-light">เกิดข้อผิดพลาดในการอนุมัติรายการนี้!</span>',
-            timer: 1000, 
-            showConfirmButton: false, 
+            timer: 1000,
+            showConfirmButton: false,
             customClass: {
               title: "sarabun-bold",
             },
@@ -457,31 +459,21 @@ const SupEditDetails = () => {
 
   return (
     <MainLayout>
-      {/*<div
+      <div
+        className="dashboard-title sarabun-bold"
         style={{
+          fontSize: "30px",
+          textAlign: "center", // จัดข้อความตรงกลาง
           display: "flex",
-          justifyContent: "flex-end",
-          padding: "10px",
+          justifyContent: "center", // จัดให้อยู่ตรงกลางแนวนอน
+          alignItems: "center", // จัดให้อยู่ตรงกลางแนวตั้ง (ถ้าสูง)
+          height: "50px", // ตั้งความสูงให้พอดี
+          marginBottom: "30px",
+          marginTop: "30px",
         }}
       >
-        {/* ปุ่มอนุมัติ 
-        <Button
-          style={{
-            backgroundColor: "green", // ปรับให้ปุ่ม "ปิดงาน" เป็นสีเขียว
-            borderColor: "green", // ขอบของปุ่มเป็นสีเขียว
-            fontSize: "18px", // เพิ่มขนาดตัวอักษร
-            width: "120px", // กำหนดความกว้าง
-            height: "90px", // กำหนดความสูง (เท่ากับ width)
-            display: "flex", // ใช้ flexbox เพื่อจัดให้อยู่ตรงกลาง
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "18px",
-          }}
-          onClick={() => handleApprove(upload_id)}
-        >
-          อนุมัติ
-        </Button>
-      </div>*/}
+        ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
+      </div>
 
       <div>
         <Card
@@ -600,7 +592,7 @@ const SupEditDetails = () => {
             จ่ายวัตถุดิบเท่าที่เหลือ
           </Radio>
           <Radio className="sarabun-light" value="รอ QC ตรวจสอบ">
-            รอ QC ตรวจสอบ 
+            รอ QC ตรวจสอบ
           </Radio>
           <Radio className="sarabun-light" value="รอวัตถุดิบเข้า">
             รอวัตถุดิบเข้า (ระบุ lot เช่น 16/11/2024 TPPM : 4 ชิ้น))

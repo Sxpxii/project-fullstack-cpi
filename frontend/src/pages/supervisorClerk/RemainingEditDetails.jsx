@@ -20,7 +20,7 @@ const RemainingEditDetails = () => {
   const [managerReason, setManagerReason] = useState(""); // สำหรับเก็บเหตุผลที่เลือก
   const [isOtherReason, setIsOtherReason] = useState(false); // ตรวจสอบว่าเหตุผลเป็น "อื่นๆ" หรือไม่
   const [inputReason, setInputReason] = useState("");
-  
+  const [inventoryId, setInventoryId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -47,6 +47,7 @@ const RemainingEditDetails = () => {
       }));
       console.log("Fetched Data:", formattedData);
       setData(formattedData);
+      setInventoryId(response.data[0].inventory_id || null);
     } catch (err) {
       console.error("Failed to fetch data:", err);
     }
@@ -410,26 +411,19 @@ const RemainingEditDetails = () => {
   return (
     <MainLayout>
       <div
+        className="dashboard-title sarabun-bold"
         style={{
-          backgroundColor: " #DCDCDC",
-          padding: "15px 30p",
-          marginBottom: "20px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+          fontSize: "30px",
+          textAlign: "center", // จัดข้อความตรงกลาง
+          display: "flex",
+          justifyContent: "center", // จัดให้อยู่ตรงกลางแนวนอน
+          alignItems: "center", // จัดให้อยู่ตรงกลางแนวตั้ง (ถ้าสูง)
+          height: "50px", // ตั้งความสูงให้พอดี
+          marginBottom: "30px",
+          marginTop: "30px",
         }}
       >
-        <div style={{ margin: "10px" }}>
-          <div
-            className="dashboard-title sarabun-bold"
-            style={{
-              fontSize: "28px",
-              marginLeft: "20px",
-              padding: "20px",
-            }}
-          >
-            ตรวจสอบยอดคงเหลือของวัตถุดิบ
-          </div>
-        </div>
+        ใบสั่งงานเลขที่ : {inventoryId ? inventoryId : "N/A"}
       </div>
 
       <div>
@@ -438,6 +432,15 @@ const RemainingEditDetails = () => {
             borderRadius: "15px",
           }}
         >
+          <div
+            className="dashboard-title sarabun-bold"
+            style={{
+              fontSize: "20px",
+              padding: "20px",
+            }}
+          >
+            ตรวจสอบยอดคงเหลือของวัตถุดิบ :
+          </div>
           <div className="table-container ">
             <Table
               columns={columns}
